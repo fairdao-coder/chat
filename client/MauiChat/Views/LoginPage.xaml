@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui/xaml/2006"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:MauiChat.ViewModels"
+             x:Class="MauiChat.Views.LoginPage"
+             x:DataType="vm:LoginViewModel"
+             Title="MauiChat">
+
+    <VerticalStackLayout Padding="30" Spacing="14" VerticalOptions="Center">
+        <Label Text="MauiChat" FontSize="30" FontAttributes="Bold" HorizontalOptions="Center" />
+
+        <Entry Text="{Binding UserName}" Placeholder="Username" AutoCapitalization="None" />
+        <Entry Text="{Binding Password}" Placeholder="Password" IsPassword="True" />
+        <Entry Text="{Binding NickName}" Placeholder="Nickname (register only)" />
+
+        <Button Text="Login" Command="{Binding LoginCommand}" />
+        <Button Text="Register" Command="{Binding RegisterCommand}" BackgroundColor="#6c757d" />
+
+        <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" />
+
+        <Label Text="{Binding ErrorMessage}"
+               TextColor="Red"
+               IsVisible="{Binding IsError}"
+               HorizontalOptions="Center" />
+    </VerticalStackLayout>
+
+</ContentPage>

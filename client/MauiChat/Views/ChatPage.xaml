@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui/xaml/2006"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:MauiChat.ViewModels"
+             xmlns:models="clr-namespace:MauiChat.Models"
+             xmlns:conv="clr-namespace:MauiChat.Converters"
+             x:Class="MauiChat.Views.ChatPage"
+             x:DataType="vm:ChatViewModel"
+             x:Name="Root"
+             Title="{Binding Title}">
+
+    <ContentPage.Resources>
+        <ResourceDictionary>
+            <conv:MediaSourceConverter x:Key="mediaConverter" />
+            <conv:BoolToEndConverter x:Key="alignConverter" />
+            <conv:BubbleColorConverter x:Key="bubbleColor" />
+        </ResourceDictionary>
+    </ContentPage.Resources>
+
+    <Grid RowDefinitions="*,Auto">
+        <CollectionView Grid.Row="0" ItemsSource="{Binding Messages}" x:Name="MessagesList">
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="models:MessageDto">
+                    <Grid Padding="6"
+                          HorizontalOptions="{Binding IsMine, Converter={StaticResource alignConverter}}">
+                        <Frame Padding="10" MaximumWidthRequest="280"
+                               BackgroundColor="{Binding IsMine, Converter={StaticResource bubbleColor}}">
+                            <StackLayout Spacing="4">
+                                <Image Source="{Binding MediaUrl, Converter={StaticResource mediaConverter}}"
+                                       IsVisible="{Binding IsImage}"
+                                       Aspect="AspectFill" HeightRequest="160" />
+                                <Label Text="{Binding Content}" IsVisible="{Binding IsText}" />
+                                <Label Text="{Binding Content}" IsVisible="{Binding IsFile}"
+                                       TextColor="Blue" TextDecorations="Underline" />
+                                <Label Text="{Binding CreatedAt, StringFormat='{0:HH:mm}'}"
+                                       FontSize="10" TextColor="Gray" HorizontalOptions="End" />
+                            </StackLayout>
+                        </Frame>
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" Padding="6" ColumnSpacing="6">
+            <Button Grid.Column="0" Text="+" WidthRequest="44"
+                    Command="{Binding PickImageCommand}" />
+            <Entry Grid.Column="1" Text="{Binding Draft}" Placeholder="Type a message"
+                   ReturnCommand="{Binding SendCommand}" />
+            <Button Grid.Column="2" Text="Send"
+                    Command="{Binding SendCommand}" />
+        </Grid>
+    </Grid>
+
+</ContentPage>

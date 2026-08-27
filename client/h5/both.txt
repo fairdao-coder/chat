@@ -1,0 +1,21 @@
+npm error code ERESOLVE
+npm error ERESOLVE unable to resolve dependency tree
+npm error
+npm error While resolving: chat-h5@0.1.0
+npm error Found: @types/react@undefined
+npm error node_modules/@types/react
+npm error   dev @types/react@"^18.3.12" from the root project
+npm error
+npm error Could not resolve dependency:
+npm error peer @types/react@"^18.0.0" from @types/react-dom@18.3.7
+npm error node_modules/@types/react-dom
+npm error   dev @types/react-dom@"^18.3.1" from the root project
+npm error
+npm error Fix the upstream dependency conflict, or retry
+npm error this command with --force or --legacy-peer-deps
+npm error to accept an incorrect (and potentially broken) dependency resolution.
+npm error
+npm error
+npm error For a full report see:
+npm error C:\Users\sohoz\AppData\Local\npm-cache\_logs\2026-08-26T19_24_22_908Z-eresolve-report.txt
+npm error A complete log of this run can be found in: C:\Users\sohoz\AppData\Local\npm-cache\_logs\2026-08-26T19_24_22_908Z-debug-0.log
