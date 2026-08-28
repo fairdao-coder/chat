@@ -361,3 +361,14 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/client/h5/dist-*
+
+# ---- Local SDK archives / large downloads (do NOT commit) ----
+# Flutter SDK zip (~1.9 GB) and partial download left in the repo root.
+flutter.zip
+t_cn_zip.part
+# Extracted video frames / helpers used during local experiments.
+_frames/
+_extract_frames.py
+# Local Appwrite / tooling scratch dirs
+_appwrite/

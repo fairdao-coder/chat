@@ -1,0 +1,141 @@
+# CI/CD for the Chat solution.
+#
+# What this does:
+#   * server  (push + PR):  restore + build the ASP.NET Core SignalR hub (.NET 10)
+#   * client  (push + PR):  `flutter pub get` + `flutter analyze` (static gate)
+#   * build-web + deploy-web (push to main only):
+#        build the Flutter web release and publish it to GitHub Pages.
+#
+# Server CD is intentionally omitted: deploying ChatServer needs a host
+# (Azure App Service / self-host) + secrets. Add a job when you have one.
+#
+# One-time setup for the web deploy:
+#   Repo Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
+#
+# Note on base-href: the repo is published as a *project* page
+# (https://fairdao-coder.github.io/chat/), so the web build uses
+# `--base-href "/chat/"`. If you later serve from a custom domain or a
+# user/org site, change it to `--base-href "/"`.
+
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Least privilege at the top level; the deploy job widens its own scope below.
+permissions:
+  contents: read
+
+# Cancel superseded runs on the same ref (keeps PR queues short).
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Server: build the ASP.NET Core SignalR backend (.NET 10 / net10.0)
+  # ---------------------------------------------------------------------------
+  server:
+    name: Build Server (.NET 10)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server/ChatServer
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+          cache: true
+          cache-dependency-path: server/ChatServer/ChatServer.csproj
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+  # ---------------------------------------------------------------------------
+  # Client: static analysis gate for the Flutter app
+  # ---------------------------------------------------------------------------
+  client:
+    name: Analyze Client (Flutter)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client/flutter_chat
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          # Pinned to the version used in local dev for reproducible builds.
+          # Switch to `channel: stable` if you prefer "latest stable".
+          flutter-version: "3.47.2"
+          cache: true
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+  # ---------------------------------------------------------------------------
+  # Web build (only needed for the Pages deploy). Runs after both gates pass.
+  # ---------------------------------------------------------------------------
+  build-web:
+    name: Build Web
+    needs: [server, client]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client/flutter_chat
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.2"
+          cache: true
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Build web release
+        run: flutter build web --release --base-href "/chat/"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: client/flutter_chat/build/web
+
+  # ---------------------------------------------------------------------------
+  # Deploy the web build to GitHub Pages (push to main only).
+  # ---------------------------------------------------------------------------
+  deploy-web:
+    name: Deploy Web to GitHub Pages
+    needs: [build-web]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Pages deploy requires these scopes (overrides the top-level read only).
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
