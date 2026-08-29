@@ -1,0 +1,15 @@
+# Build output (restored/published inside the image)
+bin/
+obj/
+
+# Local uploads & user data
+uploads/
+
+# IDE / OS noise
+.vs/
+*.user
+*.suo
+.DS_Store
+
+# Don't ship the dev secret file into the image
+appsettings.Development.json
