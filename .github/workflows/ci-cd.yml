@@ -3,11 +3,14 @@
 # What this does:
 #   * server  (push + PR):  restore + build the ASP.NET Core SignalR hub (.NET 10)
 #   * client  (push + PR):  `flutter pub get` + `flutter analyze` (static gate)
-#   * build-web + deploy-static (push to main only):
-#        build BOTH Flutter web apps and publish them to the ServeStatic/Chat
-#        repository, which serves them via GitHub Pages:
-#          https://servestatic.github.io/Chat/        -> chat client
-#          https://servestatic.github.io/Chat/admin/  -> admin client
+#   * build-web + build-android (push to main only):
+#        build BOTH Flutter web apps AND the Android release APKs.
+#   * assemble-dist + deploy-static (push to main only):
+#        merge those into one tree and publish it to the ServeStatic/Chat
+#        repository, which serves it via GitHub Pages:
+#          https://servestatic.github.io/Chat/           -> chat client
+#          https://servestatic.github.io/Chat/admin/     -> admin client
+#          https://servestatic.github.io/Chat/download/  -> Android APK downloads
 #   * docker (push to main only):
 #        build the ChatServer image and push it to GitHub Container Registry
 #        (ghcr.io/<owner>/<repo>/chat-server). Override at runtime with:
@@ -157,10 +160,11 @@ jobs:
         run: flutter analyze
 
   # ---------------------------------------------------------------------------
-  # Build both Flutter web apps into a single static tree:
+  # Build both Flutter web apps into a static tree:
   #     /         -> chat client  (client/flutter_chat)
   #     /admin/   -> admin client (client/flutter_admin)
-  # Runs only after all four quality gates pass.
+  # Runs after all four quality gates pass, in parallel with build-android.
+  # assemble-dist later merges in the Android APKs and the download page.
   # ---------------------------------------------------------------------------
   build-web:
     name: Build Web
@@ -221,6 +225,146 @@ jobs:
           path: dist
 
   # ---------------------------------------------------------------------------
+  # Build the Android release APKs and offer them for download from the site.
+  #
+  # Runs in parallel with build-web; assemble-dist merges both into one tree.
+  #
+  # Signing: android/app/build.gradle.kts still uses the Flutter template
+  # default (release signed with the debug key), so no keystore secret is
+  # required. See README section 5 for switching to a real signing config.
+  # ---------------------------------------------------------------------------
+  build-android:
+    name: Build Android APK
+    needs: [client]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client/flutter_chat
+    steps:
+      - uses: actions/checkout@v4
+
+      # 17 must match JavaVersion.VERSION_17 in android/app/build.gradle.kts.
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.2"
+          cache: true
+
+      # Needed before the first Gradle build; the runner image usually already
+      # has them accepted, so a failure here must not break the build.
+      - name: Accept Android licenses
+        run: yes | flutter doctor --android-licenses >/dev/null 2>&1 || true
+
+      - name: Pub get
+        run: flutter pub get
+
+      # Two builds on purpose:
+      #   * universal     -> one APK that installs on any device (largest)
+      #   * split-per-abi -> much smaller APKs, one per CPU architecture
+      # Offering both lets users pick "just works" or "smaller download".
+      - name: Build universal APK
+        run: |
+          set -euo pipefail
+          args=(--release)
+          if [ -n "${{ vars.PUBLIC_API_BASE }}" ]; then
+            args+=(--dart-define=API_BASE="${{ vars.PUBLIC_API_BASE }}")
+          fi
+          flutter build apk "${args[@]}"
+
+      - name: Build split-per-abi APKs
+        run: |
+          set -euo pipefail
+          args=(--release --split-per-abi)
+          if [ -n "${{ vars.PUBLIC_API_BASE }}" ]; then
+            args+=(--dart-define=API_BASE="${{ vars.PUBLIC_API_BASE }}")
+          fi
+          flutter build apk "${args[@]}"
+
+      - name: Collect APKs
+        run: |
+          set -euo pipefail
+          src=build/app/outputs/flutter-apk
+          out="$GITHUB_WORKSPACE/apk-out"
+          mkdir -p "$out"
+          # Stable, friendly names so the download links never change.
+          # Skip any variant the build did not produce rather than failing;
+          # the download page only lists files that actually exist.
+          copy_if_exists() {
+            if [ -f "$src/$1" ]; then
+              cp "$src/$1" "$out/$2"
+            else
+              echo "skip (not produced): $1"
+            fi
+          }
+          copy_if_exists app-release.apk             chat-universal.apk
+          copy_if_exists app-arm64-v8a-release.apk   chat-arm64-v8a.apk
+          copy_if_exists app-armeabi-v7a-release.apk chat-armeabi-v7a.apk
+          copy_if_exists app-x86_64-release.apk      chat-x86_64.apk
+
+          # Report sizes and flag anything over GitHub's 100MB per-file limit
+          # (flutter_webrtc pulls in large native libs, so this is reachable).
+          for f in "$out"/*.apk; do
+            sz="$(stat -c%s "$f")"
+            echo "$(basename "$f"): $(numfmt --to=iec --suffix=B "$sz")"
+            if [ "$sz" -gt 104857600 ]; then
+              echo "::warning file=$f::$(basename "$f") exceeds 100MB. GitHub may flag it; consider publishing only the split-per-abi APKs."
+            fi
+          done
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: apk-out
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Merge the web build and the Android APKs into the final published tree:
+  #     /          -> chat client
+  #     /admin/    -> admin client
+  #     /download/ -> APK download page
+  # ---------------------------------------------------------------------------
+  assemble-dist:
+    name: Assemble dist
+    needs: [build-web, build-android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download web build
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: dist
+
+      - name: Download APKs
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: dist/download
+
+      - name: Generate download page
+        run: |
+          set -euo pipefail
+          # Strip CR in case the script was committed with CRLF endings;
+          # bash would otherwise fail on the shebang line.
+          sed -i 's/\r$//' .github/scripts/gen-download-page.sh
+          version="$(sed -n 's/^version:[[:space:]]*//p' client/flutter_chat/pubspec.yaml | head -1 | tr -d '\r')"
+          bash .github/scripts/gen-download-page.sh "$PWD/dist/download" "$version" "${GITHUB_SHA::7}"
+
+      - name: Upload final site
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: dist
+
+  # ---------------------------------------------------------------------------
   # Publish the static tree to the ServeStatic/Chat repository.
   #
   # `actions/deploy-pages` can only publish to the repository the workflow
@@ -229,17 +373,17 @@ jobs:
   # ---------------------------------------------------------------------------
   deploy-static:
     name: Deploy to ServeStatic/Chat
-    needs: [build-web]
+    needs: [assemble-dist]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
       TARGET_REPO: ServeStatic/Chat
       TARGET_BRANCH: gh-pages
     steps:
-      - name: Download dist
+      - name: Download site
         uses: actions/download-artifact@v4
         with:
-          name: web-dist
+          name: site
           path: dist
 
       - name: Push to gh-pages

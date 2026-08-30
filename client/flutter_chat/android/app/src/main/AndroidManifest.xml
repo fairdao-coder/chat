@@ -1,4 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 基礎網絡權限：HTTP 請求與 SignalR 信令全部依賴它。
+         注意：debug / profile 變體自帶此權限，但 release 只繼承 main/，
+         缺少它的話 release APK 安裝後完全無法聯網，登錄與收發消息會全部失敗。 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- 录音发送：麦克风权限（record 包必需）。
          neverForLocation 表示不用于定位，符合 Android 12+ 最佳实践。 -->
     <uses-permission

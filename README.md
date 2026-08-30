@@ -147,15 +147,74 @@ npm run build && npm run preview
 ## 5. CI/CD 与前端静态发布
 
 `.github/workflows/ci-cd.yml` 在 push / PR 时跑质量门禁（.NET 构建 + Flutter analyze），
-push 到 `main` 时额外构建两个 Flutter Web 应用并发布：
+push 到 `main` 时额外构建两个 Flutter Web 应用 **和 Android APK**，合并后一起发布：
 
 | 产物 | 发布路径 |
 | --- | --- |
 | `client/flutter_chat`（用户端） | <https://servestatic.github.io/Chat/> |
 | `client/flutter_admin`（管理端） | <https://servestatic.github.io/Chat/admin/> |
+| Android APK 下载页 | <https://servestatic.github.io/Chat/download/> |
 
 站点托管在 [`ServeStatic/Chat`](https://github.com/ServeStatic/Chat) 仓库的 `gh-pages` 分支。
 由于 `actions/deploy-pages` 只能发布到工作流所在的仓库，这里改为直接把构建产物推送到目标仓库。
+
+Job 依赖关系（`build-web` 与 `build-android` 并行，缩短关键路径）：
+
+```
+server / client / server-admin / client-admin   (质量门禁)
+        │
+        ├── build-web  ──┐
+        └── build-android ┴─ assemble-dist ── deploy-static ──> ServeStatic/Chat#gh-pages
+```
+
+### Android APK
+
+每次部署会构建两类安装包，供用户在下载页选择：
+
+| 文件 | 说明 |
+| --- | --- |
+| `chat-arm64-v8a.apk` | 绝大多数现代手机，体积最小（推荐） |
+| `chat-universal.apk` | 含全部 CPU 架构，任何设备都能装，体积最大 |
+| `chat-armeabi-v7a.apk` | 较旧的 32 位设备 |
+| `chat-x86_64.apk` | 模拟器与部分平板 |
+
+下载页由 `.github/scripts/gen-download-page.sh` 生成，只列出**确实存在**的 APK，
+不会产出指向不存在文件的坏链接。
+
+#### 关于签名（重要）
+
+当前 `android/app/build.gradle.kts` 沿用 Flutter 模板默认配置 —— **release 版仍用 debug key 签名**，
+因此 CI 不需要任何 keystore，但存在两点影响：
+
+1. 用户安装时 Google Play 防护会提示「未知发布者」，需选择「仍要安装」；
+2. **更换签名 key 会导致已安装用户无法覆盖升级**，必须先卸载。
+
+正式发布前建议配置正式签名：在 `build.gradle.kts` 中定义 `signingConfigs.release`，
+把 keystore 用 base64 编码存进 secret（如 `ANDROID_KEYSTORE_BASE64`、`ANDROID_KEY_*`），
+在 `build-android` job 中解码后再构建。
+
+#### 关于体积
+
+`flutter_webrtc` 会带入较大的原生库，`chat-universal.apk` 有可能超过 GitHub 的
+单文件 100MB 提示阈值。若 CI 日志出现对应 `::warning`，可以从 `build-android` 中
+移除「Build universal APK」步骤，只发布按架构拆分的安装包。
+
+由于每次部署都是「全新单 commit + force push」，仓库历史不会累积，
+仓库体积约等于一次产物大小。
+
+#### 发布前建议修改（当前仍是模板默认值）
+
+| 位置 | 当前值 | 说明 |
+| --- | --- | --- |
+| `android/app/build.gradle.kts` | `applicationId = "com.example.flutter_chat"` | 包名必须唯一，否则无法上架、且会与同包名应用冲突 |
+| `android/app/src/main/AndroidManifest.xml` | `android:label="flutter_chat"` | 手机桌面上显示的应用名 |
+
+修改 `applicationId` 后，如需同时调整 Kotlin 包结构，请一并改动
+`android/app/src/main/kotlin/` 下的目录与 `MainActivity.kt` 的 package 声明。
+
+> 已修复：`main/AndroidManifest.xml` 原先缺少 `INTERNET` 权限。
+> `debug/` 与 `profile/` 变体自带该权限，但 **release 只继承 `main/`**，
+> 缺失时 release APK 安装后完全无法联网（登录、收发消息全部失败）。
 
 ### 一次性配置
 
