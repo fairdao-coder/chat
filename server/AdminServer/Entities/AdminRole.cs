@@ -1,8 +1,8 @@
 namespace AdminServer.Entities;
 
 /// <summary>
-/// 后台角色。Permissions 为逗号分隔的权限点字符串，如 "users.read,users.write"。
-/// 超级管理员使用 "*" 表示全部权限。
+/// 後臺角色。Permissions 為逗號分隔的權限點字符串，如 "users.read,users.write"。
+/// 超級管理員使用 "*" 表示全部權限。
 /// </summary>
 public class AdminRole
 {

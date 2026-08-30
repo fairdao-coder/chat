@@ -51,10 +51,10 @@ class ApiClient {
       return r.data;
     } on DioException catch (e) {
       if (e.response != null) {
-        final msg = _extractMessage(e.response!.data) ?? e.message ?? '请求失败';
+        final msg = _extractMessage(e.response!.data) ?? e.message ?? '請求失敗';
         throw ApiException(e.response!.statusCode, msg);
       }
-      throw ApiException(null, e.message ?? '网络错误');
+      throw ApiException(null, e.message ?? '網絡錯誤');
     }
   }
 
@@ -101,6 +101,12 @@ class ApiClient {
   Future<UserDto> me() async {
     final data = await _req(() => _dio.get('/api/users/me'));
     return UserDto.fromJson(data);
+  }
+
+  /// 在線好友 ID 集合。用於給 SignalR 的上下線推送做兜底校正。
+  Future<Set<String>> getOnlineFriends() async {
+    final data = await _req(() => _dio.get('/api/users/online'));
+    return (data as List).map((e) => e.toString()).toSet();
   }
 
   // ---------- Friends ----------

@@ -46,7 +46,7 @@ class _AuditScreenState extends State<AuditScreen> {
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      if (mounted) setState(() => _error = '加载失败：$e');
+      if (mounted) setState(() => _error = '加載失敗：$e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -61,7 +61,7 @@ class _AuditScreenState extends State<AuditScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '审计日志',
+            '審計日誌',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
@@ -72,7 +72,7 @@ class _AuditScreenState extends State<AuditScreen> {
                 child: TextField(
                   controller: _searchCtrl,
                   decoration: const InputDecoration(
-                    labelText: '搜索动作 / 操作人',
+                    labelText: '搜索動作 / 操作人',
                     prefixIcon: Icon(Icons.search),
                   ),
                   onSubmitted: (_) {
@@ -90,7 +90,7 @@ class _AuditScreenState extends State<AuditScreen> {
                 child: const Text('搜索'),
               ),
               const Spacer(),
-              Text('共 $_total 条'),
+              Text('共 $_total 條'),
             ],
           ),
           const SizedBox(height: 16),
@@ -110,11 +110,11 @@ class _AuditScreenState extends State<AuditScreen> {
                   : SingleChildScrollView(
                       child: DataTable(
                         columns: const [
-                          DataColumn(label: Text('时间')),
+                          DataColumn(label: Text('時間')),
                           DataColumn(label: Text('操作人')),
-                          DataColumn(label: Text('动作')),
-                          DataColumn(label: Text('目标')),
-                          DataColumn(label: Text('详情')),
+                          DataColumn(label: Text('動作')),
+                          DataColumn(label: Text('目標')),
+                          DataColumn(label: Text('詳情')),
                           DataColumn(label: Text('IP')),
                         ],
                         rows: _items
@@ -152,7 +152,7 @@ class _AuditScreenState extends State<AuditScreen> {
                     : null,
                 icon: const Icon(Icons.chevron_left),
               ),
-              Text('第 $_page / ${totalPages == 0 ? 1 : totalPages} 页'),
+              Text('第 $_page / ${totalPages == 0 ? 1 : totalPages} 頁'),
               IconButton(
                 onPressed: _page < totalPages
                     ? () {

@@ -17,7 +17,7 @@ public class FilesController : ApiControllerBase
     public async Task<IActionResult> Upload(IFormFile file)
     {
         if (file == null || file.Length == 0)
-            return BadRequest("未选择文件");
+            return BadRequest("未選擇文件");
         var (url, size, ct) = await _store.SaveAsync(file);
         return Ok(new FileUploadResult(url, ct, size));
     }

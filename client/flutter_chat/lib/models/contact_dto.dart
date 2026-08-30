@@ -1,3 +1,5 @@
+import 'enums.dart';
+
 class ContactDto {
   final String id;
   final String name;
@@ -7,6 +9,9 @@ class ContactDto {
   final DateTime? lastMessageAt;
   final bool isGroup;
 
+  /// 最後一條消息的類型。圖片/文件/語音的內容為空，列表靠它渲染圖標佔位。
+  final MessageType lastMessageType;
+
   const ContactDto({
     required this.id,
     required this.name,
@@ -15,6 +20,7 @@ class ContactDto {
     this.lastMessage,
     this.lastMessageAt,
     required this.isGroup,
+    this.lastMessageType = MessageType.text,
   });
 
   factory ContactDto.fromJson(Map<String, dynamic> j) => ContactDto(
@@ -27,5 +33,6 @@ class ContactDto {
             ? null
             : DateTime.parse(j['lastMessageAt'] as String),
         isGroup: j['isGroup'] as bool? ?? false,
+        lastMessageType: messageTypeFromJson(j['lastMessageType'] as String?),
       );
 }

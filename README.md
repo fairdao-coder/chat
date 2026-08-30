@@ -144,7 +144,46 @@ npm run build && npm run preview
 
 ---
 
-## 5. 已知边界与后续扩展
+## 5. CI/CD 与前端静态发布
+
+`.github/workflows/ci-cd.yml` 在 push / PR 时跑质量门禁（.NET 构建 + Flutter analyze），
+push 到 `main` 时额外构建两个 Flutter Web 应用并发布：
+
+| 产物 | 发布路径 |
+| --- | --- |
+| `client/flutter_chat`（用户端） | <https://servestatic.github.io/Chat/> |
+| `client/flutter_admin`（管理端） | <https://servestatic.github.io/Chat/admin/> |
+
+站点托管在 [`ServeStatic/Chat`](https://github.com/ServeStatic/Chat) 仓库的 `gh-pages` 分支。
+由于 `actions/deploy-pages` 只能发布到工作流所在的仓库，这里改为直接把构建产物推送到目标仓库。
+
+### 一次性配置
+
+> `gh-pages` 分支**不需要手动创建**。首次部署时 workflow 会用
+> `git push --force ... HEAD:gh-pages` 自动在目标仓库建出该分支（即使是空仓库）。
+> 但 Pages 设置的分支下拉框只列**已存在**的分支，所以第 3 步必须排在首次部署之后。
+
+1. **创建 PAT**：生成一个对 `ServeStatic/Chat` 有写权限（`repo` scope）的 Personal Access Token，
+   在本仓库 **Settings → Secrets and variables → Actions** 添加为 `SERVESTATIC_DEPLOY_TOKEN`。
+2. **（可选）指定线上 API 地址**：在本仓库 **Settings → Secrets and variables → Actions → Variables** 添加
+   - `PUBLIC_API_BASE` —— 注入 `AppConfig.defaultApiBase`（`--dart-define=API_BASE`）
+   - `PUBLIC_ADMIN_API_BASE` —— 注入 `Constants.apiBaseUrl`（`--dart-define=ADMIN_API_BASE`）
+
+   不设置的话，发布出去的页面仍会去连 `http://localhost:5298` / `:5299`。
+   用户端也可在「设置」中手动覆盖 API 地址（存于 SharedPreferences）。
+   建议在首次部署前设好，否则还要再部署一次才生效。
+3. **触发首次部署**：push 到 `main`，等 `Deploy to ServeStatic/Chat` job 跑完。
+   此时 `ServeStatic/Chat` 才出现 `gh-pages` 分支。
+4. **开启 Pages**：在 `ServeStatic/Chat` 的 **Settings → Pages** 中选择
+   *Build and deployment → Source: Deploy from a branch*，分支选 `gh-pages`、目录选 `/ (root)`。
+   首次生效需等几十秒到几分钟。
+
+> **注意**：项目页的 URL 路径大小写敏感，因此 `--base-href` 用的是 `/Chat/`、`/Chat/admin/`。
+> 若改用自定义域或组织主页，需相应改为 `/`、`/admin/`。
+
+---
+
+## 6. 已知边界与后续扩展
 - **持久化**：当前为内存友好型 PostgreSQL + EF Core，未做消息分页游标 / 已读回执落库（协议已预留 `ReadReceipt` 事件）。
 - **水平扩展**：SignalR 目前为单机内存 `PresenceTracker`；多实例需接入 `Backplane`（Redis）+ 外部 ID 分发（如 Redis / 数据库序列）。
 - **安全**：JWT 密钥与 CORS 为演示配置，生产请使用强密钥、HTTPS、严格 CORS 源、文件类型 / 大小校验与病毒扫描。

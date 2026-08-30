@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
 
-/// 后台管理导航目的地定义（公开类型，供 HomeScreen 构造）。
+/// 後臺管理導航目的地定義（公開類型，供 HomeScreen 構造）。
 class Dest {
   final String title;
   final IconData icon;
@@ -34,7 +34,7 @@ class AppDrawer extends StatelessWidget {
               children: [
                 Icon(Icons.admin_panel_settings, size: 36, color: Colors.white),
                 SizedBox(width: 12),
-                Text('后台管理', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                Text('後臺管理', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
               ],
             ),
           ),

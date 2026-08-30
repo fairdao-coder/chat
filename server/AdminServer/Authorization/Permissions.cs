@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace AdminServer.Authorization;
 
 /// <summary>
-/// 后台管理权限点常量。Token 中以 "perm" claim 携带，值为逗号分隔的权限列表。
-/// 超级管理员角色权限为 "*"，在 EnsurePermission 中作为通配放行。
+/// 後臺管理權限點常量。Token 中以 "perm" claim 攜帶，值為逗號分隔的權限列表。
+/// 超級管理員角色權限為 "*"，在 EnsurePermission 中作為通配放行。
 /// </summary>
 public static class Permissions
 {
@@ -21,7 +21,7 @@ public static class Permissions
 public static class PermissionHelper
 {
     /// <summary>
-    /// 校验当前管理员是否拥有其中任意一个权限；拥有则返回 null，否则返回 403 ForbidResult。
+    /// 校驗當前管理員是否擁有其中任意一個權限；擁有則返回 null，否則返回 403 ForbidResult。
     /// </summary>
     public static IActionResult? EnsurePermission(this ControllerBase c, params string[] perms)
     {

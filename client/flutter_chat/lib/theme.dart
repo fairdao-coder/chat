@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'config/app_colors.dart';
 
-/// 亮色主题（青绿清新 / Fresh Teal）
+/// 亮色主題（青綠清新 / Fresh Teal）
 ThemeData get lightTheme => _buildTheme(Brightness.light);
 
-/// 暗色主题（青绿清新 / Fresh Teal）
+/// 暗色主題（青綠清新 / Fresh Teal）
 ThemeData get darkTheme => _buildTheme(Brightness.dark);
 
 ThemeData _buildTheme(Brightness brightness) {

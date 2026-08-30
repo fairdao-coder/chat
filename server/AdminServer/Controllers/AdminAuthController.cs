@@ -35,7 +35,7 @@ public class AdminAuthController : ControllerBase
             .FirstOrDefaultAsync(a => a.UserName == req.UserName);
 
         if (admin is null || !admin.IsActive || !_hasher.Verify(admin.PasswordHash, req.Password))
-            return Unauthorized("用户名或密码错误");
+            return Unauthorized("用戶名或密碼錯誤");
 
         admin.LastLoginAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();

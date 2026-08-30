@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 主题模式（亮 / 暗 / 跟随系统）持久化到 SharedPreferences。
+/// 主題模式（亮 / 暗 / 跟隨系統）持久化到 SharedPreferences。
 final themeModeProvider =
     StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) => ThemeModeNotifier());
 
@@ -23,7 +23,7 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
         state = ThemeMode.system;
       }
     } catch (_) {
-      // 读取失败则保持跟随系统
+      // 讀取失敗則保持跟隨系統
     }
   }
 
@@ -33,7 +33,7 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('theme_mode', mode.name);
     } catch (_) {
-      // 持久化失败不影响本次切换
+      // 持久化失敗不影響本次切換
     }
   }
 }

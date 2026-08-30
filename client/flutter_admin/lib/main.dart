@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => AuthProvider()..loadFromStorage(),
       child: MaterialApp(
-        title: '聊天后台管理系统',
+        title: '聊天后臺管理系統',
         theme: AppTheme.light,
         home: const RootDecider(),
         debugShowCheckedModeBanner: false,

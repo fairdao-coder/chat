@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/conversations_provider.dart';
 
-/// 发现 tab：聚合应用的次级入口（添加好友 / 好友请求 / 创建群聊）。
+/// 發現 tab：聚合應用的次級入口（添加好友 / 好友請求 / 創建群聊）。
 class DiscoverPage extends ConsumerWidget {
   const DiscoverPage({super.key});
 

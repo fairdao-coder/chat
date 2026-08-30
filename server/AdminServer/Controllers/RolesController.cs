@@ -87,7 +87,7 @@ public class RolesController : ControllerBase
         var r = await _db.AdminRoles.FindAsync(id);
         if (r is null) return NotFound();
         if (await _db.AdminUsers.AnyAsync(a => a.RoleId == id))
-            return BadRequest("仍有管理员使用该角色，无法删除");
+            return BadRequest("仍有管理員使用該角色，無法刪除");
         _db.AdminRoles.Remove(r);
         await _db.SaveChangesAsync();
         await _audit.LogAsync("roles.delete", target: r.Name);

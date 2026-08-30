@@ -84,8 +84,8 @@ class ChatController extends StateNotifier<ChatState> {
 
     _sub = _hub.onMessage.listen((m) {
       if (m.conversationId != _convId) {
-        // 兜底：如果 client 计算的 convId 与 server 发回的不同（旧版/排序规则不一致），
-        // 仍按 (senderId, mediaUrl) 视为同会话，避免乐观气泡一直留着不被替换。
+        // 兜底：如果 client 計算的 convId 與 server 發回的不同（舊版/排序規則不一致），
+        // 仍按 (senderId, mediaUrl) 視為同會話，避免樂觀氣泡一直留著不被替換。
         final lookupOk = state.messages.any((x) =>
             x.id.startsWith('optimistic_') &&
             x.senderId == m.senderId &&
@@ -94,7 +94,7 @@ class ChatController extends StateNotifier<ChatState> {
         developer.log('onMessage convId mismatch (mine=$_convId theirs=${m.conversationId})'
             ' but matched by optimistic+mediaUrl', name: 'chat');
       }
-      // 用服务端回发的真实消息替换本地乐观消息（按发送者+媒体 URL 匹配）。
+      // 用服務端回發的真實消息替換本地樂觀消息（按發送者+媒體 URL 匹配）。
       final idx = state.messages.indexWhere((x) =>
           x.id.startsWith('optimistic_') &&
           x.senderId == m.senderId &&
@@ -118,10 +118,10 @@ class ChatController extends StateNotifier<ChatState> {
 
   Future<String?> sendMedia(String mediaUrl, String kind) async {
     final myId = _myId;
-    if (myId == null) return '未登录';
+    if (myId == null) return '未登錄';
     developer.log('sendMedia target=${_target.id} isGroup=${_target.isGroup} '
         'url=$mediaUrl kind=$kind', name: 'chat');
-    // 乐观插入：发送后立刻在本地显示气泡，不等服务端回发，避免"点了没反应"。
+    // 樂觀插入：發送後立刻在本地顯示氣泡，不等服務端回發，避免"點了沒反應"。
     final optimistic = MessageDto(
       id: 'optimistic_${DateTime.now().microsecondsSinceEpoch}',
       conversationId: _convId,
@@ -140,7 +140,7 @@ class ChatController extends StateNotifier<ChatState> {
     if (err != null) {
       developer.log('sendMedia _send returned err=$err — removing optimistic '
           'id=${optimistic.id}', name: 'chat');
-      // 发送失败：移除乐观消息，让用户看到状态正确。
+      // 發送失敗：移除樂觀消息，讓用戶看到狀態正確。
       state = state.copyWith(
         messages: state.messages.where((x) => x.id != optimistic.id).toList(),
       );
@@ -151,11 +151,11 @@ class ChatController extends StateNotifier<ChatState> {
     return err;
   }
 
-  /// 发送语音消息。[seconds] 为录音时长，编码进 content（服务端按字符串存储，
-  /// 零 schema 改动），气泡再解析为时长显示。
+  /// 發送語音消息。[seconds] 為錄音時長，編碼進 content（服務端按字符串存儲，
+  /// 零 schema 改動），氣泡再解析為時長顯示。
   Future<String?> sendVoice(String mediaUrl, int seconds) async {
     final myId = _myId;
-    if (myId == null) return '未登录';
+    if (myId == null) return '未登錄';
     developer.log('sendVoice target=${_target.id} isGroup=${_target.isGroup} '
         'url=$mediaUrl seconds=$seconds', name: 'chat');
     final optimistic = MessageDto(

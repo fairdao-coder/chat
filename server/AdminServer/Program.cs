@@ -8,13 +8,13 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ---- EF Core + PostgreSQL（与 ChatServer 共享同一数据库 chatdb）----
+// ---- EF Core + PostgreSQL（與 ChatServer 共享同一數據庫 chatdb）----
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? Environment.GetEnvironmentVariable("CONNECTIONSTRINGS__DEFAULT")
     ?? "Host=localhost;Port=5432;Database=chatdb;Username=postgres;Password=postgres";
 builder.Services.AddDbContext<AdminDbContext>(o => o.UseNpgsql(connectionString));
 
-// ---- JWT（后台管理专用，独立于聊天端）----
+// ---- JWT（後臺管理專用，獨立於聊天端）----
 var jwtSection = builder.Configuration.GetSection("Jwt");
 var jwtKey = jwtSection["Key"] ?? "AdminServerDevelopmentSecretKeyChangeMe1234567890";
 var jwtIssuer = jwtSection["Issuer"] ?? "AdminServer";
@@ -37,13 +37,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// ---- 业务服务 ----
+// ---- 業務服務 ----
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<IAdminTokenService, AdminTokenService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 
-// ---- CORS（与 ChatServer 一致；生产请通过 Cors:Origins 显式配置）----
+// ---- CORS（與 ChatServer 一致；生產請通過 Cors:Origins 顯式配置）----
 builder.Services.AddCors(o => o.AddPolicy("allow", p =>
 {
     var origins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>();
@@ -77,11 +77,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// 自动建库（仅新增后台管理表）+ 种子默认角色与管理员
+// 自動建庫（僅新增後臺管理表）+ 種子默認角色與管理員
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
-    db.Database.EnsureCreated();
+    db.Database.Migrate();
     await SeedAsync(db, builder.Configuration);
 }
 
@@ -91,14 +91,14 @@ static async Task SeedAsync(AdminDbContext db, IConfiguration config)
 {
     if (!await db.AdminRoles.AnyAsync())
     {
-        var super = new AdminRole { Name = "SuperAdmin", Permissions = "*", Description = "超级管理员，拥有全部权限" };
+        var super = new AdminRole { Name = "SuperAdmin", Permissions = "*", Description = "超級管理員，擁有全部權限" };
         var admin = new AdminRole
         { 
             Name = "Admin",
             Permissions = "dashboard.view,users.read,users.write,roles.read,audit.read,admins.read",
-            Description = "管理员"
+            Description = "管理員"
         };
-        var viewer = new AdminRole { Name = "Viewer", Permissions = "dashboard.view,users.read,roles.read,audit.read", Description = "只读访客" };
+        var viewer = new AdminRole { Name = "Viewer", Permissions = "dashboard.view,users.read,roles.read,audit.read", Description = "只讀訪客" };
         db.AdminRoles.AddRange(super, admin, viewer);
         await db.SaveChangesAsync();
     }
@@ -113,7 +113,7 @@ static async Task SeedAsync(AdminDbContext db, IConfiguration config)
         db.AdminUsers.Add(new AdminUser
         {
             UserName = userName,
-            DisplayName = "超级管理员",
+            DisplayName = "超級管理員",
             PasswordHash = hasher.HashPassword(password),
             RoleId = super.Id
         });

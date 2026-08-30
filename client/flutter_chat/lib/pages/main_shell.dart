@@ -5,10 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/conversations_provider.dart';
 
-/// 微信风格的底部导航宿主：信息 / 通讯录 / 发现 / 我。
+/// 微信風格的底部導航宿主：信息 / 通訊錄 / 發現 / 我。
 ///
 /// 由 `router.dart` 的 `StatefulShellRoute.indexedStack` 提供 [navigationShell]，
-/// 每个 tab 拥有独立 Navigator，切换时保留各自页面状态（如会话列表滚动位置）。
+/// 每個 tab 擁有獨立 Navigator，切換時保留各自頁面狀態（如會話列表滾動位置）。
 class MainShell extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
 
@@ -25,7 +25,7 @@ class MainShell extends ConsumerWidget {
       orElse: () => 0,
     );
 
-    // 通讯录 tab 的未读好友请求红点
+    // 通訊錄 tab 的未讀好友請求紅點
     final contactsIcon = pending > 0
         ? Badge(
             label: Text(pending.toString()),
@@ -34,7 +34,7 @@ class MainShell extends ConsumerWidget {
         : const Icon(Icons.contacts_outlined);
 
     return Scaffold(
-      // navigationShell 本身即各分支页面的 IndexedStack
+      // navigationShell 本身即各分支頁面的 IndexedStack
       body: navigationShell,
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,

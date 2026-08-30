@@ -17,7 +17,7 @@ final friendRequestsProvider = FutureProvider<List<FriendRequestDto>>((ref) {
   return api.getFriendRequests();
 });
 
-/// 好友列表（通讯录 tab）。
+/// 好友列表（通訊錄 tab）。
 final friendsProvider = FutureProvider<List<UserDto>>((ref) async {
   final api = ref.watch(apiProvider);
   final list = await api.getFriends();

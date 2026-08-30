@@ -19,7 +19,7 @@ public class GroupsController : ApiControllerBase
     public async Task<IActionResult> Create(CreateGroupRequest req)
     {
         if (string.IsNullOrWhiteSpace(req.Name))
-            return BadRequest("群名称不能为空");
+            return BadRequest("群名稱不能為空");
 
         var group = new Group { Name = req.Name, OwnerId = UserId };
         group.Members.Add(new GroupMember { UserId = UserId, Role = GroupMemberRole.Owner });

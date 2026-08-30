@@ -22,7 +22,7 @@ class ChatHubClient {
   final _offlineController = StreamController<String>.broadcast();
   final _stateController = StreamController<bool>.broadcast();
 
-  // 通话信令事件
+  // 通話信令事件
   final _incomingCallCtl = StreamController<CallInvite>.broadcast();
   final _callAcceptedCtl = StreamController<String>.broadcast();
   final _callRejectedCtl = StreamController<(String, String)>.broadcast();
@@ -80,7 +80,7 @@ class ChatHubClient {
       if (args != null && args.isNotEmpty) _offlineController.add(args[0].toString());
     });
 
-    // 通话信令
+    // 通話信令
     _connection!.on(HubEvents.incomingCall, (args) {
       if (args != null && args.length >= 4) {
         _incomingCallCtl.add(CallInvite(
@@ -160,7 +160,7 @@ class ChatHubClient {
     await _connection!.invoke(HubMethods.leaveGroup, args: [groupId]);
   }
 
-  // ---- 通话信令 invokes（方法名/参数顺序与 ChatHub.cs 保持一致） ----
+  // ---- 通話信令 invokes（方法名/參數順序與 ChatHub.cs 保持一致） ----
 
   Future<void> inviteCall(String callId, String targetUserId, String callType) async {
     await _ensureConnected();

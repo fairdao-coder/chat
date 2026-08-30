@@ -84,7 +84,7 @@ public class UsersController : ControllerBase
         if (req.NickName is not null) u.NickName = req.NickName;
         if (req.AvatarUrl is not null) u.AvatarUrl = req.AvatarUrl;
         await _db.SaveChangesAsync();
-        await _audit.LogAsync("users.update", target: u.UserName, detail: "更新资料");
+        await _audit.LogAsync("users.update", target: u.UserName, detail: "更新資料");
         return Ok(new { ok = true });
     }
 

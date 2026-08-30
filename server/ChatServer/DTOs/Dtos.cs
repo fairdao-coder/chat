@@ -45,6 +45,10 @@ public record FriendRequestDto(
     string? AvatarUrl,
     DateTime CreatedAt);
 
+/// <param name="LastMessageType">
+/// 最後一條消息的類型。圖片/文件/語音的 Content 為空，客戶端靠它渲染成
+/// "[圖片]" / "[文件]" / "[語音]" 之類的圖標佔位，而不是空白。
+/// </param>
 public record ContactDto(
     Guid Id,
     string Name,
@@ -52,6 +56,7 @@ public record ContactDto(
     bool IsOnline,
     string? LastMessage,
     DateTime? LastMessageAt,
-    bool IsGroup);
+    bool IsGroup,
+    MessageType? LastMessageType = null);
 
 public record FileUploadResult(string Url, string ContentType, long Size);

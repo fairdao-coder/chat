@@ -28,7 +28,7 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Register(RegisterRequest req)
     {
         if (await _db.Users.AnyAsync(u => u.UserName == req.UserName))
-            return Conflict("用户名已存在");
+            return Conflict("用戶名已存在");
 
         var user = new AppUser
         {
@@ -48,7 +48,7 @@ public class AuthController : ControllerBase
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.UserName == req.UserName);
         if (user == null || !_hasher.Verify(user.PasswordHash, req.Password))
-            return Unauthorized("用户名或密码错误");
+            return Unauthorized("用戶名或密碼錯誤");
 
         user.LastSeenAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();

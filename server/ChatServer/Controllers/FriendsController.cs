@@ -18,10 +18,10 @@ public class FriendsController : ApiControllerBase
     [HttpPost("request")]
     public async Task<IActionResult> SendRequest([FromBody] Guid friendId)
     {
-        if (friendId == UserId) return BadRequest("不能添加自己为好友");
-        if (!await _db.Users.AnyAsync(u => u.Id == friendId)) return NotFound("用户不存在");
+        if (friendId == UserId) return BadRequest("不能添加自己為好友");
+        if (!await _db.Users.AnyAsync(u => u.Id == friendId)) return NotFound("用戶不存在");
         if (await _db.Friendships.AnyAsync(f => f.RequesterId == UserId && f.AddresseeId == friendId))
-            return Conflict("请求已存在");
+            return Conflict("請求已存在");
         _db.Friendships.Add(new Friendship
         {
             RequesterId = UserId,
@@ -48,7 +48,7 @@ public class FriendsController : ApiControllerBase
     {
         var fr = await _db.Friendships.FirstOrDefaultAsync(f =>
             f.AddresseeId == UserId && f.RequesterId == friendId && f.Status == FriendshipStatus.Pending);
-        if (fr == null) return NotFound("请求不存在");
+        if (fr == null) return NotFound("請求不存在");
         fr.Status = FriendshipStatus.Accepted;
         await _db.SaveChangesAsync();
         return Ok();

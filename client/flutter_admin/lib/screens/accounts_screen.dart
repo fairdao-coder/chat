@@ -49,7 +49,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      if (mounted) setState(() => _error = '加载失败：$e');
+      if (mounted) setState(() => _error = '加載失敗：$e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -64,7 +64,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => AlertDialog(
-          title: const Text('新建管理员'),
+          title: const Text('新建管理員'),
           content: SizedBox(
             width: 320,
             child: Column(
@@ -72,18 +72,18 @@ class _AccountsScreenState extends State<AccountsScreen> {
               children: [
                 TextField(
                   controller: userCtrl,
-                  decoration: const InputDecoration(labelText: '登录账号'),
+                  decoration: const InputDecoration(labelText: '登錄賬號'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: nameCtrl,
-                  decoration: const InputDecoration(labelText: '显示名称'),
+                  decoration: const InputDecoration(labelText: '顯示名稱'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: passCtrl,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: '密码'),
+                  decoration: const InputDecoration(labelText: '密碼'),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
@@ -107,7 +107,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('创建'),
+              child: const Text('創建'),
             ),
           ],
         ),
@@ -153,7 +153,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
           Row(
             children: [
               const Text(
-                '管理员账号',
+                '管理員賬號',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const Spacer(),
@@ -161,7 +161,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 FilledButton.icon(
                   onPressed: _create,
                   icon: const Icon(Icons.add),
-                  label: const Text('新建管理员'),
+                  label: const Text('新建管理員'),
                 ),
             ],
           ),
@@ -193,13 +193,13 @@ class _AccountsScreenState extends State<AccountsScreen> {
                         ),
                         title: Text('${a.displayName}（@${a.userName}）'),
                         subtitle: Text(
-                          '角色：${a.roleName}  ·  创建于 ${a.createdAt.toLocal().toString().split(' ')[0]}',
+                          '角色：${a.roleName}  ·  創建於 ${a.createdAt.toLocal().toString().split(' ')[0]}',
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Chip(
-                              label: Text(a.isActive ? '启用' : '停用'),
+                              label: Text(a.isActive ? '啟用' : '停用'),
                               backgroundColor: a.isActive
                                   ? Colors.green.shade100
                                   : Colors.grey.shade300,
@@ -208,7 +208,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                             if (_canWrite)
                               TextButton(
                                 onPressed: () => _toggle(a),
-                                child: Text(a.isActive ? '停用' : '启用'),
+                                child: Text(a.isActive ? '停用' : '啟用'),
                               ),
                           ],
                         ),

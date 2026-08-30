@@ -12,7 +12,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// The value can be overridden at runtime (Settings) and persists via SharedPreferences.
 class AppConfig {
-  static const String defaultApiBase = 'http://localhost:5298';
+  /// Compile-time default, overridable at build time:
+  ///   flutter build web --dart-define=API_BASE=https://api.example.com
+  ///
+  /// This is what CI uses to point the published site at a real server;
+  /// without it a deployed build would still talk to http://localhost:5298.
+  static const String defaultApiBase = String.fromEnvironment(
+    'API_BASE',
+    defaultValue: 'http://localhost:5298',
+  );
   static const String _prefKey = 'api_base';
 
   /// Resolved API base (no trailing slash).

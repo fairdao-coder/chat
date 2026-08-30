@@ -29,7 +29,7 @@ Future<({Uint8List bytes, String name})?> _pick(String accept) async {
 
   final host = document.body ?? document.documentElement;
   if (host == null) {
-    throw StateError('document.body 不可用，无法选择文件');
+    throw StateError('document.body 不可用，無法選擇文件');
   }
   host.append(input);
 
@@ -46,7 +46,7 @@ Future<({Uint8List bytes, String name})?> _pick(String accept) async {
   }
 
   sub = input.onChange.listen((_) {
-    dialogShown = true; // 用户至少触发了一次真实的 change 事件（点选了文件）。
+    dialogShown = true; // 用戶至少觸發了一次真實的 change 事件（點選了文件）。
     final files = input.files;
     if (files == null || files.length == 0) {
       cleanup();
@@ -62,33 +62,33 @@ Future<({Uint8List bytes, String name})?> _pick(String accept) async {
         final bytes = buf?.toDart.asUint8List();
         cleanup();
         if (bytes == null || bytes.isEmpty) {
-          completer.completeError('文件内容为空');
+          completer.completeError('文件內容為空');
         } else {
           completer.complete((bytes: bytes, name: file.name));
         }
       } catch (e) {
         cleanup();
-        completer.completeError('读取文件出错: $e');
+        completer.completeError('讀取文件出錯: $e');
       }
     });
     reader.readAsArrayBuffer(file);
   });
 
-  // Safety net: 在弹窗未自动弹出 (例如：iframe 焦点丢失 / 浏览器策略阻止)
-  // 而用户也未点选任何文件时，input.click() 之后的 change 事件永远不会到达，
-  // 直到用户在 60 秒超时过去。原实现"静默 complete(null)"会让上层吞掉异常，
-  // 用户体验就是"点了图片按钮，聊天窗口什么都没有" + "控制台没错误" —
-  // 与本工单报告的 bug 完全一致。改为抛错让调用方在 UI 上给出反馈。
+  // Safety net: 在彈窗未自動彈出 (例如：iframe 焦點丟失 / 瀏覽器策略阻止)
+  // 而用戶也未點選任何文件時，input.click() 之後的 change 事件永遠不會到達，
+  // 直到用戶在 60 秒超時過去。原實現"靜默 complete(null)"會讓上層吞掉異常，
+  // 用戶體驗就是"點了圖片按鈕，聊天窗口什麼都沒有" + "控制台沒錯誤" —
+  // 與本工單報告的 bug 完全一致。改為拋錯讓調用方在 UI 上給出反饋。
   Future.delayed(const Duration(seconds: 60)).then((_) {
     if (completer.isCompleted) return;
     cleanup();
     if (dialogShown) {
-      // dialog 已经弹出过，但用户最终取消了选择 — 这是正常路径。
+      // dialog 已經彈出過，但用戶最終取消了選擇 — 這是正常路徑。
       completer.complete(null);
     } else {
-      // dialog 从未弹出：把 60s 的等待视作"无法弹出"，让上层给出明确提示。
+      // dialog 從未彈出：把 60s 的等待視作"無法彈出"，讓上層給出明確提示。
       completer.completeError(
-          '未能弹出文件选择窗口（可能是浏览器被嵌入/受限制、或本窗口未获得焦点），请把此页面切到前台后再试。');
+          '未能彈出文件選擇窗口（可能是瀏覽器被嵌入/受限制、或本窗口未獲得焦點），請把此頁面切到前臺後再試。');
     }
   });
 

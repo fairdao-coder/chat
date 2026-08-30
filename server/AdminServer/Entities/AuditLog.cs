@@ -1,6 +1,6 @@
 namespace AdminServer.Entities;
 
-/// <summary>管理员操作审计日志（AdminServer 自有表）。</summary>
+/// <summary>管理員操作審計日誌（AdminServer 自有表）。</summary>
 public class AuditLog
 {
     public Guid Id { get; set; } = Guid.NewGuid();

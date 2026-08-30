@@ -53,7 +53,7 @@ class _UsersScreenState extends State<UsersScreen> {
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      if (mounted) setState(() => _error = '加载失败：$e');
+      if (mounted) setState(() => _error = '加載失敗：$e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -69,10 +69,10 @@ class _UsersScreenState extends State<UsersScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('编辑用户资料'),
+        title: const Text('編輯用戶資料'),
         content: TextField(
           controller: nickCtrl,
-          decoration: const InputDecoration(labelText: '昵称'),
+          decoration: const InputDecoration(labelText: '暱稱'),
         ),
         actions: [
           TextButton(
@@ -107,16 +107,16 @@ class _UsersScreenState extends State<UsersScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(ban ? '封禁用户' : '解封用户'),
+        title: Text(ban ? '封禁用戶' : '解封用戶'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(ban ? '确认封禁 @${u.userName}？' : '确认解封 @${u.userName}？'),
+            Text(ban ? '確認封禁 @${u.userName}？' : '確認解封 @${u.userName}？'),
             if (ban) const SizedBox(height: 12),
             if (ban)
               TextField(
                 controller: reasonCtrl,
-                decoration: const InputDecoration(labelText: '原因（可选）'),
+                decoration: const InputDecoration(labelText: '原因（可選）'),
               ),
           ],
         ),
@@ -155,7 +155,7 @@ class _UsersScreenState extends State<UsersScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '用户管理',
+            '用戶管理',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
@@ -166,7 +166,7 @@ class _UsersScreenState extends State<UsersScreen> {
                 child: TextField(
                   controller: _searchCtrl,
                   decoration: const InputDecoration(
-                    labelText: '搜索用户名 / 昵称',
+                    labelText: '搜索用戶名 / 暱稱',
                     prefixIcon: Icon(Icons.search),
                   ),
                   onSubmitted: (_) => _search(),
@@ -175,7 +175,7 @@ class _UsersScreenState extends State<UsersScreen> {
               const SizedBox(width: 12),
               FilledButton(onPressed: _search, child: const Text('搜索')),
               const Spacer(),
-              Text('共 $_total 个用户'),
+              Text('共 $_total 個用戶'),
             ],
           ),
           const SizedBox(height: 16),
@@ -195,10 +195,10 @@ class _UsersScreenState extends State<UsersScreen> {
                   : SingleChildScrollView(
                       child: DataTable(
                         columns: const [
-                          DataColumn(label: Text('用户名')),
-                          DataColumn(label: Text('昵称')),
-                          DataColumn(label: Text('状态')),
-                          DataColumn(label: Text('注册时间')),
+                          DataColumn(label: Text('用戶名')),
+                          DataColumn(label: Text('暱稱')),
+                          DataColumn(label: Text('狀態')),
+                          DataColumn(label: Text('註冊時間')),
                           DataColumn(label: Text('操作')),
                         ],
                         rows: _items
@@ -212,7 +212,7 @@ class _UsersScreenState extends State<UsersScreen> {
                                       children: [
                                         if (u.isOnline)
                                           const Chip(
-                                            label: Text('在线'),
+                                            label: Text('在線'),
                                             backgroundColor: Colors.teal,
                                             labelStyle: TextStyle(
                                               color: Colors.white,
@@ -230,7 +230,7 @@ class _UsersScreenState extends State<UsersScreen> {
                                           ),
                                         if (!u.isOnline && !u.isBanned)
                                           const Text(
-                                            '离线',
+                                            '離線',
                                             style: TextStyle(
                                               color: AppTheme.textSub,
                                             ),
@@ -251,7 +251,7 @@ class _UsersScreenState extends State<UsersScreen> {
                                         if (_canWrite)
                                           TextButton(
                                             onPressed: () => _edit(u),
-                                            child: const Text('编辑'),
+                                            child: const Text('編輯'),
                                           )
                                         else
                                           const Text(
@@ -297,7 +297,7 @@ class _UsersScreenState extends State<UsersScreen> {
                     : null,
                 icon: const Icon(Icons.chevron_left),
               ),
-              Text('第 $_page / ${totalPages == 0 ? 1 : totalPages} 页'),
+              Text('第 $_page / ${totalPages == 0 ? 1 : totalPages} 頁'),
               IconButton(
                 onPressed: _page < totalPages
                     ? () {

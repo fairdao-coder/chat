@@ -8,10 +8,10 @@ import '../data/signalr_client.dart';
 import '../models/call_signal.dart';
 import '../providers/core_providers.dart';
 
-/// 当前通话阶段。
+/// 當前通話階段。
 enum CallStatus { idle, outgoing, incoming, connecting, connected }
 
-/// 通话 UI 状态。
+/// 通話 UI 狀態。
 class CallState {
   final CallStatus status;
   final String? callId;
@@ -22,7 +22,7 @@ class CallState {
   final bool muted;
   final bool cameraOff;
   final int durationSec;
-  final String? endedReason; // 对方已拒绝 / 对方忙线 / 对方无应答 / 通话结束 ...
+  final String? endedReason; // 對方已拒絕 / 對方忙線 / 對方無應答 / 通話結束 ...
 
   const CallState({
     this.status = CallStatus.idle,
@@ -68,9 +68,9 @@ final callProvider =
   return CallController(ref.read(hubProvider));
 });
 
-/// 管理一次 WebRTC 语音/视频通话：本地/远端媒体流、PeerConnection、与 SignalR 的信令交换。
+/// 管理一次 WebRTC 語音/視頻通話：本地/遠端媒體流、PeerConnection、與 SignalR 的信令交換。
 ///
-/// 设计为单例（非 family）：全局只有一个活跃通话，来电由顶层 [CallOverlay] 统一呈现。
+/// 設計為單例（非 family）：全局只有一個活躍通話，來電由頂層 [CallOverlay] 統一呈現。
 class CallController extends StateNotifier<CallState> {
   final ChatHubClient _hub;
 
@@ -147,17 +147,17 @@ class CallController extends StateNotifier<CallState> {
       localRenderer.srcObject = _localStream;
     } catch (e) {
       _cleanup();
-      state = state.copyWith(status: CallStatus.idle, endedReason: '无法访问麦克风或摄像头');
+      state = state.copyWith(status: CallStatus.idle, endedReason: '無法訪問麥克風或攝像頭');
       return;
     }
     try {
       await _hub.inviteCall(callId, peerId, callType);
     } catch (e) {
       _cleanup();
-      state = state.copyWith(status: CallStatus.idle, endedReason: '呼叫失败');
+      state = state.copyWith(status: CallStatus.idle, endedReason: '呼叫失敗');
       return;
     }
-    // 无应答超时：30s 内对方未接听则自动挂断。
+    // 無應答超時：30s 內對方未接聽則自動掛斷。
     _noAnswerTimer = Timer(const Duration(seconds: 30), () {
       if (state.status == CallStatus.outgoing) {
         hangUp();
@@ -169,7 +169,7 @@ class CallController extends StateNotifier<CallState> {
 
   void _onIncoming(CallInvite inv) {
     if (state.status != CallStatus.idle) {
-      // 已在通话中，直接拒掉新来电（忙线）。
+      // 已在通話中，直接拒掉新來電（忙線）。
       _hub.rejectCall(inv.callId).catchError((_) {});
       return;
     }
@@ -196,7 +196,7 @@ class CallController extends StateNotifier<CallState> {
       await _hub.acceptCall(callId);
     } catch (e) {
       _cleanup();
-      state = state.copyWith(status: CallStatus.idle, endedReason: '无法访问麦克风或摄像头');
+      state = state.copyWith(status: CallStatus.idle, endedReason: '無法訪問麥克風或攝像頭');
     }
   }
 
@@ -247,7 +247,7 @@ class CallController extends StateNotifier<CallState> {
       await _hub.sendOffer(callId, jsonEncode(offer.toMap()));
     } catch (e) {
       _cleanup();
-      state = state.copyWith(status: CallStatus.idle, endedReason: '连接失败');
+      state = state.copyWith(status: CallStatus.idle, endedReason: '連接失敗');
     }
   }
 
@@ -255,9 +255,9 @@ class CallController extends StateNotifier<CallState> {
     final (callId, reason) = p;
     if (state.callId != callId) return;
     final msg = switch (reason) {
-      'busy' => '对方忙线',
+      'busy' => '對方忙線',
       'self' => '不能呼叫自己',
-      _ => '对方已拒绝',
+      _ => '對方已拒絕',
     };
     _cleanup();
     state = state.copyWith(status: CallStatus.idle, endedReason: msg);
@@ -275,7 +275,7 @@ class CallController extends StateNotifier<CallState> {
       await _hub.sendAnswer(callId, jsonEncode(answer.toMap()));
     } catch (e) {
       _cleanup();
-      state = state.copyWith(status: CallStatus.idle, endedReason: '连接失败');
+      state = state.copyWith(status: CallStatus.idle, endedReason: '連接失敗');
     }
   }
 
@@ -313,7 +313,7 @@ class CallController extends StateNotifier<CallState> {
     _cleanup();
     state = state.copyWith(
       status: CallStatus.idle,
-      endedReason: wasConnected ? '通话结束' : '通话已取消',
+      endedReason: wasConnected ? '通話結束' : '通話已取消',
     );
   }
 
@@ -332,7 +332,7 @@ class CallController extends StateNotifier<CallState> {
     _cleanup();
     state = state.copyWith(
       status: CallStatus.idle,
-      endedReason: wasConnected ? '通话结束' : (state.endedReason ?? '通话已取消'),
+      endedReason: wasConnected ? '通話結束' : (state.endedReason ?? '通話已取消'),
     );
   }
 
@@ -362,7 +362,7 @@ class CallController extends StateNotifier<CallState> {
     try {
       await Helper.switchCamera(video.first);
     } catch (_) {
-      // 部分平台/桌面不支持切换，忽略
+      // 部分平臺/桌面不支持切換，忽略
     }
   }
 

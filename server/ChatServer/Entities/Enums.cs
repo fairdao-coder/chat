@@ -2,9 +2,9 @@ using System.Text.Json.Serialization;
 
 namespace ChatServer.Entities;
 
-// [JsonConverter] 注解保证：无论走 AddJsonProtocol 的全局选项还是属性级反射，
-// "Text"/"Image"/"File" 这类字符串都能可靠地与 enum 互转，避免客户端默认值与
-// 服务端枚举不匹配时报告 "Error binding arguments"。
+// [JsonConverter] 註解保證：無論走 AddJsonProtocol 的全局選項還是屬性級反射，
+// "Text"/"Image"/"File" 這類字符串都能可靠地與 enum 互轉，避免客戶端默認值與
+// 服務端枚舉不匹配時報告 "Error binding arguments"。
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum ChatType
 {

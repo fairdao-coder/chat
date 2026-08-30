@@ -36,7 +36,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } on ApiException catch (e) {
       _error = e.message;
     } catch (e) {
-      _error = '加载失败：$e';
+      _error = '加載失敗：$e';
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -46,7 +46,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) {
-      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(_error!), const SizedBox(height: 12), FilledButton(onPressed: _load, child: const Text('重试'))]));
+      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(_error!), const SizedBox(height: 12), FilledButton(onPressed: _load, child: const Text('重試'))]));
     }
     final s = _stats!;
     return RefreshIndicator(
@@ -56,27 +56,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('数据概览', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const Text('數據概覽', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             Wrap(
               spacing: 16,
               runSpacing: 16,
               children: [
-                _card(StatCard(title: '注册用户', value: '${s.totalUsers}', icon: Icons.people, color: AppTheme.primary)),
+                _card(StatCard(title: '註冊用戶', value: '${s.totalUsers}', icon: Icons.people, color: AppTheme.primary)),
                 _card(StatCard(title: '今日新增', value: '${s.newUsersToday}', icon: Icons.person_add, color: Colors.green)),
-                _card(StatCard(title: '在线用户', value: '${s.onlineUsers}', icon: Icons.circle, color: Colors.teal)),
-                _card(StatCard(title: '封禁用户', value: '${s.bannedUsers}', icon: Icons.block, color: Colors.red)),
-                _card(StatCard(title: '总消息', value: '${s.totalMessages}', icon: Icons.message, color: Colors.orange)),
+                _card(StatCard(title: '在線用戶', value: '${s.onlineUsers}', icon: Icons.circle, color: Colors.teal)),
+                _card(StatCard(title: '封禁用戶', value: '${s.bannedUsers}', icon: Icons.block, color: Colors.red)),
+                _card(StatCard(title: '總消息', value: '${s.totalMessages}', icon: Icons.message, color: Colors.orange)),
                 _card(StatCard(title: '今日消息', value: '${s.messagesToday}', icon: Icons.chat_bubble, color: Colors.purple)),
-                _card(StatCard(title: '群组数', value: '${s.totalGroups}', icon: Icons.group_work, color: Colors.indigo)),
-                _card(StatCard(title: '好友关系', value: '${s.totalFriendships}', icon: Icons.handshake, color: Colors.blue)),
+                _card(StatCard(title: '群組數', value: '${s.totalGroups}', icon: Icons.group_work, color: Colors.indigo)),
+                _card(StatCard(title: '好友關係', value: '${s.totalFriendships}', icon: Icons.handshake, color: Colors.blue)),
               ],
             ),
             const SizedBox(height: 20),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: _chartCard('近 14 天注册趋势', _buildLine(s.signups))),
+                Expanded(child: _chartCard('近 14 天註冊趨勢', _buildLine(s.signups))),
                 const SizedBox(width: 16),
                 Expanded(child: _chartCard('近 14 天消息量', _buildBar(s.messages))),
               ],

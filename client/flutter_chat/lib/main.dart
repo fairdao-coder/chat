@@ -22,7 +22,7 @@ void _reportError(Object error) {
   final msg = error.toString();
   // Some errors are noisy/no-op (e.g. platform gesture noise); keep it short.
   scaffoldMessengerKey.currentState?.showSnackBar(
-    SnackBar(content: Text('发生错误: $msg'), duration: const Duration(seconds: 4)),
+    SnackBar(content: Text('發生錯誤: $msg'), duration: const Duration(seconds: 4)),
   );
 }
 
@@ -58,7 +58,7 @@ class _MyAppState extends ConsumerState<MyApp> {
     super.initState();
     // Restore persisted session and (re)connect the SignalR hub.
     ref.read(authProvider.notifier).init();
-    // 预实例化通话控制器，使其订阅 SignalR 来电事件（否则来电期间 overlay 不显示）。
+    // 預實例化通話控制器，使其訂閱 SignalR 來電事件（否則來電期間 overlay 不顯示）。
     ref.read(callProvider);
   }
 

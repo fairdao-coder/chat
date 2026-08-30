@@ -379,3 +379,7 @@ client/flutter_chat/.dart_tool/
 client/flutter_admin/build/
 client/flutter_admin/.dart_tool/
 .workbuddy
+
+# ---- Runtime uploads (user-generated content, not source) ----
+server/ChatServer/uploads/
+server/AdminServer/uploads/

@@ -4,16 +4,18 @@ import 'package:go_router/go_router.dart';
 
 import '../l10n/app_localizations.dart';
 import '../providers/conversations_provider.dart';
+import '../providers/presence_provider.dart';
 import '../widgets/app_avatar.dart';
 import '../widgets/empty_state.dart';
 
-/// 通讯录 tab：列出全部好友，按昵称排序；点击进入私聊。
+/// 通訊錄 tab：列出全部好友，按暱稱排序；點擊進入私聊。
 class ContactsPage extends ConsumerWidget {
   const ContactsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final friendsAsync = ref.watch(friendsProvider);
+    final onlineIds = ref.watch(presenceProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -43,7 +45,12 @@ class ContactsPage extends ConsumerWidget {
             : ListView(
                 children: [
                   _SectionHeader(title: context.tr('好友')),
-                  ...friends.map((f) => _FriendTile(user: f)),
+                  ...friends.map(
+                    (f) => _FriendTile(
+                      user: f,
+                      online: onlineIds.contains(f.id),
+                    ),
+                  ),
                 ],
               ),
       ),
@@ -74,7 +81,8 @@ class _SectionHeader extends StatelessWidget {
 
 class _FriendTile extends StatelessWidget {
   final dynamic user;
-  const _FriendTile({required this.user});
+  final bool online;
+  const _FriendTile({required this.user, required this.online});
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +99,7 @@ class _FriendTile extends StatelessWidget {
               imageUrl: user.avatarUrl,
               name: user.nickName,
               size: 48,
-              online: user.isOnline,
+              online: online,
             ),
             const SizedBox(width: 14),
             Expanded(

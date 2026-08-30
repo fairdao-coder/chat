@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../config/app_colors.dart';
 
-/// 品牌标识：青绿渐变圆角方块 + 聊天气泡图标，带柔和投影。
+/// 品牌標識：青綠漸變圓角方塊 + 聊天氣泡圖標，帶柔和投影。
 class BrandMark extends StatelessWidget {
   final double size;
   const BrandMark({super.key, this.size = 64});

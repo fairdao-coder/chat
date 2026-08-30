@@ -25,11 +25,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _dests = const [
-      Dest('仪表盘', Icons.dashboard, 'dashboard.view', DashboardScreen()),
-      Dest('用户管理', Icons.people, 'users.read', UsersScreen()),
+      Dest('儀表盤', Icons.dashboard, 'dashboard.view', DashboardScreen()),
+      Dest('用戶管理', Icons.people, 'users.read', UsersScreen()),
       Dest('角色管理', Icons.badge, 'roles.read', RolesScreen()),
-      Dest('审计日志', Icons.history, 'audit.read', AuditScreen()),
-      Dest('管理员', Icons.manage_accounts, 'admins.read', AccountsScreen()),
+      Dest('審計日誌', Icons.history, 'audit.read', AuditScreen()),
+      Dest('管理員', Icons.manage_accounts, 'admins.read', AccountsScreen()),
     ];
   }
 
@@ -51,7 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(current?.title ?? '后台管理'),
+        title: Text(current?.title ?? '後臺管理'),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -62,7 +62,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          IconButton(onPressed: _logout, icon: const Icon(Icons.logout), tooltip: '退出登录'),
+          IconButton(onPressed: _logout, icon: const Icon(Icons.logout), tooltip: '退出登錄'),
         ],
       ),
       drawer: AppDrawer(
@@ -70,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
         currentIndex: _index,
         onSelect: (i) => setState(() => _index = i),
       ),
-      body: current?.screen ?? const Center(child: Text('无可用模块')),
+      body: current?.screen ?? const Center(child: Text('無可用模塊')),
     );
   }
 }

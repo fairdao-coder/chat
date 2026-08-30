@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import '../config/app_colors.dart';
 import '../utils/url.dart';
 
-/// 统一头像组件：支持网络图 / 首字母占位、群聊图标、在线状态小圆点。
+/// 統一頭像組件：支持網絡圖 / 首字母佔位、群聊圖標、在線狀態小圓點。
 class AppAvatar extends StatelessWidget {
   final String? imageUrl;
   final String name;
   final double size;
-  final bool? online; // null = 不显示状态
+  final bool? online; // null = 不顯示狀態
   final bool isGroup;
 
   const AppAvatar({

@@ -2,22 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 当前界面语言。`null` 表示跟随系统（用设备语言，若不在支持列表则回退简体中文）。
-/// 持久化到 SharedPreferences 的 `app_locale`（形如 "zh_CN" / "en"）。
+/// 未顯式設置時的默認界面語言：繁體中文。
+const Locale defaultLocale = Locale('zh', 'TW');
+
+/// 持久化鍵，取值形如 "zh_TW" / "en"；特例 "system" 表示跟隨系統。
+const String _prefKey = 'app_locale';
+const String _systemValue = 'system';
+
+/// 當前界面語言。`null` 表示跟隨系統（用設備語言，若不在支持列表則回退繁體中文）。
+/// 持久化到 SharedPreferences 的 `app_locale`（形如 "zh_TW" / "en" / "system"）。
 final localeProvider =
     StateNotifierProvider<LocaleNotifier, Locale?>((ref) => LocaleNotifier());
 
 class LocaleNotifier extends StateNotifier<Locale?> {
-  LocaleNotifier() : super(null) {
+  LocaleNotifier() : super(defaultLocale) {
     _load();
   }
 
   Future<void> _load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final s = prefs.getString('app_locale');
+      final s = prefs.getString(_prefKey);
       if (s == null || s.isEmpty) {
-        state = null; // 跟随系统
+        // 從未設置過：使用預設的繁體中文（而不是跟隨系統）。
+        state = defaultLocale;
+        return;
+      }
+      if (s == _systemValue) {
+        state = null; // 跟隨系統
         return;
       }
       final parts = s.split('_');
@@ -25,7 +37,7 @@ class LocaleNotifier extends StateNotifier<Locale?> {
           ? Locale(parts[0], parts[1])
           : Locale(parts[0]);
     } catch (_) {
-      // 读取失败则保持跟随系统
+      // 讀取失敗則保持預設的繁體中文
     }
   }
 
@@ -34,15 +46,16 @@ class LocaleNotifier extends StateNotifier<Locale?> {
     try {
       final prefs = await SharedPreferences.getInstance();
       if (locale == null) {
-        await prefs.remove('app_locale');
+        // 顯式「跟隨系統」需要落一個哨兵值，否則下次啟動又會被預設值覆蓋。
+        await prefs.setString(_prefKey, _systemValue);
       } else {
         final key = locale.countryCode == null
             ? locale.languageCode
             : '${locale.languageCode}_${locale.countryCode}';
-        await prefs.setString('app_locale', key);
+        await prefs.setString(_prefKey, key);
       }
     } catch (_) {
-      // 持久化失败不影响本次切换
+      // 持久化失敗不影響本次切換
     }
   }
 }

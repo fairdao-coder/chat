@@ -20,6 +20,7 @@ import '../providers/auth_provider.dart';
 import '../providers/call_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/core_providers.dart';
+import '../providers/presence_provider.dart';
 import '../utils/url.dart';
 import '../utils/record_bytes.dart';
 import '../l10n/app_localizations.dart';
@@ -27,7 +28,11 @@ import '../l10n/app_localizations.dart';
 class ChatPage extends ConsumerStatefulWidget {
   final ChatTarget target;
   final String? title;
-  const ChatPage({super.key, required this.target, this.title});
+  const ChatPage({
+    super.key,
+    required this.target,
+    this.title,
+  });
 
   @override
   ConsumerState<ChatPage> createState() => _ChatPageState();
@@ -37,43 +42,30 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   final _ctrl = TextEditingController();
   final _scroll = ScrollController();
   final _recorder = AudioRecorder();
-  bool _peerOnline = false;
   bool _uploading = false;
   bool _recording = false;
   int _recordSeconds = 0;
   int _lastLen = 0;
   Timer? _recordTimer;
-  String? _recordPath; // native 录音文件路径（web 用 stop() 返回值）
-  StreamSubscription<String>? _onOnline;
-  StreamSubscription<String>? _onOffline;
+  String? _recordPath; // native 錄音文件路徑（web 用 stop() 返回值）
 
   @override
   void initState() {
     super.initState();
-    if (!widget.target.isGroup) {
-      final hub = ref.read(hubProvider);
-      final peerId = widget.target.id;
-      _onOnline = hub.onUserOnline.listen((id) {
-        if (id == peerId && mounted) setState(() => _peerOnline = true);
-      });
-      _onOffline = hub.onUserOffline.listen((id) {
-        if (id == peerId && mounted) setState(() => _peerOnline = false);
-      });
-    }
+    // 進頁面時立刻拉一次服務端在線快照，避免首個輪詢週期前的空窗期。
+    unawaited(ref.read(presenceProvider.notifier).refresh());
   }
 
   @override
   void dispose() {
     _ctrl.dispose();
     _scroll.dispose();
-    _onOnline?.cancel();
-    _onOffline?.cancel();
     _recordTimer?.cancel();
     _recorder.dispose();
     super.dispose();
   }
 
-  /// 安全取本地化字符串：组件卸载后回退到 key，避免访问已 deactivate 的 context。
+  /// 安全取本地化字符串：組件卸載後回退到 key，避免訪問已 deactivate 的 context。
   String _lt(String key) {
     if (!mounted) return key;
     try {
@@ -83,7 +75,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     }
   }
 
-  /// 通话时展示给对方的昵称（来自会话标题；缺失时回退到通用文案）。
+  /// 通話時展示給對方的暱稱（來自會話標題；缺失時回退到通用文案）。
   String _peerName() =>
       widget.title ?? (widget.target.isGroup ? _lt('群聊') : _lt('私聊'));
 
@@ -110,8 +102,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       developer.log('opening image picker', name: 'chat');
       final picked = await pickImageFile();
       if (picked == null) {
-        // 用户主动取消 = 合法的"什么都没发生"。这里显式记一行日志，帮助开发者
-        // 区分"用户取消了"与"picker 静默失败"，而不是让用户盯着一个毫无反馈的 UI。
+        // 用戶主動取消 = 合法的"什麼都沒發生"。這裡顯式記一行日誌，幫助開發者
+        // 區分"用戶取消了"與"picker 靜默失敗"，而不是讓用戶盯著一個毫無反饋的 UI。
         developer.log('image picker returned null (cancelled or silent)',
             name: 'chat');
         return;
@@ -171,7 +163,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         if (mounted) setState(() => _recordSeconds++);
       });
       if (kIsWeb) {
-        // Web 上 record 仍需一个 path 作为录音标识（内部生成 blob URL）。
+        // Web 上 record 仍需一個 path 作為錄音標識（內部生成 blob URL）。
         await _recorder.start(const RecordConfig(),
             path: 'voice_${DateTime.now().millisecondsSinceEpoch}');
       } else {
@@ -207,7 +199,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       _toast(_lt('录音失败'));
       return;
     }
-    // 太短（<1s）直接忽略，避免产生空语音。
+    // 太短（<1s）直接忽略，避免產生空語音。
     if (_recordSeconds < 1) return;
     try {
       developer.log('reading recording bytes path=$finalPath', name: 'chat');
@@ -309,7 +301,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     }
   }
 
-  /// 是否需要在两条消息之间插入时间分隔（相差 >5 分钟或跨天）。
+  /// 是否需要在兩條消息之間插入時間分隔（相差 >5 分鐘或跨天）。
   bool _needTimeDivider(MessageDto? prev, MessageDto cur) {
     if (prev == null) return true;
     if (prev.createdAt.year != cur.createdAt.year ||
@@ -327,6 +319,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final msgs = chat.messages;
     final cs = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
+    // 在線狀態以 presence（實時事件 + 服務端輪詢快照）為唯一數據源。
+    final peerOnline = ref.watch(presenceProvider).contains(widget.target.id);
 
     if (msgs.length > _lastLen) {
       _lastLen = msgs.length;
@@ -351,17 +345,17 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                     height: 8,
                     margin: const EdgeInsets.only(right: 5),
                     decoration: BoxDecoration(
-                      color: _peerOnline ? AppColors.online : AppColors.offline,
+                      color: peerOnline ? AppColors.online : AppColors.offline,
                       shape: BoxShape.circle,
                     ),
                   ),
                   Text(
-                    _peerOnline ? _lt('在线') : _lt('离线'),
+                    peerOnline ? _lt('在线') : _lt('离线'),
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.normal,
                       color:
-                          _peerOnline ? AppColors.online : cs.onSurfaceVariant,
+                          peerOnline ? AppColors.online : cs.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -495,7 +489,7 @@ class _Bubble extends StatelessWidget {
         ? Colors.white
         : (dark ? AppColors.bubbleTextPeerDark : AppColors.bubbleTextPeerLight);
 
-    // 图片消息：圆角缩略图（自身即气泡）
+    // 圖片消息：圓角縮略圖（自身即氣泡）
     if (m.type == MessageType.image && m.mediaUrl != null) {
       final url = resolveUrl(m.mediaUrl);
       return Column(
@@ -545,7 +539,7 @@ class _Bubble extends StatelessWidget {
       );
     }
 
-    // 语音消息：播放 / 暂停 + 进度条 + 时长
+    // 語音消息：播放 / 暫停 + 進度條 + 時長
     if (m.type == MessageType.voice && m.mediaUrl != null) {
       final dur = int.tryParse(m.content) ?? 0;
       final body = _VoiceBubble(
@@ -649,7 +643,7 @@ class _Bubble extends StatelessWidget {
       );
 }
 
-/// 语音气泡：播放 / 暂停按钮 + 进度条 + 时长。
+/// 語音氣泡：播放 / 暫停按鈕 + 進度條 + 時長。
 class _VoiceBubble extends StatefulWidget {
   final String url;
   final int seconds;

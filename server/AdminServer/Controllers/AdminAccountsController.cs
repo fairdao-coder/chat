@@ -44,7 +44,7 @@ public class AdminAccountsController : ControllerBase
         if (f is not null) return f;
 
         if (await _db.AdminUsers.AnyAsync(a => a.UserName == req.UserName))
-            return Conflict("管理员账号已存在");
+            return Conflict("管理員賬號已存在");
 
         var role = await _db.AdminRoles.FindAsync(req.RoleId);
         if (role is null) return BadRequest("角色不存在");
@@ -72,7 +72,7 @@ public class AdminAccountsController : ControllerBase
         if (a is null) return NotFound();
         a.IsActive = active;
         await _db.SaveChangesAsync();
-        await _audit.LogAsync("accounts.toggle", target: a.UserName, detail: active ? "启用" : "停用");
+        await _audit.LogAsync("accounts.toggle", target: a.UserName, detail: active ? "啟用" : "停用");
         return Ok(new { ok = true, active });
     }
 }

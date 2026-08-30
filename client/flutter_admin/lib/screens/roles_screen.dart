@@ -19,14 +19,14 @@ class _RolesScreenState extends State<RolesScreen> {
   String? _error;
 
   static const List<Map<String, String>> _allPerms = [
-    {'k': 'dashboard.view', 'label': '查看仪表盘'},
-    {'k': 'users.read', 'label': '查看用户'},
-    {'k': 'users.write', 'label': '管理用户（编辑/封禁）'},
+    {'k': 'dashboard.view', 'label': '查看儀表盤'},
+    {'k': 'users.read', 'label': '查看用戶'},
+    {'k': 'users.write', 'label': '管理用戶（編輯/封禁）'},
     {'k': 'roles.read', 'label': '查看角色'},
     {'k': 'roles.write', 'label': '管理角色'},
-    {'k': 'audit.read', 'label': '查看审计日志'},
-    {'k': 'admins.read', 'label': '查看管理员'},
-    {'k': 'admins.write', 'label': '管理管理员'},
+    {'k': 'audit.read', 'label': '查看審計日誌'},
+    {'k': 'admins.read', 'label': '查看管理員'},
+    {'k': 'admins.write', 'label': '管理管理員'},
   ];
 
   bool get _canWrite => context.read<AuthProvider>().hasPerm('roles.write');
@@ -52,7 +52,7 @@ class _RolesScreenState extends State<RolesScreen> {
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      if (mounted) setState(() => _error = '加载失败：$e');
+      if (mounted) setState(() => _error = '加載失敗：$e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -66,7 +66,7 @@ class _RolesScreenState extends State<RolesScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => AlertDialog(
-          title: Text(existing == null ? '新建角色' : '编辑角色'),
+          title: Text(existing == null ? '新建角色' : '編輯角色'),
           content: SizedBox(
             width: 360,
             child: SingleChildScrollView(
@@ -84,7 +84,7 @@ class _RolesScreenState extends State<RolesScreen> {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    '权限',
+                    '權限',
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                   ..._allPerms.map(
@@ -153,8 +153,8 @@ class _RolesScreenState extends State<RolesScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除角色'),
-        content: Text('确认删除角色「${r.name}」？'),
+        title: const Text('刪除角色'),
+        content: Text('確認刪除角色「${r.name}」？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -162,7 +162,7 @@ class _RolesScreenState extends State<RolesScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除'),
+            child: const Text('刪除'),
           ),
         ],
       ),
@@ -225,7 +225,7 @@ class _RolesScreenState extends State<RolesScreen> {
                         ),
                         title: Text(r.name),
                         subtitle: Text(
-                          r.perms.isEmpty ? '（无权限）' : r.perms.join('  '),
+                          r.perms.isEmpty ? '（無權限）' : r.perms.join('  '),
                           style: const TextStyle(fontSize: 12),
                         ),
                         trailing: _canWrite

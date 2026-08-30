@@ -1,21 +1,50 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/contact_dto.dart';
+import '../models/enums.dart';
 import '../providers/auth_provider.dart';
 import '../providers/conversations_provider.dart';
+import '../providers/core_providers.dart';
+import '../providers/presence_provider.dart';
 import '../utils/format.dart';
 import '../widgets/app_avatar.dart';
 import '../widgets/empty_state.dart';
 
-class ConversationsPage extends ConsumerWidget {
+class ConversationsPage extends ConsumerStatefulWidget {
   const ConversationsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ConversationsPage> createState() => _ConversationsPageState();
+}
+
+class _ConversationsPageState extends ConsumerState<ConversationsPage> {
+  StreamSubscription? _msgSub;
+
+  @override
+  void initState() {
+    super.initState();
+    // 收到好友/群的實時消息時自動刷新會話列表，無需手動點刷新按鈕。
+    final hub = ref.read(hubProvider);
+    _msgSub = hub.onMessage.listen((_) {
+      ref.invalidate(conversationsProvider);
+    });
+  }
+
+  @override
+  void dispose() {
+    _msgSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final convAsync = ref.watch(conversationsProvider);
+    final onlineIds = ref.watch(presenceProvider);
     final user = ref.watch(authProvider).user;
     final cs = Theme.of(context).colorScheme;
 
@@ -75,16 +104,11 @@ class ConversationsPage extends ConsumerWidget {
                   endIndent: 16,
                   height: 1,
                 ),
-                itemBuilder: (c, i) => _ContactTile(ct: list[i]),
+                itemBuilder: (c, i) => _ContactTile(
+                  ct: list[i],
+                  online: onlineIds.contains(list[i].id),
+                ),
               ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: context.tr('刷新会话'),
-        onPressed: () {
-          ref.invalidate(conversationsProvider);
-          ref.invalidate(friendRequestsProvider);
-        },
-        child: const Icon(Icons.refresh),
       ),
     );
   }
@@ -92,7 +116,8 @@ class ConversationsPage extends ConsumerWidget {
 
 class _ContactTile extends StatelessWidget {
   final ContactDto ct;
-  const _ContactTile({required this.ct});
+  final bool online;
+  const _ContactTile({required this.ct, required this.online});
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +137,7 @@ class _ContactTile extends StatelessWidget {
               imageUrl: ct.avatarUrl,
               name: ct.name,
               size: 56,
-              online: ct.isGroup ? null : ct.isOnline,
+              online: ct.isGroup ? null : online,
               isGroup: ct.isGroup,
             ),
             const SizedBox(width: 14),
@@ -146,15 +171,7 @@ class _ContactTile extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 5),
-                  Text(
-                    ct.lastMessage ??
-                        (ct.isGroup
-                            ? context.tr('群聊')
-                            : context.tr('你们还没有成为好友')),
-                    style: textStyleSubtle(context),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  _LastMessagePreview(ct: ct),
                 ],
               ),
             ),
@@ -163,9 +180,69 @@ class _ContactTile extends StatelessWidget {
       ),
     );
   }
+}
 
-  TextStyle textStyleSubtle(BuildContext context) => TextStyle(
-        fontSize: 13.5,
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
+/// 會話列表的消息摘要。
+///
+/// 圖片 / 文件 / 語音消息的 Content 是空的（真正內容在 mediaUrl 裡），
+/// 直接渲染會得到一片空白，因此按類型回退成「圖標 + 文案」佔位。
+class _LastMessagePreview extends StatelessWidget {
+  final ContactDto ct;
+  const _LastMessagePreview({required this.ct});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final subtle =
+        TextStyle(fontSize: 13.5, color: cs.onSurfaceVariant);
+
+    IconData? icon;
+    String? label;
+
+    switch (ct.lastMessageType) {
+      case MessageType.image:
+        icon = Icons.image_outlined;
+        label = '[${context.tr('图片')}]';
+        break;
+      case MessageType.file:
+        icon = Icons.insert_drive_file_outlined;
+        label = '[${context.tr('文件')}]';
+        break;
+      case MessageType.voice:
+        icon = Icons.mic_none_rounded;
+        label = '[${context.tr('语音消息')}]';
+        break;
+      case MessageType.text:
+        break;
+    }
+
+    // 媒體消息：圖標 + 文案，沒有正文也不顯示空白。
+    if (icon != null) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: cs.onSurfaceVariant),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label!,
+              style: subtle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       );
+    }
+
+    // 文本消息（或無消息）：沿用原來的純文本展示。
+    return Text(
+      (ct.lastMessage != null && ct.lastMessage!.isNotEmpty)
+          ? ct.lastMessage!
+          : (ct.isGroup ? context.tr('群聊') : context.tr('你们还没有成为好友')),
+      style: subtle,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
 }

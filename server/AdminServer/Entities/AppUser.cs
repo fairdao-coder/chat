@@ -1,8 +1,8 @@
 namespace AdminServer.Entities;
 
 /// <summary>
-/// 与 ChatServer 共享聊天库中的 Users 表（只读/轻量管理用）。
-/// 表名、列名必须与 ChatServer.AppUser 完全一致，避免 EnsureCreated 误建新表。
+/// 與 ChatServer 共享聊天庫中的 Users 表（只讀/輕量管理用）。
+/// 表名、列名必須與 ChatServer.AppUser 完全一致，避免 EnsureCreated 誤建新表。
 /// </summary>
 public class AppUser
 {

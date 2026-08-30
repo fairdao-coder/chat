@@ -3,20 +3,36 @@
 # What this does:
 #   * server  (push + PR):  restore + build the ASP.NET Core SignalR hub (.NET 10)
 #   * client  (push + PR):  `flutter pub get` + `flutter analyze` (static gate)
-#   * build-web + deploy-web (push to main only):
-#        build the Flutter web release and publish it to GitHub Pages.
+#   * build-web + deploy-static (push to main only):
+#        build BOTH Flutter web apps and publish them to the ServeStatic/Chat
+#        repository, which serves them via GitHub Pages:
+#          https://servestatic.github.io/Chat/        -> chat client
+#          https://servestatic.github.io/Chat/admin/  -> admin client
 #   * docker (push to main only):
 #        build the ChatServer image and push it to GitHub Container Registry
 #        (ghcr.io/<owner>/<repo>/chat-server). Override at runtime with:
 #          -e ConnectionStrings__Default=...  -e Jwt__Key=...  -e Cors__Origins=...
 #
 # One-time setup for the web deploy:
-#   Repo Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
+#   1. Create a PAT with the "repo" scope that can write to ServeStatic/Chat
+#      and add it here as the secret SERVESTATIC_DEPLOY_TOKEN.
+#   2. Optional but recommended: set the repository variables PUBLIC_API_BASE
+#      and PUBLIC_ADMIN_API_BASE to point the apps at a real API. Without them
+#      the deployed pages default to http://localhost:5298 / :5299.
+#   3. Push to main once. The job below creates the gh-pages branch in the
+#      target repo automatically (force-push works on an empty repo too), so
+#      there is no need to create the branch by hand.
+#   4. In ServeStatic/Chat: Settings -> Pages -> Build and deployment
+#        Source: "Deploy from a branch"
+#        Branch: gh-pages  /  Folder: / (root)
+#      This step must come AFTER step 3 -- the branch picker only lists
+#      branches that already exist.
 #
-# Note on base-href: the repo is published as a *project* page
-# (https://fairdao-coder.github.io/chat/), so the web build uses
-# `--base-href "/chat/"`. If you later serve from a custom domain or a
-# user/org site, change it to `--base-href "/"`.
+# Note on base-href: the site is published as a *project* page
+# (https://servestatic.github.io/Chat/), and the path is case-sensitive, so the
+# builds use `--base-href "/Chat/"` and `--base-href "/Chat/admin/"`. If you
+# later serve from a custom domain or a user/org site, change them to
+# `--base-href "/"` and `--base-href "/admin/"`.
 
 name: CI/CD
 
@@ -141,15 +157,15 @@ jobs:
         run: flutter analyze
 
   # ---------------------------------------------------------------------------
-  # Web build (only needed for the Pages deploy). Runs after both gates pass.
+  # Build both Flutter web apps into a single static tree:
+  #     /         -> chat client  (client/flutter_chat)
+  #     /admin/   -> admin client (client/flutter_admin)
+  # Runs only after all four quality gates pass.
   # ---------------------------------------------------------------------------
   build-web:
     name: Build Web
-    needs: [server, client]
+    needs: [server, client, server-admin, client-admin]
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: client/flutter_chat
     steps:
       - uses: actions/checkout@v4
 
@@ -159,36 +175,112 @@ jobs:
           flutter-version: "3.47.2"
           cache: true
 
-      - name: Pub get
-        run: flutter pub get
+      # --dart-define is only passed when the matching repository variable is
+      # set; otherwise each app falls back to its localhost default.
+      - name: Build chat client
+        working-directory: client/flutter_chat
+        run: |
+          set -euo pipefail
+          flutter pub get
+          args=(--release --base-href "/Chat/")
+          if [ -n "${{ vars.PUBLIC_API_BASE }}" ]; then
+            args+=(--dart-define=API_BASE="${{ vars.PUBLIC_API_BASE }}")
+          fi
+          flutter build web "${args[@]}"
 
-      - name: Build web release
-        run: flutter build web --release --base-href "/chat/"
+      - name: Build admin client
+        working-directory: client/flutter_admin
+        run: |
+          set -euo pipefail
+          flutter pub get
+          args=(--release --base-href "/Chat/admin/")
+          if [ -n "${{ vars.PUBLIC_ADMIN_API_BASE }}" ]; then
+            args+=(--dart-define=ADMIN_API_BASE="${{ vars.PUBLIC_ADMIN_API_BASE }}")
+          fi
+          flutter build web "${args[@]}"
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Assemble dist
+        run: |
+          set -euo pipefail
+          mkdir -p dist/admin
+          cp -r client/flutter_chat/build/web/. dist/
+          cp -r client/flutter_admin/build/web/. dist/admin/
+          # GitHub Pages is plain static hosting with no SPA fallback:
+          #   * flutter_chat uses go_router *path* URLs, so refreshing
+          #     /Chat/settings would 404 -- hence the 404.html copy.
+          #   * flutter_admin uses MaterialApp(home:) with no URL routing,
+          #     so it never needs a deep-link fallback.
+          cp dist/index.html dist/404.html
+          # Disable Jekyll so files starting with "_" are not stripped.
+          touch dist/.nojekyll
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
         with:
-          path: client/flutter_chat/build/web
+          name: web-dist
+          path: dist
 
   # ---------------------------------------------------------------------------
-  # Deploy the web build to GitHub Pages (push to main only).
+  # Publish the static tree to the ServeStatic/Chat repository.
+  #
+  # `actions/deploy-pages` can only publish to the repository the workflow
+  # runs in, so instead we push the built files to the `gh-pages` branch of
+  # the target repo and let GitHub Pages serve that branch.
   # ---------------------------------------------------------------------------
-  deploy-web:
-    name: Deploy Web to GitHub Pages
+  deploy-static:
+    name: Deploy to ServeStatic/Chat
     needs: [build-web]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    # Pages deploy requires these scopes (overrides the top-level read only).
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      TARGET_REPO: ServeStatic/Chat
+      TARGET_BRANCH: gh-pages
     steps:
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: dist
+
+      - name: Push to gh-pages
+        env:
+          TOKEN: ${{ secrets.SERVESTATIC_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${TOKEN:-}" ]; then
+            echo "::error title=Missing secret::SERVESTATIC_DEPLOY_TOKEN is not set. Create a PAT with the 'repo' scope and add it under Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global init.defaultBranch main
+
+          rm -rf publish
+          mkdir publish
+          cd publish
+          git init
+          git checkout -b "$TARGET_BRANCH"
+
+          cp -r ../dist/. .
+          git add -A
+
+          # Nothing staged => content is identical to the last deploy.
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No content changes to publish."
+            exit 0
+          fi
+
+          git commit -m "Deploy ${GITHUB_REPOSITORY}@${GITHUB_SHA::7} to ${TARGET_REPO}#${TARGET_BRANCH}"
+
+          # Send the token as an Authorization header instead of embedding it
+          # in the remote URL, so it never shows up in git error output.
+          AUTH="$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)"
+          git -c "http.extraheader=AUTHORIZATION: basic ${AUTH}" \
+              push --force "https://github.com/${TARGET_REPO}.git" "HEAD:${TARGET_BRANCH}"
+
+          echo "Published to https://github.com/${TARGET_REPO}/tree/${TARGET_BRANCH}"
 
   # ---------------------------------------------------------------------------
   # Build & push the ChatServer image to GitHub Container Registry (push to main).

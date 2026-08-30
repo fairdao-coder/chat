@@ -30,7 +30,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/login',
         builder: (context, state) => const LoginPage(),
       ),
-      // 微信风格底部导航：信息 / 通讯录 / 发现 / 我
+      // 微信風格底部導航：信息 / 通訊錄 / 發現 / 我
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             MainShell(navigationShell: navigationShell),
@@ -61,7 +61,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ]),
         ],
       ),
-      // 以下为覆盖在导航之上的全屏页面（无底部栏）
+      // 以下為覆蓋在導航之上的全屏頁面（無底部欄）
       GoRoute(
         path: '/chat',
         builder: (context, state) {

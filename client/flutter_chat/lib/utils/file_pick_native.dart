@@ -24,10 +24,10 @@ Future<({Uint8List bytes, String name})?> pickAnyFile() async {
   return _toResult(res);
 }
 
-/// 一些 host 平台在 `withData: true` 下仍可能读不出 bytes（比如 Windows 上文件被独占、
-/// Android scoped storage 拒绝直接读、iOS 上选了 iCloud 但本机未下载），
-/// 此时 f.bytes 是 null，调用方看到 null 就会"静默不响应"。
-/// 退化路径：尝试用 readStream 把数据流式读回来；再不行才返回 null。
+/// 一些 host 平臺在 `withData: true` 下仍可能讀不出 bytes（比如 Windows 上文件被獨佔、
+/// Android scoped storage 拒絕直接讀、iOS 上選了 iCloud 但本機未下載），
+/// 此時 f.bytes 是 null，調用方看到 null 就會"靜默不響應"。
+/// 退化路徑：嘗試用 readStream 把數據流式讀回來；再不行才返回 null。
 Future<({Uint8List bytes, String name})?> _toResult(FilePickerResult? res) async {
   if (res == null || res.files.isEmpty) return null;
   final f = res.files.first;

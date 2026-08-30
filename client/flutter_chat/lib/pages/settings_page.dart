@@ -51,7 +51,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // 账户信息
+          // 賬戶信息
           Card(
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -69,7 +69,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          user?.nickName ?? '未登录',
+                          user?.nickName ?? '未登錄',
                           style: const TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
@@ -92,7 +92,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const SizedBox(height: 14),
 
-          // 外观主题
+          // 外觀主題
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -103,7 +103,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.palette_outlined),
                     title: Text(context.tr('外观主题')),
-                    subtitle: Text(context.tr('亮色 / 暗色 / 跟随系统')),
+                    subtitle: Text(
+                      '${context.tr('亮色')} / ${context.tr('暗色')} / ${context.tr('跟随系统')}',
+                    ),
                   ),
                   const SizedBox(height: 8),
                   SegmentedButton<ThemeMode>(
@@ -134,7 +136,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const SizedBox(height: 14),
 
-          // 语言
+          // 語言
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -174,7 +176,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const SizedBox(height: 14),
 
-          // 后端地址
+          // 後端地址
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -198,8 +200,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Web 端默认 http://localhost:5298；Android 模拟器用 '
-                    'http://10.0.2.2:5298；真机用电脑局域网 IP。修改后需重启应用生效。',
+                    'Web 端默認 http://localhost:5298；Android 模擬器用 '
+                    'http://10.0.2.2:5298；真機用電腦局域網 IP。修改後需重啟應用生效。',
                     style: TextStyle(
                       fontSize: 12,
                       color: cs.onSurfaceVariant,
@@ -219,7 +221,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const SizedBox(height: 14),
 
-          // 退出登录
+          // 退出登錄
           Card(
             child: Padding(
               padding: const EdgeInsets.all(8),

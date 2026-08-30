@@ -1,6 +1,6 @@
 namespace AdminServer.Entities;
 
-/// <summary>后台管理员账号（AdminServer 自有表）。</summary>
+/// <summary>後臺管理員賬號（AdminServer 自有表）。</summary>
 public class AdminUser
 {
     public Guid Id { get; set; } = Guid.NewGuid();

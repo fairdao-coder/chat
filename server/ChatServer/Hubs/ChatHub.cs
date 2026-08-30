@@ -26,7 +26,7 @@ public class ChatHub : Hub
         var userId = Context.UserIdentifier!;
         await _presence.UserConnected(userId, Context.ConnectionId);
 
-        // 把连接加入其所在的所有群频道
+        // 把連接加入其所在的所有群頻道
         var groupIds = await _db.GroupMembers
             .Where(m => m.UserId == Guid.Parse(userId))
             .Select(m => m.GroupId)
@@ -47,11 +47,11 @@ public class ChatHub : Hub
         await base.OnDisconnectedAsync(ex);
     }
 
-    // 注意：参数全部显式声明，不带默认值。
-    // - 写默认值（MessageType.Text / null）会让 SignalR 参数绑定器在按元数匹配时
-    //   派生出"1/2/3/4 元"多个重载分支，与客户端"params object?[] args"四参数实际形态
-    //   偶发不匹配，导致 "InvalidDataException: Error binding arguments"。
-    // - 客户端永远传齐 4 个参数，所以去掉默认值不会影响调用语义。
+    // 注意：參數全部顯式聲明，不帶默認值。
+    // - 寫默認值（MessageType.Text / null）會讓 SignalR 參數綁定器在按元數匹配時
+    //   派生出"1/2/3/4 元"多個重載分支，與客戶端"params object?[] args"四參數實際形態
+    //   偶發不匹配，導致 "InvalidDataException: Error binding arguments"。
+    // - 客戶端永遠傳齊 4 個參數，所以去掉默認值不會影響調用語義。
     public async Task SendPrivateMessage(
         string toUserId,
         string content,
@@ -62,23 +62,23 @@ public class ChatHub : Hub
         {
             var fromId = Guid.Parse(Context.UserIdentifier!);
             if (!Guid.TryParse(toUserId, out var toId))
-                throw new HubException("E_BAD_TARGET: 收件人 ID 格式不正确");
+                throw new HubException("E_BAD_TARGET: 收件人 ID 格式不正確");
 
-            // 对方必须存在
+            // 對方必須存在
             var targetExists = await _db.Users.AnyAsync(u => u.Id == toId);
             if (!targetExists)
-                throw new HubException("E_TARGET_NOT_FOUND: 对方用户不存在");
+                throw new HubException("E_TARGET_NOT_FOUND: 對方用戶不存在");
 
-            // 私聊必须为好友（前端按 E_FRIEND_REQUIRED 错误码提供"加好友"操作）
+            // 私聊必須為好友（前端按 E_FRIEND_REQUIRED 錯誤碼提供"加好友"操作）
             var areFriends = await _db.Friendships.AnyAsync(f =>
                 f.Status == FriendshipStatus.Accepted &&
                 ((f.RequesterId == fromId && f.AddresseeId == toId) ||
                  (f.RequesterId == toId && f.AddresseeId == fromId)));
             if (!areFriends)
-                throw new HubException("E_FRIEND_REQUIRED: 你们还不是好友，无法发送消息。先添加对方为好友后再聊吧～");
+                throw new HubException("E_FRIEND_REQUIRED: 你們還不是好友，無法發送消息。先添加對方為好友後再聊吧～");
 
             if (string.IsNullOrWhiteSpace(content) && string.IsNullOrWhiteSpace(mediaUrl))
-                throw new HubException("E_EMPTY: 不能发送空消息");
+                throw new HubException("E_EMPTY: 不能發送空消息");
 
             var msg = new Message
             {
@@ -99,9 +99,9 @@ public class ChatHub : Hub
         catch (HubException) { throw; }
         catch (Exception)
         {
-            // 数据库/网络等意外故障：转为友好且客户端可解析的 HubException，
-            // 避免客户端收到 "Failed to invoke '...' due to an error on the server." 这类通用英文。
-            throw new HubException("E_SERVER: 服务暂时不可用（网络或数据库异常），请稍后重试");
+            // 數據庫/網絡等意外故障：轉為友好且客戶端可解析的 HubException，
+            // 避免客戶端收到 "Failed to invoke '...' due to an error on the server." 這類通用英文。
+            throw new HubException("E_SERVER: 服務暫時不可用（網絡或數據庫異常），請稍後重試");
         }
     }
 
@@ -115,7 +115,7 @@ public class ChatHub : Hub
         {
             var fromId = Guid.Parse(Context.UserIdentifier!);
             if (!Guid.TryParse(groupId, out var gid))
-                throw new HubException("E_BAD_TARGET: 群 ID 格式不正确");
+                throw new HubException("E_BAD_TARGET: 群 ID 格式不正確");
 
             var groupExists = await _db.Groups.AnyAsync(g => g.Id == gid);
             if (!groupExists)
@@ -123,10 +123,10 @@ public class ChatHub : Hub
 
             var isMember = await _db.GroupMembers.AnyAsync(m => m.GroupId == gid && m.UserId == fromId);
             if (!isMember)
-                throw new HubException("E_FRIEND_REQUIRED: 你不在该群，无法发送消息");
+                throw new HubException("E_FRIEND_REQUIRED: 你不在該群，無法發送消息");
 
             if (string.IsNullOrWhiteSpace(content) && string.IsNullOrWhiteSpace(mediaUrl))
-                throw new HubException("E_EMPTY: 不能发送空消息");
+                throw new HubException("E_EMPTY: 不能發送空消息");
 
             var msg = new Message
             {
@@ -146,9 +146,9 @@ public class ChatHub : Hub
         catch (HubException) { throw; }
         catch (Exception)
         {
-            // 数据库/网络等意外故障：转为友好且客户端可解析的 HubException，
-            // 避免客户端收到 "Failed to invoke '...' due to an error on the server." 这类通用英文。
-            throw new HubException("E_SERVER: 服务暂时不可用（网络或数据库异常），请稍后重试");
+            // 數據庫/網絡等意外故障：轉為友好且客戶端可解析的 HubException，
+            // 避免客戶端收到 "Failed to invoke '...' due to an error on the server." 這類通用英文。
+            throw new HubException("E_SERVER: 服務暫時不可用（網絡或數據庫異常），請稍後重試");
         }
     }
 
@@ -162,14 +162,14 @@ public class ChatHub : Hub
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, "group_" + groupId);
     }
 
-    // ===================== 语音 / 视频通话信令（WebRTC P2P 中继） =====================
-    // 单实例内存态：开发环境足够。多实例横向扩展时需换成共享存储（Redis / DB）。
+    // ===================== 語音 / 視頻通話信令（WebRTC P2P 中繼） =====================
+    // 單實例內存態：開發環境足夠。多實例橫向擴展時需換成共享存儲（Redis / DB）。
     private static readonly ConcurrentDictionary<string, CallSession> _calls = new();
     private static readonly ConcurrentDictionary<string, string> _busy = new(); // userId -> callId
 
     /// <summary>
-    /// 发起呼叫。callId 由客户端生成（两端共用，作为本次通话的关联键）。
-    /// 服务端仅做信令中继 + 忙线检测，不接触媒体流。
+    /// 發起呼叫。callId 由客戶端生成（兩端共用，作為本次通話的關聯鍵）。
+    /// 服務端僅做信令中繼 + 忙線檢測，不接觸媒體流。
     /// </summary>
     public async Task InviteCall(string callId, string targetUserId, string callType)
     {
@@ -180,7 +180,7 @@ public class ChatHub : Hub
             return;
         }
         if (!Guid.TryParse(targetUserId, out _))
-            throw new HubException("E_BAD_TARGET: 收件人 ID 格式不正确");
+            throw new HubException("E_BAD_TARGET: 收件人 ID 格式不正確");
         if (_busy.ContainsKey(targetUserId))
         {
             await Clients.Caller.SendAsync("OnCallRejected", callId, "busy");
@@ -194,7 +194,7 @@ public class ChatHub : Hub
             CalleeId = targetUserId,
             CallType = callType
         };
-        // 把主叫昵称一起下发给被叫，避免被叫端再查联系人。
+        // 把主叫暱稱一起下發給被叫，避免被叫端再查聯繫人。
         await Clients.User(targetUserId)
             .SendAsync("OnIncomingCall", callId, fromId, caller?.NickName ?? "", callType);
     }

@@ -5,7 +5,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/call_provider.dart';
 
-/// 全局通话覆盖层。挂在 MaterialApp.builder 里，通话状态非 idle 时浮在路由之上。
+/// 全局通話覆蓋層。掛在 MaterialApp.builder 裡，通話狀態非 idle 時浮在路由之上。
 class CallOverlay extends ConsumerStatefulWidget {
   const CallOverlay({super.key});
 
@@ -20,7 +20,7 @@ class _CallOverlayState extends ConsumerState<CallOverlay> {
   Widget build(BuildContext context) {
     final s = ref.watch(callProvider);
 
-    // 通话刚结束（idle 且带原因）：弹一个 toast 提示。
+    // 通話剛結束（idle 且帶原因）：彈一個 toast 提示。
     if (_prev != CallStatus.idle &&
         s.status == CallStatus.idle &&
         s.endedReason != null &&
@@ -177,7 +177,7 @@ class _ActiveCall extends StatelessWidget {
       color: Colors.black,
       child: Stack(
         children: [
-          // 远端画面 / 语音头像
+          // 遠端畫面 / 語音頭像
           if (isVideo)
             Positioned.fill(
               child: state.status == CallStatus.connected
@@ -197,7 +197,7 @@ class _ActiveCall extends StatelessWidget {
               ),
             ),
 
-          // 本地小窗（视频通话）
+          // 本地小窗（視頻通話）
           if (isVideo)
             Positioned(
               top: 40,
@@ -215,7 +215,7 @@ class _ActiveCall extends StatelessWidget {
               ),
             ),
 
-          // 顶部状态条
+          // 頂部狀態條
           Positioned(
             top: 0,
             left: 0,
@@ -240,7 +240,7 @@ class _ActiveCall extends StatelessWidget {
             ),
           ),
 
-          // 底部控制条
+          // 底部控制條
           Positioned(
             bottom: 0,
             left: 0,

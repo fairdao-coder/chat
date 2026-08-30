@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-/// 轻量级 i18n 方案（无代码生成）。
+/// 輕量級 i18n 方案（無代碼生成）。
 ///
-/// 设计：以「简体中文」作为 key，四种语言的译文放在各自的 Map 里。
-/// `t(key)` 在目标语言找不到时回退到 key 本身（简体中文），保证任何字符串
-/// 都不会变成空白或崩溃。新增字符串只需在四个 Map 里补上即可。
+/// 設計：以「簡體中文」作為 key，四種語言的譯文放在各自的 Map 裡。
+/// `t(key)` 在目標語言找不到時回退到 key 本身（簡體中文），保證任何字符串
+/// 都不會變成空白或崩潰。新增字符串只需在四個 Map 裡補上即可。
 class AppLocalizations {
   final Map<String, String> _strings;
   const AppLocalizations(this._strings);
@@ -12,16 +12,16 @@ class AppLocalizations {
   String t(String key) => _strings[key] ?? key;
 }
 
-/// 全部语言数据与辅助方法。
+/// 全部語言數據與輔助方法。
 class L10n {
   static const List<Locale> supportedLocales = [
+    Locale('zh', 'TW'), // 繁體中文（預設）
     Locale('zh', 'CN'), // 简体中文
-    Locale('zh', 'TW'), // 繁體中文
     Locale('en'), // English
     Locale('es'), // Español
   ];
 
-  /// 设置页下拉框展示的标签（用当前语言显示各语言名）。
+  /// 設置頁下拉框展示的標籤（用當前語言顯示各語言名）。
   static String languageName(Locale l, AppLocalizations loc) {
     if (l.countryCode == 'TW') return loc.t('繁體中文');
     if (l.languageCode == 'en') return 'English';
@@ -508,7 +508,7 @@ class _AppLocalizationsDelegate
   bool shouldReload(covariant _AppLocalizationsDelegate old) => false;
 }
 
-/// 便捷访问：`context.tr('设置')`。
+/// 便捷訪問：`context.tr('设置')`。
 extension L10nContext on BuildContext {
   String tr(String key) => L10n.of(this).t(key);
 }

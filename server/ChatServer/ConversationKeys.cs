@@ -3,8 +3,8 @@ using System;
 namespace ChatServer;
 
 /// <summary>
-/// 会话 ID 生成规则（客户端可本地推算，用于去重/历史拼接）。
-/// 私聊: p_{guidA}_{guidB}（两 ID 按字符串升序）
+/// 會話 ID 生成規則（客戶端可本地推算，用於去重/歷史拼接）。
+/// 私聊: p_{guidA}_{guidB}（兩 ID 按字符串升序）
 /// 群聊: g_{groupId}
 /// </summary>
 public static class ConversationKeys

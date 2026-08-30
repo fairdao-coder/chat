@@ -11,7 +11,7 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
-/// 后台管理 API 客户端：自动携带 JWT，统一处理错误。401 由调用方决定跳转登录。
+/// 後臺管理 API 客戶端：自動攜帶 JWT，統一處理錯誤。401 由調用方決定跳轉登錄。
 class ApiClient {
   final http.Client _client = http.Client();
   String? _token;
@@ -51,8 +51,8 @@ class ApiClient {
       final decoded = jsonDecode(utf8.decode(res.bodyBytes));
       msg = decoded is Map ? (decoded['message'] ?? decoded['title'] ?? res.body) : res.body;
     } catch (_) {}
-    if (res.statusCode == 401) throw ApiException(401, '登录已过期，请重新登录');
-    if (res.statusCode == 403) throw ApiException(403, '权限不足，请联系超级管理员');
+    if (res.statusCode == 401) throw ApiException(401, '登錄已過期，請重新登錄');
+    if (res.statusCode == 403) throw ApiException(403, '權限不足，請聯繫超級管理員');
     throw ApiException(res.statusCode, msg);
   }
 }

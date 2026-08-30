@@ -45,7 +45,7 @@ public class ConversationsController : ApiControllerBase
             result.Add(new ContactDto(
                 fid, u.NickName, u.AvatarUrl,
                 await _presence.IsOnline(fid.ToString()),
-                last?.Content, last?.CreatedAt, false));
+                last?.Content, last?.CreatedAt, false, last?.Type));
         }
 
         var groups = await _db.Groups
@@ -62,7 +62,7 @@ public class ConversationsController : ApiControllerBase
                 .FirstOrDefaultAsync();
             result.Add(new ContactDto(
                 g.Id, g.Name, g.AvatarUrl, true,
-                last?.Content, last?.CreatedAt, true));
+                last?.Content, last?.CreatedAt, true, last?.Type));
         }
 
         result = result.OrderByDescending(c => c.LastMessageAt).ToList();

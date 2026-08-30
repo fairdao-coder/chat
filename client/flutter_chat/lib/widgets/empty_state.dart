@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// 统一定制空态：图标 + 标题 + 副标题 + 可选操作按钮。
+/// 統一定製空態：圖標 + 標題 + 副標題 + 可選操作按鈕。
 class EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;

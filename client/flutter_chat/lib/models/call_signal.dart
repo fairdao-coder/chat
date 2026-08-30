@@ -1,4 +1,4 @@
-/// 来电邀请载荷（服务端 OnIncomingCall 下发）。
+/// 來電邀請載荷（服務端 OnIncomingCall 下發）。
 class CallInvite {
   final String callId;
   final String callerId;

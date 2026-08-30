@@ -1,6 +1,6 @@
 namespace AdminServer.Entities;
 
-/// <summary>与 ChatServer 共享 Messages 表（统计用）。</summary>
+/// <summary>與 ChatServer 共享 Messages 表（統計用）。</summary>
 public class Message
 {
     public Guid Id { get; set; }

@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 namespace ChatServer.Services;
 
 /// <summary>
-/// 内存在线状态追踪（单实例可用；多实例需改为 Redis/SignalR backplane）。
+/// 內存在線狀態追蹤（單實例可用；多實例需改為 Redis/SignalR backplane）。
 /// </summary>
 public class PresenceTracker
 {

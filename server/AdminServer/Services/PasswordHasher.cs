@@ -8,7 +8,7 @@ public interface IPasswordHasher
     bool Verify(string hash, string password);
 }
 
-/// <summary>与 ChatServer 一致的 PBKDF2 实现（salt.hash Base64）。</summary>
+/// <summary>與 ChatServer 一致的 PBKDF2 實現（salt.hash Base64）。</summary>
 public class PasswordHasher : IPasswordHasher
 {
     private const int Iterations = 100_000;
