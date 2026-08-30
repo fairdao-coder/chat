@@ -1,0 +1,4 @@
+<resources>
+    <!-- 录音发送：麦克风权限用途描述（繁体中文）。 -->
+    <string name="microphone_usage">需要麥克風權限以錄製並傳送語音訊息</string>
+</resources>

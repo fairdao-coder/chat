@@ -1,0 +1,4 @@
+/* 錄音傳送：麥克風權限用途描述（繁體中文）。 */
+NSMicrophoneUsageDescription = "需要麥克風權限以錄製並傳送語音訊息";
+/* 視訊通話：相機權限用途描述（繁體中文）。 */
+NSCameraUsageDescription = "需要相機權限以進行視訊通話";

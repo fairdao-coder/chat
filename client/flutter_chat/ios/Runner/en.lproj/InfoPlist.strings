@@ -1,0 +1,4 @@
+/* Voice messages: microphone permission usage description (English). */
+NSMicrophoneUsageDescription = "Microphone access is required to record and send voice messages";
+/* Video calls: camera permission usage description (English). */
+NSCameraUsageDescription = "Camera access is required to make video calls";

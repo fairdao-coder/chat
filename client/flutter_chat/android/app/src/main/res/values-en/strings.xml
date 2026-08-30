@@ -1,0 +1,4 @@
+<resources>
+    <!-- Voice messages: microphone permission usage description (English). -->
+    <string name="microphone_usage">Microphone access is required to record and send voice messages</string>
+</resources>

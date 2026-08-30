@@ -1,0 +1,4 @@
+/* Mensajes de voz: descripción de uso del permiso de micrófono (Español). */
+NSMicrophoneUsageDescription = "Se requiere acceso al micrófono para grabar y enviar mensajes de voz";
+/* Videollamadas: descripción de uso del permiso de cámara (Español). */
+NSCameraUsageDescription = "Se requiere acceso a la cámara para realizar videollamadas";

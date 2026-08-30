@@ -92,6 +92,55 @@ jobs:
         run: flutter analyze
 
   # ---------------------------------------------------------------------------
+  # Admin Server: build the ASP.NET Core 10 admin / back-office backend
+  # ---------------------------------------------------------------------------
+  server-admin:
+    name: Build Admin Server (.NET 10)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server/AdminServer
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+          cache: true
+          cache-dependency-path: server/AdminServer/AdminServer.csproj
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore -c Release
+
+  # ---------------------------------------------------------------------------
+  # Admin Client: static analysis gate for the Flutter admin app
+  # ---------------------------------------------------------------------------
+  client-admin:
+    name: Analyze Admin Client (Flutter)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client/flutter_admin
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.2"
+          cache: true
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+  # ---------------------------------------------------------------------------
   # Web build (only needed for the Pages deploy). Runs after both gates pass.
   # ---------------------------------------------------------------------------
   build-web:
@@ -183,3 +232,45 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+  # ---------------------------------------------------------------------------
+  # Build & push the AdminServer image to GitHub Container Registry (push to main).
+  # ---------------------------------------------------------------------------
+  docker-admin:
+    name: Build & Push Admin Image (GHCR)
+    needs: [server-admin]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta-admin
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/chat-admin-server
+          tags: |
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: server/AdminServer
+          file: server/AdminServer/Dockerfile
+          push: true
+          tags: ${{ steps.meta-admin.outputs.tags }}
+          labels: ${{ steps.meta-admin.outputs.labels }}

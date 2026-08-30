@@ -1,0 +1,4 @@
+<resources>
+    <!-- Mensajes de voz: descripción de uso del permiso de micrófono (Español). -->
+    <string name="microphone_usage">Se requiere acceso al micrófono para grabar y enviar mensajes de voz</string>
+</resources>

@@ -372,3 +372,10 @@ _frames/
 _extract_frames.py
 # Local Appwrite / tooling scratch dirs
 _appwrite/
+
+# ---- Flutter / Dart build artifacts (chat + admin apps) ----
+client/flutter_chat/build/
+client/flutter_chat/.dart_tool/
+client/flutter_admin/build/
+client/flutter_admin/.dart_tool/
+.workbuddy

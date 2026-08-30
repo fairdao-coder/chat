@@ -26,5 +26,18 @@ services:
     ports:
       - "8080:8080"
 
+  admin-api:
+    build: ./AdminServer
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - CONNECTIONSTRINGS__DEFAULT=Host=postgres;Port=5432;Database=chatdb;Username=postgres;Password=postgres
+      - SeedAdmin__UserName=admin
+      - SeedAdmin__Password=admin123
+    ports:
+      - "5299:8080"
+
 volumes:
   pgdata:

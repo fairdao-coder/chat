@@ -1,0 +1,62 @@
+/// Server-side HubException error-code prefixes surfaced by ChatServer.
+/// The hub only ever throws HubException with one of these prefixes, so the
+/// client can bucket them into friendly, action-oriented dialogs.
+class ErrorCodes {
+  /// Not friends yet — show an "add friend" action.
+  static const String friendRequired = 'E_FRIEND_REQUIRED';
+
+  /// Target user/group does not exist.
+  static const String targetNotFound = 'E_TARGET_NOT_FOUND';
+
+  /// Malformed id (guid parse failed).
+  static const String badTarget = 'E_BAD_TARGET';
+
+  /// Empty message.
+  static const String empty = 'E_EMPTY';
+
+  /// Unexpected server/db/network failure.
+  static const String server = 'E_SERVER';
+}
+
+/// SignalR hub method and event names (kept in sync with ChatHub.cs).
+class HubMethods {
+  static const String sendPrivateMessage = 'SendPrivateMessage';
+  static const String sendGroupMessage = 'SendGroupMessage';
+  static const String joinGroup = 'JoinGroup';
+  static const String leaveGroup = 'LeaveGroup';
+  // 通话信令
+  static const String inviteCall = 'InviteCall';
+  static const String acceptCall = 'AcceptCall';
+  static const String rejectCall = 'RejectCall';
+  static const String sendOffer = 'SendOffer';
+  static const String sendAnswer = 'SendAnswer';
+  static const String sendIceCandidate = 'SendIceCandidate';
+  static const String hangUp = 'HangUp';
+}
+
+class HubEvents {
+  static const String receiveMessage = 'ReceiveMessage';
+  static const String userOnline = 'UserOnline';
+  static const String userOffline = 'UserOffline';
+  // 通话信令
+  static const String incomingCall = 'OnIncomingCall';
+  static const String callAccepted = 'OnCallAccepted';
+  static const String callRejected = 'OnCallRejected';
+  static const String offer = 'OnOffer';
+  static const String answer = 'OnAnswer';
+  static const String iceCandidate = 'OnIceCandidate';
+  static const String hangUp = 'OnHangUp';
+}
+
+/// Strip the "E_XXX: " prefix from a HubException message, returning the
+/// user-facing text plus the detected code (or null if it's a plain message).
+(String? code, String message) parseHubError(String raw) {
+  final idx = raw.indexOf(':');
+  if (idx > 0) {
+    final maybeCode = raw.substring(0, idx).trim();
+    if (maybeCode.startsWith('E_')) {
+      return (maybeCode, raw.substring(idx + 1).trim());
+    }
+  }
+  return (null, raw);
+}
