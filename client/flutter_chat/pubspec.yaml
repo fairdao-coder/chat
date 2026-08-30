@@ -23,7 +23,7 @@ dependencies:
   web: ^1.0.0
   record: ^7.1.1
   audioplayers: ^6.1.0
-  flutter_webrtc: ^0.11.0
+  flutter_webrtc: ^1.5.0
 
 dev_dependencies:
   flutter_test:
