@@ -65,6 +65,7 @@ class _UsersScreenState extends State<UsersScreen> {
   }
 
   Future<void> _edit(ChatUserDto u) async {
+    final api = context.read<AuthProvider>().api;
     final nickCtrl = TextEditingController(text: u.nickName);
     final ok = await showDialog<bool>(
       context: context,
@@ -88,21 +89,24 @@ class _UsersScreenState extends State<UsersScreen> {
     );
     if (ok != true) return;
     try {
-      await context.read<AuthProvider>().api.put('/api/admin/users/${u.id}', {
+      await api.put('/api/admin/users/${u.id}', {
         'nickName': nickCtrl.text.trim(),
       });
       _load();
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('已保存')));
+      }
     } on ApiException catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(e.message)));
+      }
     }
   }
 
   Future<void> _ban(ChatUserDto u, bool ban) async {
+    final api = context.read<AuthProvider>().api;
     final reasonCtrl = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
@@ -134,15 +138,16 @@ class _UsersScreenState extends State<UsersScreen> {
     );
     if (ok != true) return;
     try {
-      await context.read<AuthProvider>().api.post(
+      await api.post(
         '/api/admin/users/${u.id}/ban',
         {'banned': ban, 'reason': reasonCtrl.text.trim()},
       );
       _load();
     } on ApiException catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(e.message)));
+      }
     }
   }
 

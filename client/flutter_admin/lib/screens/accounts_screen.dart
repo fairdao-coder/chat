@@ -30,10 +30,11 @@ class _AccountsScreenState extends State<AccountsScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final api = context.read<AuthProvider>().api;
+      final auth = context.read<AuthProvider>();
+      final api = auth.api;
       final admins = await api.get('/api/admin/accounts');
       List<RoleDto> roles = [];
-      if (context.read<AuthProvider>().hasPerm('roles.read')) {
+      if (auth.hasPerm('roles.read')) {
         final r = await api.get('/api/admin/roles');
         roles = (r as List).map((e) => RoleDto.fromJson(e)).toList();
       }
@@ -56,6 +57,8 @@ class _AccountsScreenState extends State<AccountsScreen> {
   }
 
   Future<void> _create() async {
+    // async 方法內任何 await 之後都不應再用 context；在第一次 await 前先緩存 api。
+    final api = context.read<AuthProvider>().api;
     final userCtrl = TextEditingController();
     final nameCtrl = TextEditingController();
     final passCtrl = TextEditingController();
@@ -115,7 +118,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
     );
     if (ok != true) return;
     try {
-      await context.read<AuthProvider>().api.post('/api/admin/accounts', {
+      await api.post('/api/admin/accounts', {
         'userName': userCtrl.text.trim(),
         'displayName': nameCtrl.text.trim(),
         'password': passCtrl.text,
@@ -123,23 +126,26 @@ class _AccountsScreenState extends State<AccountsScreen> {
       });
       _load();
     } on ApiException catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(e.message)));
+      }
     }
   }
 
   Future<void> _toggle(AdminUserDto a) async {
     try {
-      await context.read<AuthProvider>().api.post(
+      final api = context.read<AuthProvider>().api;
+      await api.post(
         '/api/admin/accounts/${a.id}/toggle?active=${!a.isActive}',
         null,
       );
       _load();
     } on ApiException catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(e.message)));
+      }
     }
   }
 

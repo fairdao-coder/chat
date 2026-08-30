@@ -42,11 +42,15 @@ class _AddFriendPageState extends ConsumerState<AddFriendPage> {
     if (_sent.contains(u.id)) return;
     try {
       await ref.read(apiProvider).sendFriendRequest(u.id);
+      // await 之後 widget 可能已被卸載（用戶已返回），使用 context 前必須檢查。
+      if (!mounted) return;
       setState(() => _sent.add(u.id));
       _toast('${context.tr('已向')} ${u.nickName} ${context.tr('发送好友请求')}');
     } on ApiException catch (e) {
+      if (!mounted) return;
       _toast(e.message);
     } catch (e) {
+      if (!mounted) return;
       _toast(e.toString());
     }
   }

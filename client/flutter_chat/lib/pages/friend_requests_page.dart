@@ -74,6 +74,8 @@ class FriendRequestsPage extends ConsumerWidget {
                                 await ref
                                     .read(apiProvider)
                                     .acceptFriendRequest(r.userId);
+                                // 這裡是 onPressed 閉包，沒有 State.mounted，改用 context.mounted。
+                                if (!context.mounted) return;
                                 ref.invalidate(friendRequestsProvider);
                                 ref.invalidate(conversationsProvider);
                                 messenger.showSnackBar(SnackBar(

@@ -27,6 +27,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _save() async {
     await AppConfig.set(_ctrl.text.trim());
+    if (!mounted) return;
     _toast(context.tr('已保存，重启应用后生效'));
   }
 

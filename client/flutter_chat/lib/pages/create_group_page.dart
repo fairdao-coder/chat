@@ -33,6 +33,7 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
       _friends = await ref.read(apiProvider).getFriends();
       if (mounted) setState(() {});
     } catch (e) {
+      if (!mounted) return;
       _toast('${context.tr('加载好友失败')}: $e');
     }
   }

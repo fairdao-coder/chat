@@ -59,6 +59,7 @@ class _RolesScreenState extends State<RolesScreen> {
   }
 
   Future<void> _save(RoleDto? existing) async {
+    final api = context.read<AuthProvider>().api;
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final descCtrl = TextEditingController(text: existing?.description ?? '');
     final selected = <String>{...?existing?.perms};
@@ -126,13 +127,13 @@ class _RolesScreenState extends State<RolesScreen> {
     final perms = selected.join(',');
     try {
       if (existing == null) {
-        await context.read<AuthProvider>().api.post('/api/admin/roles', {
+        await api.post('/api/admin/roles', {
           'name': nameCtrl.text.trim(),
           'permissions': perms,
           'description': descCtrl.text.trim(),
         });
       } else {
-        await context.read<AuthProvider>().api.put(
+        await api.put(
           '/api/admin/roles/${existing.id}',
           {
             'name': nameCtrl.text.trim(),
@@ -143,13 +144,15 @@ class _RolesScreenState extends State<RolesScreen> {
       }
       _load();
     } on ApiException catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(e.message)));
+      }
     }
   }
 
   Future<void> _delete(RoleDto r) async {
+    final api = context.read<AuthProvider>().api;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -169,12 +172,13 @@ class _RolesScreenState extends State<RolesScreen> {
     );
     if (ok != true) return;
     try {
-      await context.read<AuthProvider>().api.delete('/api/admin/roles/${r.id}');
+      await api.delete('/api/admin/roles/${r.id}');
       _load();
     } on ApiException catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(e.message)));
+      }
     }
   }
 
