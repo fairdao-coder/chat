@@ -166,6 +166,76 @@ jobs:
   # Runs after all four quality gates pass, in parallel with build-android.
   # assemble-dist later merges in the Android APKs and the download page.
   # ---------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
+  # Bump the client version on every deployable change.
+  #
+  # Runs only on push to main. When client source changes, increment
+  # versionCode (+1) and the patch part of versionName (+1) in pubspec.yaml,
+  # then commit + push back. The follow-up run (triggered by this push) builds
+  # and publishes with the new version. A guard skips when the last commit is
+  # already a bump, preventing an infinite loop.
+  # ---------------------------------------------------------------------------
+  bump-version:
+    name: Bump client version
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Bump & commit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Guard: if the latest commit is already a bump, do nothing.
+          if git log -1 --pretty=%s | grep -q '^chore(release): bump'; then
+            echo "Last commit is a version bump; skipping to avoid a loop."
+            exit 0
+          fi
+
+          before="${{ github.event.before }}"
+          if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then
+            before="HEAD~1"
+          fi
+
+          changed=0
+          bump() {
+            local dir="$1" file="$1/pubspec.yaml"
+            [ -f "$file" ] || return 0
+            local ver name code maj min patch new
+            ver="$(sed -n 's/^version:[[:space:]]*//p' "$file" | head -1 | tr -d '\r')"
+            name="${ver%+*}"; code="${ver##*+}"
+            IFS='.' read -r maj min patch <<< "$name"
+            patch=$((patch + 1)); code=$((code + 1))
+            new="${maj}.${min}.${patch}+${code}"
+            sed -i "s/^version:.*/version: $new/" "$file"
+            git add "$file"
+            echo "bumped $dir -> $new"
+            changed=1
+          }
+
+          if git diff --name-only "$before" "${{ github.sha }}" | grep -qE '^client/flutter_chat/'; then
+            bump client/flutter_chat
+          fi
+          if git diff --name-only "$before" "${{ github.sha }}" | grep -qE '^client/flutter_admin/'; then
+            bump client/flutter_admin
+          fi
+
+          if [ "$changed" -eq 0 ]; then
+            echo "No client changes; nothing to bump."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(release): bump client versions"
+          git push origin "HEAD:${{ github.ref_name }}"
+
   build-web:
     name: Build Web
     needs: [server, client, server-admin, client-admin]
