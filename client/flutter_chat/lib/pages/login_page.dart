@@ -102,7 +102,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             IconButton(
               tooltip: context.tr('扫一扫'),
               icon: const Icon(Icons.qr_code_scanner_outlined),
-              onPressed: () => context.go('/scan'),
+              onPressed: () => context.push('/scan'),
             ),
           const SizedBox(width: 4),
         ],
@@ -207,12 +207,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 : Text(_isRegister
                                     ? context.tr('注册并登录')
                                     : context.tr('登录')),
-                          ),
-                          const SizedBox(height: 10),
-                          OutlinedButton.icon(
-                            onPressed: () => context.go('/scan'),
-                            icon: const Icon(Icons.qr_code_scanner_outlined),
-                            label: Text(context.tr('扫一扫导入配置')),
                           ),
                           const SizedBox(height: 10),
                           OutlinedButton.icon(

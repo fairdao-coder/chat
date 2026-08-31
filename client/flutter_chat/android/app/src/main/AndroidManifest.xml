@@ -13,6 +13,11 @@
 
     <!-- 视频通话 / 扫码：摄像头权限（flutter_webrtc / mobile_scanner 必需）。 -->
     <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- 保存图片到相册（gal 包在 Android 10 及以下需要）。 -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
     <!-- 声明相机硬件特性；required="false" 让无相机设备也能安装，
          但运行时仍会动态检查并拒绝无法使用相机的场景。 -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />

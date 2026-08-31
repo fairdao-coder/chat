@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +9,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/app_localizations.dart';
 import '../providers/config_link_provider.dart';
+
+/// 相机扫码仅支持 Android / iOS。桌面与 Web 平台不支持，直接提示。
+bool get _cameraSupported =>
+    Platform.isAndroid || Platform.isIOS;
 
 /// 掃一掃頁面。
 ///
@@ -34,25 +40,41 @@ class _ScanPageState extends ConsumerState<ScanPage> {
   // 最近一次底层错误对象，用于调试展示。
   Object? _lastScannerError;
 
+  // 当前平台是否支持相机扫码。
+  final bool _supported = _cameraSupported;
+
   @override
   void initState() {
     super.initState();
-    _requestCamera();
+    if (_supported) {
+      _requestCamera();
+    } else {
+      // 不支持相机的平台直接标记为「未授权」，由 UI 显示提示。
+      _cameraGranted = false;
+      _scannerLog('当前平台不支持相机扫码');
+    }
   }
 
   Future<void> _requestCamera() async {
     // 安卓 6+ 需要运行时申请相机权限；mobile_scanner 不会自动弹窗。
-    final status = await Permission.camera.status;
-    if (status.isGranted) {
-      if (mounted) setState(() => _cameraGranted = true);
-      await _startScanner();
-      return;
-    }
-    final result = await Permission.camera.request();
-    if (!mounted) return;
-    setState(() => _cameraGranted = result.isGranted);
-    if (result.isGranted) {
-      await _startScanner();
+    try {
+      final status = await Permission.camera.status;
+      if (status.isGranted) {
+        if (mounted) setState(() => _cameraGranted = true);
+        await _startScanner();
+        return;
+      }
+      final result = await Permission.camera.request();
+      if (!mounted) return;
+      setState(() => _cameraGranted = result.isGranted);
+      if (result.isGranted) {
+        await _startScanner();
+      }
+    } catch (e) {
+      // 桌面 / Web 上 permission_handler 可能抛 MissingPluginException，
+      // 此时不应卡在加载，直接降级为「未授权」并提示。
+      _scannerLog('请求相机权限异常: $e');
+      if (mounted) setState(() => _cameraGranted = false);
     }
   }
 
@@ -182,7 +204,8 @@ class _ScanPageState extends ConsumerState<ScanPage> {
       // 权限检查中。
       body = const Center(child: CircularProgressIndicator());
     } else if (_cameraGranted == false) {
-      // 未授权：提示并允许去系统设置开启。
+      // 未授权 / 不支持：提示并允许去系统设置开启（仅真机有意义）。
+      final unsupported = !_supported;
       body = Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -192,26 +215,31 @@ class _ScanPageState extends ConsumerState<ScanPage> {
               const Icon(Icons.no_photography_outlined, size: 56, color: Colors.grey),
               const SizedBox(height: 16),
               Text(
-                loc.t('需要相机权限才能扫码'),
+                unsupported
+                    ? loc.t('当前平台不支持扫码')
+                    : loc.t('需要相机权限才能扫码'),
                 style: Theme.of(context).textTheme.titleMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                loc.t('请在系统设置中允许本应用使用相机'),
+                unsupported
+                    ? loc.t('请在手机端使用扫一扫功能')
+                    : loc.t('请在系统设置中允许本应用使用相机'),
                 style: Theme.of(context).textTheme.bodySmall,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
-              FilledButton.icon(
-                icon: const Icon(Icons.settings_outlined),
-                label: Text(loc.t('去设置')),
-                onPressed: () async {
-                  await openAppSettings();
-                  // 从设置返回后重新检查权限。
-                  if (mounted) _requestCamera();
-                },
-              ),
+              if (!unsupported)
+                FilledButton.icon(
+                  icon: const Icon(Icons.settings_outlined),
+                  label: Text(loc.t('去设置')),
+                  onPressed: () async {
+                    await openAppSettings();
+                    // 从设置返回后重新检查权限。
+                    if (mounted) _requestCamera();
+                  },
+                ),
             ],
           ),
         ),

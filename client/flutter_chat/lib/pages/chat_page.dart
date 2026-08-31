@@ -928,7 +928,7 @@ class _InputBarState extends State<_InputBar> {
 
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: dark ? cs.surface : const Color(0xFFF7F7F7),
           border: Border(
@@ -957,8 +957,8 @@ class _InputBarState extends State<_InputBar> {
                 margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 constraints: const BoxConstraints(
-                  minHeight: 40,
-                  maxHeight: 140,
+                  minHeight: 32,
+                  maxHeight: 120,
                 ),
                 alignment: Alignment.centerLeft,
                 decoration: BoxDecoration(
@@ -1030,7 +1030,7 @@ class _InputBarState extends State<_InputBar> {
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
                           contentPadding:
-                              const EdgeInsets.symmetric(vertical: 10),
+                              const EdgeInsets.symmetric(vertical: 6),
                           isDense: true,
                         ),
                         onSubmitted: (_) => widget.onSend(),
