@@ -155,6 +155,9 @@ class L10n {
     '下载客户端': '下载客户端',
     '无法打开下载页': '无法打开下载页',
     '下载页地址': '下载页地址',
+    '需要相机权限才能扫码': '需要相机权限才能扫码',
+    '请在系统设置中允许本应用使用相机': '请在系统设置中允许本应用使用相机',
+    '去设置': '去设置',
   };
 
   static const Map<String, String> _zhHant = {
@@ -283,6 +286,9 @@ class L10n {
     '下载客户端': '下載客戶端',
     '无法打开下载页': '無法開啟下載頁',
     '下载页地址': '下載頁地址',
+    '需要相机权限才能扫码': '需要相機權限才能掃碼',
+    '请在系统设置中允许本应用使用相机': '請在系統設定中允許本應用使用相機',
+    '去设置': '去設定',
   };
 
   static const Map<String, String> _en = {
@@ -411,6 +417,9 @@ class L10n {
     '下载客户端': 'Download app',
     '无法打开下载页': 'Could not open download page',
     '下载页地址': 'Download page URL',
+    '需要相机权限才能扫码': 'Camera permission is required to scan',
+    '请在系统设置中允许本应用使用相机': 'Please allow camera access in system settings',
+    '去设置': 'Open settings',
   };
 
   static const Map<String, String> _es = {
@@ -539,6 +548,9 @@ class L10n {
     '下载客户端': 'Descargar app',
     '无法打开下载页': 'No se pudo abrir la página de descarga',
     '下载页地址': 'URL de la página de descarga',
+    '需要相机权限才能扫码': 'Se requiere permiso de cámara para escanear',
+    '请在系统设置中允许本应用使用相机': 'Permite el acceso a la cámara en ajustes',
+    '去设置': 'Abrir ajustes',
   };
 
   static AppLocalizations _resolve(Locale locale) {

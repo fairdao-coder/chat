@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/app_localizations.dart';
@@ -26,6 +27,27 @@ class _ScanPageState extends ConsumerState<ScanPage> {
     facing: CameraFacing.back,
   );
   var _handled = false;
+
+  // 相机权限状态：null = 检查中，true = 已授权，false = 被拒。
+  bool? _cameraGranted;
+
+  @override
+  void initState() {
+    super.initState();
+    _requestCamera();
+  }
+
+  Future<void> _requestCamera() async {
+    // 安卓 6+ 需要运行时申请相机权限；mobile_scanner 不会自动弹窗。
+    final status = await Permission.camera.status;
+    if (status.isGranted) {
+      if (mounted) setState(() => _cameraGranted = true);
+      return;
+    }
+    final result = await Permission.camera.request();
+    if (!mounted) return;
+    setState(() => _cameraGranted = result.isGranted);
+  }
 
   @override
   void dispose() {
@@ -94,23 +116,47 @@ class _ScanPageState extends ConsumerState<ScanPage> {
     final loc = L10n.of(context);
     final cs = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(loc.t('扫一扫')),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.flip_camera_android_outlined),
-            tooltip: loc.t('切换摄像头'),
-            onPressed: () => _controller.switchCamera(),
+    Widget body;
+    if (_cameraGranted == null) {
+      // 权限检查中。
+      body = const Center(child: CircularProgressIndicator());
+    } else if (_cameraGranted == false) {
+      // 未授权：提示并允许去系统设置开启。
+      body = Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.no_photography_outlined, size: 56, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                loc.t('需要相机权限才能扫码'),
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                loc.t('请在系统设置中允许本应用使用相机'),
+                style: Theme.of(context).textTheme.bodySmall,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                icon: const Icon(Icons.settings_outlined),
+                label: Text(loc.t('去设置')),
+                onPressed: () async {
+                  await openAppSettings();
+                  // 从设置返回后重新检查权限。
+                  if (mounted) _requestCamera();
+                },
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.flash_on_outlined),
-            tooltip: loc.t('闪光灯'),
-            onPressed: () => _controller.toggleTorch(),
-          ),
-        ],
-      ),
-      body: Stack(
+        ),
+      );
+    } else {
+      body = Stack(
         children: [
           MobileScanner(
             controller: _controller,
@@ -146,7 +192,28 @@ class _ScanPageState extends ConsumerState<ScanPage> {
             ),
           ),
         ],
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(loc.t('扫一扫')),
+        actions: [
+          if (_cameraGranted == true) ...[
+            IconButton(
+              icon: const Icon(Icons.flip_camera_android_outlined),
+              tooltip: loc.t('切换摄像头'),
+              onPressed: () => _controller.switchCamera(),
+            ),
+            IconButton(
+              icon: const Icon(Icons.flash_on_outlined),
+              tooltip: loc.t('闪光灯'),
+              onPressed: () => _controller.toggleTorch(),
+            ),
+          ],
+        ],
       ),
+      body: body,
     );
   }
 }
