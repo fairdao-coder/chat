@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.flutter_chat"
+    namespace = "com.servestatic.chat"
     // file_picker 的最新 AAR 要求 compileSdk >= 36；targetSdk 保持 34
     // 以避免一次性接受 Android 14+ 的全部运行时行为变更。
     compileSdk = 36
@@ -17,8 +17,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.flutter_chat"
+        applicationId = "com.servestatic.chat"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
