@@ -928,7 +928,7 @@ class _InputBarState extends State<_InputBar> {
 
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
         decoration: BoxDecoration(
           color: dark ? cs.surface : const Color(0xFFF7F7F7),
           border: Border(
@@ -936,7 +936,7 @@ class _InputBarState extends State<_InputBar> {
           ),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // 语音切换
             IconButton(
@@ -949,17 +949,18 @@ class _InputBarState extends State<_InputBar> {
                   ? const Icon(Icons.stop_circle_rounded, color: Colors.red)
                   : Icon(Icons.mic_none_rounded, color: cs.onSurfaceVariant),
               style: IconButton.styleFrom(
-                  foregroundColor: cs.onSurfaceVariant),
+                foregroundColor: cs.onSurfaceVariant,
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(36, 36),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
             ),
             // 输入框
             Expanded(
               child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                constraints: const BoxConstraints(
-                  minHeight: 32,
-                  maxHeight: 120,
-                ),
+                height: 36,
                 alignment: Alignment.centerLeft,
                 decoration: BoxDecoration(
                   color: inputBg,
@@ -1021,6 +1022,7 @@ class _InputBarState extends State<_InputBar> {
                         textInputAction: TextInputAction.send,
                         minLines: 1,
                         maxLines: null,
+                        textAlignVertical: TextAlignVertical.center,
                         decoration: InputDecoration(
                           hintText: context.tr('输入消息…'),
                           hintStyle: TextStyle(
@@ -1029,8 +1031,7 @@ class _InputBarState extends State<_InputBar> {
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
-                          contentPadding:
-                              const EdgeInsets.symmetric(vertical: 6),
+                          contentPadding: EdgeInsets.zero,
                           isDense: true,
                         ),
                         onSubmitted: (_) => widget.onSend(),
@@ -1044,20 +1045,27 @@ class _InputBarState extends State<_InputBar> {
                 icon: Icon(Icons.emoji_emotions_outlined,
                     color: cs.onSurfaceVariant),
                 style: IconButton.styleFrom(
-                    foregroundColor: cs.onSurfaceVariant),
+                  foregroundColor: cs.onSurfaceVariant,
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(36, 36),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
               ),
             // 发送 / 更多
             if (!widget.recording)
               _hasText
-                  ? Material(
-                      color: AppColors.brand,
-                      borderRadius: BorderRadius.circular(8),
+                  ? Container(
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.brand,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(8),
                         onTap: widget.onSend,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 10),
+                              horizontal: 16, vertical: 0),
                           alignment: Alignment.center,
                           child: Text(
                             context.tr('发送'),
@@ -1074,7 +1082,11 @@ class _InputBarState extends State<_InputBar> {
                       icon: Icon(Icons.add_circle_outline,
                           color: cs.onSurfaceVariant),
                       style: IconButton.styleFrom(
-                          foregroundColor: cs.onSurfaceVariant),
+                        foregroundColor: cs.onSurfaceVariant,
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(36, 36),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
                     ),
           ],
         ),
