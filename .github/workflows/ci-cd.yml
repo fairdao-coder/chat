@@ -269,19 +269,9 @@ jobs:
       - name: Pub get
         run: flutter pub get
 
-      # Two builds on purpose:
-      #   * universal     -> one APK that installs on any device (largest)
-      #   * split-per-abi -> much smaller APKs, one per CPU architecture
-      # Offering both lets users pick "just works" or "smaller download".
-      - name: Build universal APK
-        run: |
-          set -euo pipefail
-          args=(--release)
-          if [ -n "${{ vars.PUBLIC_API_BASE }}" ]; then
-            args+=(--dart-define=API_BASE="${{ vars.PUBLIC_API_BASE }}")
-          fi
-          flutter build apk "${args[@]}"
-
+      # 只构建「按 ABI 拆分」的 APK：每個架構單獨一個包，體積遠小於整包。
+      # 注意：GitHub 單文件上限 100MB。若連 split 包都超過，需要改用 App Bundle
+      # (aab) 經 Play Store / 第三方分發，而非直接放 Pages。
       - name: Build split-per-abi APKs
         run: |
           set -euo pipefail
@@ -307,18 +297,18 @@ jobs:
               echo "skip (not produced): $1"
             fi
           }
-          copy_if_exists app-release.apk             chat-universal.apk
           copy_if_exists app-arm64-v8a-release.apk   chat-arm64-v8a.apk
           copy_if_exists app-armeabi-v7a-release.apk chat-armeabi-v7a.apk
           copy_if_exists app-x86_64-release.apk      chat-x86_64.apk
 
-          # Report sizes and flag anything over GitHub's 100MB per-file limit
-          # (flutter_webrtc pulls in large native libs, so this is reachable).
+          # Report sizes and fail loudly if any file exceeds GitHub's 100MB
+          # per-file hard limit (the deploy push would be rejected otherwise).
           for f in "$out"/*.apk; do
             sz="$(stat -c%s "$f")"
             echo "$(basename "$f"): $(numfmt --to=iec --suffix=B "$sz")"
             if [ "$sz" -gt 104857600 ]; then
-              echo "::warning file=$f::$(basename "$f") exceeds 100MB. GitHub may flag it; consider publishing only the split-per-abi APKs."
+              echo "::error file=$f::$(basename "$f") exceeds 100MB and cannot be pushed to GitHub."
+              exit 1
             fi
           done
 

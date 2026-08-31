@@ -133,7 +133,6 @@ built="$(date -u '+%Y-%m-%d %H:%M UTC')"
 HEAD
 
   card chat-arm64-v8a.apk   "arm64-v8a · 推薦"    "絕大多數現代 Android 手機，體積最小" yes
-  card chat-universal.apk   "通用版 · 相容性最好" "包含所有 CPU 架構，任何設備都能安裝，體積較大"
   card chat-armeabi-v7a.apk "armeabi-v7a"         "較舊的 32 位元設備"
   card chat-x86_64.apk      "x86_64"              "模擬器與部分平板"
 
