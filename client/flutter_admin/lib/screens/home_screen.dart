@@ -8,6 +8,7 @@ import 'users_screen.dart';
 import 'roles_screen.dart';
 import 'audit_screen.dart';
 import 'accounts_screen.dart';
+import 'discover_columns_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
       Dest('角色管理', Icons.badge, 'roles.read', RolesScreen()),
       Dest('審計日誌', Icons.history, 'audit.read', AuditScreen()),
       Dest('管理員', Icons.manage_accounts, 'admins.read', AccountsScreen()),
+      Dest('發現頁欄目', Icons.explore, 'discover.read', DiscoverColumnsScreen()),
     ];
   }
 

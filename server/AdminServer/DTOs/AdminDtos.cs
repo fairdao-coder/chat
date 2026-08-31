@@ -35,3 +35,8 @@ public record CreateRoleRequest(string Name, string Permissions, string? Descrip
 public record UpdateRoleRequest(string Name, string Permissions, string? Description);
 
 public record CreateAdminRequest(string UserName, string DisplayName, string Password, Guid RoleId);
+
+public record DiscoverColumnDto(
+    Guid Id, string Title, string? Icon, string? Link, int Sort, bool Enabled, DateTime CreatedAt);
+
+public record UpsertDiscoverColumnRequest(string Title, string? Icon, string? Link, int Sort, bool Enabled);

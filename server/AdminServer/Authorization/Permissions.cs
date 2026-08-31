@@ -16,6 +16,8 @@ public static class Permissions
     public const string AuditRead = "audit.read";
     public const string AdminsRead = "admins.read";
     public const string AdminsWrite = "admins.write";
+    public const string DiscoverRead = "discover.read";
+    public const string DiscoverWrite = "discover.write";
 }
 
 public static class PermissionHelper

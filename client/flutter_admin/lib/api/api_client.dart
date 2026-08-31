@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../api/models.dart';
 import '../core/constants.dart';
 
 class ApiException implements Exception {
@@ -54,5 +55,25 @@ class ApiClient {
     if (res.statusCode == 401) throw ApiException(401, '登錄已過期，請重新登錄');
     if (res.statusCode == 403) throw ApiException(403, '權限不足，請聯繫超級管理員');
     throw ApiException(res.statusCode, msg);
+  }
+
+  // ---- 發現頁欄目管理 ----
+  Future<List<DiscoverColumnDto>> listDiscover() async {
+    final data = await get('/api/admin/discover');
+    return (data as List).map((e) => DiscoverColumnDto.fromJson(e)).toList();
+  }
+
+  Future<DiscoverColumnDto> createDiscover(Map<String, dynamic> body) async {
+    final data = await post('/api/admin/discover', body);
+    return DiscoverColumnDto.fromJson(data);
+  }
+
+  Future<DiscoverColumnDto> updateDiscover(String id, Map<String, dynamic> body) async {
+    final data = await put('/api/admin/discover/$id', body);
+    return DiscoverColumnDto.fromJson(data);
+  }
+
+  Future<void> deleteDiscover(String id) async {
+    await delete('/api/admin/discover/$id');
   }
 }

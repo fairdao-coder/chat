@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'config/app_colors.dart';
 
@@ -84,6 +85,7 @@ ThemeData _buildTheme(Brightness brightness) {
         letterSpacing: 0.2,
       ),
       iconTheme: IconThemeData(color: textPrimary),
+      systemOverlayStyle: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
     ),
 
     inputDecorationTheme: inputTheme,

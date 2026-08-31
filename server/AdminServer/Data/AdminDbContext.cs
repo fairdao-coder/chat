@@ -18,6 +18,7 @@ public class AdminDbContext : DbContext
     public DbSet<AdminRole> AdminRoles => Set<AdminRole>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<UserFlag> UserFlags => Set<UserFlag>();
+    public DbSet<DiscoverColumn> DiscoverColumns => Set<DiscoverColumn>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -30,6 +31,8 @@ public class AdminDbContext : DbContext
         b.Entity<Message>().ToTable("Messages", t => t.ExcludeFromMigrations());
         b.Entity<Group>().ToTable("Groups", t => t.ExcludeFromMigrations());
         b.Entity<Friendship>().ToTable("Friendships", t => t.ExcludeFromMigrations());
+        b.Entity<DiscoverColumn>().HasKey(c => c.Id);
+        b.Entity<DiscoverColumn>().ToTable("DiscoverColumns", t => t.ExcludeFromMigrations());
 
         b.Entity<AdminUser>().HasIndex(u => u.UserName).IsUnique();
         b.Entity<AdminUser>()

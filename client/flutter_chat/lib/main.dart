@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -73,6 +74,16 @@ class _MyAppState extends ConsumerState<MyApp> {
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
+
+    // 让系统状态栏图标颜色跟随主题：亮主题用深色图标，暗主题用浅色图标。
+    final isDarkMode = themeMode == ThemeMode.dark ||
+        (themeMode == ThemeMode.system &&
+            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+    SystemChrome.setSystemUIOverlayStyle(
+      (isDarkMode ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+          .copyWith(statusBarColor: Colors.transparent),
+    );
+
     return MaterialApp.router(
       title: 'Flutter Chat',
       locale: locale,

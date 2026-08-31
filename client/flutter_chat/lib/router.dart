@@ -13,6 +13,7 @@ import 'pages/login_page.dart';
 import 'pages/main_shell.dart';
 import 'pages/scan_page.dart';
 import 'pages/settings_page.dart';
+import 'pages/webview_page.dart';
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
 
@@ -27,6 +28,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     navigatorKey: rootNavigatorKey,
     initialLocation: loggedIn ? '/' : '/login',
     redirect: (context, state) {
+      // 掃一掃（導入配置 / 掃碼）無需登錄，放行。
+      if (state.matchedLocation == '/scan') return null;
       final goingToLogin = state.matchedLocation == '/login';
       if (!loggedIn && !goingToLogin) return '/login';
       if (loggedIn && goingToLogin) return '/';
@@ -101,6 +104,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/scan',
         builder: (context, state) => const ScanPage(),
+      ),
+      GoRoute(
+        path: '/webview',
+        builder: (context, state) {
+          final url = state.uri.queryParameters['url'] ?? '';
+          final title = state.uri.queryParameters['title'];
+          if (url.isEmpty) {
+            return const SizedBox.shrink();
+          }
+          return WebViewPage(url: url, title: title);
+        },
       ),
     ],
   );

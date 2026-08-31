@@ -62,3 +62,10 @@ public record ContactDto(
     MessageType? LastMessageType = null);
 
 public record FileUploadResult(string Url, string ContentType, long Size);
+
+public record DiscoverColumnDto(
+    Guid Id,
+    string Title,
+    string? Icon,
+    string? Link,
+    int Sort);

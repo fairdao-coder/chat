@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/app_config.dart';
 import '../models/auth_result.dart';
 import '../models/contact_dto.dart';
+import '../models/discover_column.dart';
 import '../models/file_upload_result.dart';
 import '../models/friend_request_dto.dart';
 import '../models/group_dto.dart';
@@ -81,6 +82,14 @@ class ApiClient {
     final data = await _req(() => _dio.post('/api/auth/register',
         data: {'userName': userName, 'password': password, 'nickName': nickName}));
     return AuthResult.fromJson(data);
+  }
+
+  // ---------- Discover ----------
+
+  /// 拉取發現頁欄目（公開接口，無需登錄）。
+  Future<List<DiscoverColumn>> getDiscoverColumns() async {
+    final data = await _req(() => _dio.get('/api/discover'));
+    return (data as List).map((e) => DiscoverColumn.fromJson(e)).toList();
   }
 
   // ---------- Conversations / Contacts ----------

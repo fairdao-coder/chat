@@ -120,3 +120,22 @@ class PagedResult<T> {
 
   int get totalPages => (total / pageSize).ceil();
 }
+
+class DiscoverColumnDto {
+  final String id;
+  final String title;
+  final String? icon;
+  final String? link;
+  final int sort;
+  final bool enabled;
+  final DateTime createdAt;
+
+  DiscoverColumnDto.fromJson(Map<String, dynamic> j)
+      : id = j['id'],
+        title = j['title'],
+        icon = j['icon'],
+        link = j['link'],
+        sort = j['sort'] ?? 0,
+        enabled = j['enabled'] ?? true,
+        createdAt = DateTime.parse(j['createdAt']);
+}

@@ -12,6 +12,7 @@ public class AppDbContext : DbContext
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
     public DbSet<Message> Messages => Set<Message>();
+    public DbSet<DiscoverColumn> DiscoverColumns => Set<DiscoverColumn>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -49,5 +50,7 @@ public class AppDbContext : DbContext
         b.Entity<Message>()
             .HasOne(m => m.Sender).WithMany().HasForeignKey(m => m.SenderId)
             .OnDelete(DeleteBehavior.NoAction);
+
+        b.Entity<DiscoverColumn>().HasIndex(c => c.Sort);
     }
 }
