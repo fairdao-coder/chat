@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../config/app_config.dart';
 import '../l10n/app_localizations.dart';
@@ -53,6 +54,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   void _toast(String msg) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  Future<void> _openDownload() async {
+    final url = Uri.parse(AppConfig.downloadUrl);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else if (mounted) {
+      _toast(context.tr('无法打开下载页'));
+    }
   }
 
   @override
@@ -203,6 +213,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             onPressed: () => context.go('/scan'),
                             icon: const Icon(Icons.qr_code_scanner_outlined),
                             label: Text(context.tr('扫一扫导入配置')),
+                          ),
+                          const SizedBox(height: 10),
+                          OutlinedButton.icon(
+                            onPressed: _openDownload,
+                            icon: const Icon(Icons.download_outlined),
+                            label: Text(context.tr('下载客户端')),
                           ),
                         ],
                       ),

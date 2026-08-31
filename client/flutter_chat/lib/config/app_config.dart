@@ -30,6 +30,16 @@ class AppConfig {
   static const String _brandKey = 'brand_name';
   static const String _logoKey = 'brand_logo';
   static const String _apiFromLinkKey = 'api_from_link';
+  static const String _downloadKey = 'download_url';
+
+  /// Default download page URL. Overridable at build time:
+  ///   flutter build web --dart-define=DOWNLOAD_URL=https://example.com/download/
+  /// Also overridable at runtime via a config-link `download` query param
+  /// (see [parseLink] / [applyLink]).
+  static const String defaultDownloadUrl = String.fromEnvironment(
+    'DOWNLOAD_URL',
+    defaultValue: 'https://servestatic.github.io/Chat/download/',
+  );
 
   /// Resolved API base (no trailing slash).
   static String apiBase = defaultApiBase;
@@ -37,6 +47,10 @@ class AppConfig {
   /// api 地址是否由配置鏈接設置。為 true 時登錄頁隱藏服務器地址輸入框
   /// （受控分發場景，避免誤改）；在設置頁手動修改會重置為 false。
   static bool apiFromLink = false;
+
+  /// Download page URL (the static page listing installable client builds).
+  /// Overridable at runtime via a config link; defaults to [defaultDownloadUrl].
+  static String downloadUrl = defaultDownloadUrl;
 
   /// App display name shown inside the app (login page etc.).
   ///
@@ -70,6 +84,10 @@ class AppConfig {
     if (logo != null) {
       logoUrl = logo;
     }
+    final download = prefs.getString(_downloadKey);
+    if (download != null && download.isNotEmpty) {
+      downloadUrl = download.trim();
+    }
     apiFromLink = prefs.getBool(_apiFromLinkKey) ?? false;
   }
 
@@ -89,6 +107,7 @@ class AppConfig {
 
   /// 解析配置链接。链接 query 参数：
   ///   `name` 品牌名、`api` 服務器地址、`logo` 應用內 Logo 圖片 URL。
+  ///   `download` 下載頁地址（客戶端安裝包列表）。
   /// 只提取「與當前配置不同」的項。
   ///
   /// `logo` 支持三態：
@@ -96,8 +115,11 @@ class AppConfig {
   ///   空值     -> 恢復內置默認 Logo；
   ///   缺省     -> 不變。
   ///
+  /// `download` 仅接受 http/https 绝对地址，否则忽略。
+  ///
   /// 返回 null 表示链接里没有需要应用的变更。
-  static ({String? name, String? api, String? logo})? parseLink(Uri uri) {
+  static ({String? name, String? api, String? logo, String? download})?
+      parseLink(Uri uri) {
     final p = uri.queryParameters;
     final name = p['name']?.trim();
     final api = p['api']?.trim();
@@ -117,18 +139,29 @@ class AppConfig {
       }
     }
 
-    if (!hasName && !hasApi && logo == null) return null;
+    String? download;
+    final dlRaw = p['download']?.trim();
+    if (dlRaw != null &&
+        dlRaw.isNotEmpty &&
+        (dlRaw.startsWith('http://') || dlRaw.startsWith('https://')) &&
+        dlRaw != downloadUrl) {
+      download = dlRaw;
+    }
+
+    if (!hasName && !hasApi && logo == null && download == null) return null;
     return (
       name: hasName ? name : null,
       api: hasApi ? api : null,
       logo: logo,
+      download: download,
     );
   }
 
   /// 应用 [parseLink] 的解析结果并持久化。
   /// 返回 api 地址是否变化（变化时调用方需要 invalidate 依赖旧地址的 provider）。
   static Future<bool> applyLink(
-      ({String? name, String? api, String? logo}) cfg) async {
+      ({String? name, String? api, String? logo, String? download})
+          cfg) async {
     final prefs = await SharedPreferences.getInstance();
     var apiChanged = false;
     if (cfg.name != null && cfg.name!.isNotEmpty) {
@@ -150,6 +183,10 @@ class AppConfig {
         logoUrl = cfg.logo!;
         await prefs.setString(_logoKey, logoUrl);
       }
+    }
+    if (cfg.download != null && cfg.download!.isNotEmpty) {
+      downloadUrl = cfg.download!;
+      await prefs.setString(_downloadKey, downloadUrl);
     }
     return apiChanged;
   }
