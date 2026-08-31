@@ -44,6 +44,11 @@
 	<!-- 视频通话 / 扫一扫：摄像头用途描述（flutter_webrtc、mobile_scanner 必需，缺失会崩溃）。 -->
 	<key>NSCameraUsageDescription</key>
 	<string>需要摄像头权限以进行视频通话和扫描二维码</string>
+	<!-- 保存图片到相册：image_gallery_saver 必需，缺失会崩溃。 -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>需要相册权限以保存聊天中的图片</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>需要相册权限以保存聊天中的图片</string>
 	<!-- 开发期允许访问 http:// 本地/局域网后端（语音、图片文件）。
 	     生产环境应改用 https，无需此例外。 -->
 	<key>NSAppTransportSecurity</key>

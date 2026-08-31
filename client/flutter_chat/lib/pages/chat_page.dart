@@ -24,6 +24,7 @@ import '../providers/presence_provider.dart';
 import '../utils/url.dart';
 import '../utils/record_bytes.dart';
 import '../l10n/app_localizations.dart';
+import 'image_viewer_page.dart';
 
 class ChatPage extends ConsumerStatefulWidget {
   final ChatTarget target;
@@ -497,7 +498,7 @@ class _Bubble extends StatelessWidget {
         children: [
           if (!isMe && m.senderName.isNotEmpty) _senderName(context),
           GestureDetector(
-            onTap: () => onOpenUrl(url),
+            onTap: () => openImageViewer(context, url),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: CachedNetworkImage(

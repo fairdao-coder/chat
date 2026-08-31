@@ -19,6 +19,7 @@ dependencies:
   file_picker: ^8.0.6
   cached_network_image: ^3.4.1
   url_launcher: ^6.3.1
+  image_gallery_saver: ^1.7.1
   intl: ^0.20.3
   web: ^1.0.0
   record: ^7.1.1

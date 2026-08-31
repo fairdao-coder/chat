@@ -210,4 +210,13 @@ class ApiClient {
     final data = await _req(() => _dio.post('/api/files/upload', data: form));
     return FileUploadResult.fromJson(data);
   }
+
+  /// 下载图片/文件字节（自动带 Bearer token，适用于需鉴权的私有资源）。
+  /// [url] 必须是完整绝对地址。
+  Future<Uint8List> downloadBytes(String url) async {
+    final r = await _dio.get<dynamic>(url,
+        options: Options(responseType: ResponseType.bytes));
+    if (r.data is Uint8List) return r.data as Uint8List;
+    return Uint8List.fromList(r.data as List<int>);
+  }
 }

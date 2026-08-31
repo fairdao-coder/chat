@@ -161,6 +161,9 @@ class L10n {
     '正在启动相机…': '正在启动相机…',
     '相机启动失败': '相机启动失败',
     '重试': '重试',
+    '保存图片': '保存图片',
+    '保存成功': '保存成功',
+    '保存失败': '保存失败',
   };
 
   static const Map<String, String> _zhHant = {
@@ -295,6 +298,9 @@ class L10n {
     '正在启动相机…': '正在啟動相機…',
     '相机启动失败': '相機啟動失敗',
     '重试': '重試',
+    '保存图片': '保存圖片',
+    '保存成功': '保存成功',
+    '保存失败': '保存失敗',
   };
 
   static const Map<String, String> _en = {
@@ -429,6 +435,9 @@ class L10n {
     '正在启动相机…': 'Starting camera…',
     '相机启动失败': 'Camera failed to start',
     '重试': 'Retry',
+    '保存图片': 'Save image',
+    '保存成功': 'Saved',
+    '保存失败': 'Save failed',
   };
 
   static const Map<String, String> _es = {
@@ -563,6 +572,9 @@ class L10n {
     '正在启动相机…': 'Iniciando cámara…',
     '相机启动失败': 'Error al iniciar la cámara',
     '重试': 'Reintentar',
+    '保存图片': 'Guardar imagen',
+    '保存成功': 'Guardado',
+    '保存失败': 'Error al guardar',
   };
 
   static AppLocalizations _resolve(Locale locale) {
