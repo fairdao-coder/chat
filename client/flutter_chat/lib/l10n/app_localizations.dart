@@ -158,6 +158,9 @@ class L10n {
     '需要相机权限才能扫码': '需要相机权限才能扫码',
     '请在系统设置中允许本应用使用相机': '请在系统设置中允许本应用使用相机',
     '去设置': '去设置',
+    '正在启动相机…': '正在启动相机…',
+    '相机启动失败': '相机启动失败',
+    '重试': '重试',
   };
 
   static const Map<String, String> _zhHant = {
@@ -289,6 +292,9 @@ class L10n {
     '需要相机权限才能扫码': '需要相機權限才能掃碼',
     '请在系统设置中允许本应用使用相机': '請在系統設定中允許本應用使用相機',
     '去设置': '去設定',
+    '正在启动相机…': '正在啟動相機…',
+    '相机启动失败': '相機啟動失敗',
+    '重试': '重試',
   };
 
   static const Map<String, String> _en = {
@@ -420,6 +426,9 @@ class L10n {
     '需要相机权限才能扫码': 'Camera permission is required to scan',
     '请在系统设置中允许本应用使用相机': 'Please allow camera access in system settings',
     '去设置': 'Open settings',
+    '正在启动相机…': 'Starting camera…',
+    '相机启动失败': 'Camera failed to start',
+    '重试': 'Retry',
   };
 
   static const Map<String, String> _es = {
@@ -551,6 +560,9 @@ class L10n {
     '需要相机权限才能扫码': 'Se requiere permiso de cámara para escanear',
     '请在系统设置中允许本应用使用相机': 'Permite el acceso a la cámara en ajustes',
     '去设置': 'Abrir ajustes',
+    '正在启动相机…': 'Iniciando cámara…',
+    '相机启动失败': 'Error al iniciar la cámara',
+    '重试': 'Reintentar',
   };
 
   static AppLocalizations _resolve(Locale locale) {

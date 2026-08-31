@@ -22,14 +22,14 @@ class ScanPage extends ConsumerStatefulWidget {
 }
 
 class _ScanPageState extends ConsumerState<ScanPage> {
-  final MobileScannerController _controller = MobileScannerController(
-    detectionSpeed: DetectionSpeed.normal,
-    facing: CameraFacing.back,
-  );
+  MobileScannerController? _controller;
   var _handled = false;
 
   // 相机权限状态：null = 检查中，true = 已授权，false = 被拒。
   bool? _cameraGranted;
+
+  // 相机初始化失败时的错误信息（简体中文 key，会自动 fallback）。
+  String? _cameraError;
 
   @override
   void initState() {
@@ -42,16 +42,57 @@ class _ScanPageState extends ConsumerState<ScanPage> {
     final status = await Permission.camera.status;
     if (status.isGranted) {
       if (mounted) setState(() => _cameraGranted = true);
+      await _startScanner();
       return;
     }
     final result = await Permission.camera.request();
     if (!mounted) return;
     setState(() => _cameraGranted = result.isGranted);
+    if (result.isGranted) {
+      await _startScanner();
+    }
+  }
+
+  Future<void> _startScanner() async {
+    // 在权限未授权前不要创建 controller，否则 mobile_scanner 会报
+    // "An unexpected error occurred"。
+    if (_cameraGranted != true) return;
+    _scannerLog('启动相机');
+    _controller?.dispose();
+    final controller = MobileScannerController(
+      detectionSpeed: DetectionSpeed.normal,
+      facing: CameraFacing.back,
+    );
+    if (!mounted) {
+      controller.dispose();
+      return;
+    }
+    setState(() {
+      _controller = controller;
+      _cameraError = null;
+    });
+  }
+
+  void _stopScanner() {
+    _scannerLog('停止相机');
+    _controller?.dispose();
+    _controller = null;
+  }
+
+  void _onScannerError(Object error, BuildContext context) {
+    _scannerLog('相机错误: $error');
+    if (!mounted) return;
+    setState(() => _cameraError = context.tr('相机启动失败'));
+  }
+
+  void _scannerLog(String message) {
+    // ignore: avoid_print
+    debugPrint('[ScanPage] $message');
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _stopScanner();
     super.dispose();
   }
 
@@ -155,12 +196,56 @@ class _ScanPageState extends ConsumerState<ScanPage> {
           ),
         ),
       );
+    } else if (_controller == null || _cameraError != null) {
+      // 已授权但相机尚未启动成功：显示加载或错误重试。
+      body = Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                _cameraError == null ? Icons.camera_alt_outlined : Icons.error_outline,
+                size: 56,
+                color: _cameraError == null ? Colors.grey : cs.error,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _cameraError ?? loc.t('正在启动相机…'),
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              if (_cameraError != null) ...[
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  icon: const Icon(Icons.refresh),
+                  label: Text(loc.t('重试')),
+                  onPressed: () {
+                    setState(() => _cameraError = null);
+                    _startScanner();
+                  },
+                ),
+              ] else ...[
+                const SizedBox(height: 20),
+                const CircularProgressIndicator(),
+              ],
+            ],
+          ),
+        ),
+      );
     } else {
       body = Stack(
         children: [
           MobileScanner(
             controller: _controller,
             onDetect: _onDetect,
+            errorBuilder: (context, error, child) {
+              // 出现底层错误时给出明确提示，而不是仅显示默认英文。
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _onScannerError(error, context);
+              });
+              return const SizedBox.shrink();
+            },
           ),
           // 掃描框遮罩提示
           Center(
@@ -199,16 +284,16 @@ class _ScanPageState extends ConsumerState<ScanPage> {
       appBar: AppBar(
         title: Text(loc.t('扫一扫')),
         actions: [
-          if (_cameraGranted == true) ...[
+          if (_cameraGranted == true && _controller != null) ...[
             IconButton(
               icon: const Icon(Icons.flip_camera_android_outlined),
               tooltip: loc.t('切换摄像头'),
-              onPressed: () => _controller.switchCamera(),
+              onPressed: () => _controller?.switchCamera(),
             ),
             IconButton(
               icon: const Icon(Icons.flash_on_outlined),
               tooltip: loc.t('闪光灯'),
-              onPressed: () => _controller.toggleTorch(),
+              onPressed: () => _controller?.toggleTorch(),
             ),
           ],
         ],
