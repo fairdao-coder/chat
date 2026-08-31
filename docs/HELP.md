@@ -98,3 +98,40 @@
 **Q：iOS 有安装包吗？**
 - 下载页目前仅提供 Android APK。iOS 需由部署方配置 Apple 开发者证书后在 CI 产出已签名 IPA，
   或自行用 Mac 对未签名构建重新签名。详见主仓库 `README.md` 第 5 节「iOS 构建（可选签名）」。
+
+---
+
+## 6. 检测后台服务是否正常
+
+两个服务端（ChatServer、AdminServer）都暴露了健康检查端点 `/health`，
+它会在内部执行一次数据库连接检查，因此能同时反映「进程存活」与「数据库可达」。
+
+部署地址示例：
+
+| 服务 | 健康检查地址 |
+| --- | --- |
+| ChatServer | `https://<chat-host>/health` |
+| AdminServer | `https://<admin-host>/health` |
+
+### 命令行检测
+
+```bash
+# 返回 HTTP 200 + {"status":"Healthy"} 表示正常
+curl -f -s https://<chat-host>/health || echo "ChatServer 异常"
+
+# 仅看 HTTP 状态码
+curl -o /dev/null -w "%{http_code}\n" https://<admin-host>/health
+```
+
+- 状态码 `200` + `status: Healthy` → 服务与数据库均正常。
+- 状态码 `503` 或 `Unhealthy` → 进程在但数据库连不上（检查连接串、Postgres 是否启动）。
+- 连接超时 / 拒绝 → 进程未启动或端口/防火墙问题。
+
+### 在客户端 / 监控中检测
+
+- **前端轮询**：聊天端可在启动时 `fetch('/health')`，非 `Healthy` 时提示「服务暂不可用」。
+- **负载均衡 / 容器编排**：把 `/health` 配为 liveness / readiness 探针（K8s、Docker Swarm、Nginx upstream 健康检查等）。
+- **CI / 运维脚本**：部署后 `curl -f` 校验，失败则告警或回滚。
+
+> 注意：`/health` 不要求鉴权（匿名可访问），不会泄露业务数据，只返回聚合健康状态。
+

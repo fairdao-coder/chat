@@ -88,6 +88,10 @@ builder.Services.AddCors(o => o.AddPolicy("allow", p =>
 
 builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+// ---- 健康檢查：/health 返回數據庫連通性，用於運維探活與監控 ----
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>();
 // SignalR 服務註冊（修復：防止 MapHub 拋出 "Unable to find the required services"）
 // 啟用字符串枚舉反序列化，使客戶端可直接以 "Text"/"Image"/"File" 傳遞 MessageType
 // 始終開啟 EnableDetailedErrors：Hub 僅會拋出帶 "E_*: ..." 錯誤碼的 HubException
@@ -135,6 +139,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
+app.MapHealthChecks("/health");
 
 // 開發期自動建庫（生產請用 EF Migration）
 using (var scope = app.Services.CreateScope())

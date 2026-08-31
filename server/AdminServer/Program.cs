@@ -61,6 +61,10 @@ builder.Services.AddCors(o => o.AddPolicy("allow", p =>
 
 builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+
+// ---- 健康檢查：/health 返回數據庫連通性，用於運維探活與監控 ----
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AdminDbContext>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -76,6 +80,7 @@ app.UseCors("allow");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 // 自動建庫（僅新增後臺管理表）+ 種子默認角色與管理員
 using (var scope = app.Services.CreateScope())
