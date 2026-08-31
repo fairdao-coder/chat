@@ -240,6 +240,10 @@ jobs:
     defaults:
       run:
         working-directory: client/flutter_chat
+    env:
+      # CI 環境下禁用 Gradle daemon 與檔案系統監視，避免偶發的
+      # "Already watching path" 錯誤，並減少記憶體佔用。
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.vfs.watch=false"
     steps:
       - uses: actions/checkout@v4
 
