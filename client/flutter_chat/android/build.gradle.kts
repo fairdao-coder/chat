@@ -15,10 +15,6 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
-subprojects {
-    project.evaluationDependsOn(":app")
-}
-
 // flutter_plugin_android_lifecycle 2.0.35+ 要求所有依賴它的 Android 子項目
 // compileSdk >= 36，但 file_picker 等插件仍寫死 flutter.compileSdkVersion（34）。
 //
@@ -27,6 +23,12 @@ subprojects {
 // android.newDsl=false（用舊擴展實現，新 DSL 的 CommonExtension 類型對不上）。
 // 因此用反射調用 setter：setCompileSdk(int) 覆蓋新實現，
 // setCompileSdkVersion(int) 覆蓋舊實現，兩種 AGP 配置都能工作。
+//
+// 注意順序：此塊必須位於下方 evaluationDependsOn 之前註冊。evaluationDependsOn
+// 會立即觸發 :app 的評估，若在本塊之後執行，再對已評估的項目調用 afterEvaluate
+// 會拋出 "Cannot run Project.afterEvaluate(Action) when the project is already
+// evaluated"。插件項目的 compileSdk 是在各自信 build 腳本（評估期間）設置的，
+// 本回調在評估完成後執行，因此不會被回寫覆蓋。
 subprojects {
     afterEvaluate {
         val android = extensions.findByName("android") ?: return@afterEvaluate
@@ -46,6 +48,10 @@ subprojects {
             println("compileSdk override failed for ${project.path}: ${it.message}")
         }
     }
+}
+
+subprojects {
+    project.evaluationDependsOn(":app")
 }
 
 tasks.register<Delete>("clean") {
