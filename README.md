@@ -3,10 +3,10 @@
 一个**前后端完全分离**的类微信通讯系统：
 
 - **服务端**：ASP.NET Core 10 + SignalR（WebSocket）+ PostgreSQL + JWT 鉴权
-- **H5 网页端**：Vite + React + TypeScript + `@microsoft/signalr`（已构建通过，可直接运行）
-- **安卓 / 苹果端**：.NET MAUI 单工程双目标（`net10.0-android` + `net10.0-ios`，共享 C# 逻辑与 XAML UI）
+- **用户端**：Flutter（`client/flutter_chat`），支持 Web / Android / iOS
+- **管理端**：Flutter（`client/flutter_admin`），支持 Web / Android / iOS
 
-三个客户端共用**同一套 REST 接口契约 + SignalR Hub 协议**，详见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)。
+服务端接口契约与 SignalR 协议以 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) 为权威来源；客户端使用帮助见 [`docs/HELP.md`](docs/HELP.md)。
 
 ---
 
@@ -26,13 +26,15 @@
 ```
 chat/
 ├── server/                 # ASP.NET Core 10 服务端
-│   ├── ChatServer/         # 主工程（Controllers / Hubs / Services / Entities / Data）
+│   ├── ChatServer/         # 主 API + SignalR Hub（Controllers / Hubs / Services / Entities / Data）
+│   ├── AdminServer/        # 后台管理 API
 │   └── docker-compose.yml  # 一键拉起 PostgreSQL
 ├── client/
-│   ├── h5/                 # H5 网页端（React + Vite，已构建）
-│   └── MauiChat/           # .NET MAUI 安卓/iOS 端（源码，需本地 MAUI 工作负载构建）
+│   ├── flutter_chat/       # 用户端（Flutter，已构建验证）
+│   └── flutter_admin/      # 管理端（Flutter，已构建验证）
 └── docs/
-    └── ARCHITECTURE.md     # 接口 / 协议契约（权威）
+    ├── ARCHITECTURE.md     # 接口 / 协议契约（权威）
+    └── HELP.md             # 客户端使用帮助
 ```
 
 ---
@@ -40,7 +42,7 @@ chat/
 ## 1. 启动服务端
 
 ### 前置
-- .NET 10 SDK（本工程在 .NET 10 上构建验证通过）
+- .NET 10 SDK
 - PostgreSQL（推荐用 docker 一键启动）
 
 ### 启动数据库
@@ -49,11 +51,17 @@ cd server
 docker compose up -d          # 启动 PostgreSQL（端口 5432，库名/账号/密码见 docker-compose.yml）
 ```
 
-### 配置
-编辑 `server/ChatServer/appsettings.json`：
-- `ConnectionStrings:DefaultConnection`：PostgreSQL 连接串
-- `Jwt:Key`：JWT 签名密钥（生产请替换为强随机值）
-- `FileStorage:BaseUrl`：文件访问基址（默认 `http://localhost:5298`）
+### 配置（多环境）
+配置按环境拆分，通过环境变量 `ASPNETCORE_ENVIRONMENT=Development|Production` 切换
+（默认 Development）。详见各服务下的：
+
+- `appsettings.json` —— 公共基础配置
+- `appsettings.Development.json` —— 开发版（localhost、开发密钥、宽松 CORS）
+- `appsettings.Production.json` —— 正式版（**占位值，部署前必须替换或用环境变量覆盖**：
+  `CONNECTIONSTRINGS__DEFAULT`、`Jwt__Key`、`SeedAdmin__Password` 等）
+
+常用配置键：`ConnectionStrings:Default`（PostgreSQL 连接串）、`Jwt:Key`（签名密钥）、
+`Urls`（监听地址）、`Cors:Origins`（允许的前端来源）。
 
 ### 运行
 ```bash
@@ -66,85 +74,54 @@ dotnet publish -c Release -o out
 - API 基址：`http://localhost:5298`
 - Swagger 文档：`http://localhost:5298/swagger`
 - SignalR Hub：`http://localhost:5298/hubs/chat`
+- 健康检查：`http://localhost:5298/health`（返回 `Healthy` 表示进程与数据库均正常）
 - 静态文件 / 上传文件：`http://localhost:5298/files/...`
 
-> EF Core 在启动时自动 `EnsureCreated()` 建表（演示用）。生产建议改用迁移 `dotnet ef migrations add Init && dotnet ef database update`。
+> EF Core 在启动时自动 `EnsureCreated()` 建表（演示用）。生产建议改用迁移
+> `dotnet ef migrations add Init && dotnet ef database update`。
+
+AdminServer 同理（`http://localhost:5299`，`/health` 同样可用）。
 
 ---
 
-## 2. 运行 H5 网页端
+## 2. Flutter 客户端
 
+源码位于 `client/flutter_chat`（用户端）与 `client/flutter_admin`（管理端）。
+
+### 本地开发
 ```bash
-cd client/h5
-npm install                      # 已验证：依赖已安装
-npm run dev                      # 开发服务器 http://localhost:5173
-# 生产构建
-npm run build && npm run preview
+cd client/flutter_chat
+flutter pub get
+flutter run -d chrome      # 网页端
+flutter run -d android     # 安卓真机 / 模拟器
 ```
-- 默认连接 `http://localhost:5298`（见 `src/config.ts`，可用 `.env` 的 `VITE_API_BASE` 覆盖）
-- 浏览器打开 http://localhost:5173 → 注册两个账号 → 互加好友 → 实时聊天
-- 响应式布局，可直接作为安卓 / 苹果 WebView 内核复用
+
+API 地址设置方式（任选其一）：
+- **构建期**：`flutter build web --dart-define=API_BASE=https://your.api`
+- **运行期**：登录页「设置」中手动覆盖，或用配置链接一键导入（见 `docs/HELP.md`）
+
+### 构建与发布
+客户端构建、Android APK 拆分打包、iOS 构建与静态站点发布均由 CI 自动完成，详见第 4 节。
+客户端功能（扫一扫、配置链接、下载页等）见 [`docs/HELP.md`](docs/HELP.md)。
 
 ---
 
-## 3. 构建 .NET MAUI（安卓 / 苹果）
+## 3. 接口与协议契约
 
-> 本工程为**完整源码**。由于 MAUI 需要平台工作负载与（iOS 还需）Mac，无法在此环境编译，请在本机按以下方式构建。
+REST 接口、SignalR Hub 协议、消息结构等以 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) 为准。
+关键端点速览：
 
-**Windows 构建安卓**：
-1. 安装 Visual Studio 2022 17.8+，勾选“.NET MAUI 工作负载”（或 `dotnet workload install maui`）。
-2. 安卓模拟器 / 真机需允许明文 HTTP：工程已设 `AndroidEnableCleartextTraffic=true`。
-3. 把 `MauiChat/Config/AppConfig.cs` 里的 `ApiBase` 改成服务端地址
-   - 安卓模拟器访问宿主机：`http://10.0.2.2:5298`
-   - 真机 / iOS 模拟器：`http://<你的局域网IP>:5298`
-4. 构建运行：
-   ```bash
-   cd client/MauiChat
-   dotnet build -f net10.0-android
-   dotnet build -t:Run -f net10.0-android -p:TargetFramework=net10.0-android
-   ```
+- 认证：`POST /api/auth/register`、`POST /api/auth/login`（返回 `token` + `user`）
+- 用户 / 好友：`GET /api/users/search`、`POST /api/friends/request`、`GET /api/friends` 等
+- 群组 / 会话：`POST /api/groups`、`GET /api/conversations`
+- 文件：`POST /api/files/upload`（multipart，字段 `file`）
+- 实时：`/hubs/chat`（`SendPrivateMessage` / `SendGroupMessage` / `JoinGroup`；推送 `ReceiveMessage` / `UserOnline` / `UserOffline`）
 
-**macOS 构建 iOS**：
-1. 在 Mac 上安装 VS Code / VS 2022 for Mac 或 `dotnet` + Xcode，并 `dotnet workload install maui`。
-2. 配对 Mac 后：
-   ```bash
-   dotnet build -f net10.0-ios
-   ```
-3. iOS 模拟器可用 `http://localhost:5298`；真机用局域网 IP。
-
-详见 `client/MauiChat/README.md`。
+所有 REST 请求需在 Header 带 `Authorization: Bearer <token>`。
 
 ---
 
-## 4. 接口速查（契约权威来源：`docs/ARCHITECTURE.md`）
-
-### REST（均需在 Header 带 `Authorization: Bearer <token>`）
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| POST | `/api/auth/register` | 注册 |
-| POST | `/api/auth/login` | 登录，返回 `token` + `user` |
-| GET | `/api/users/search?q=` | 搜索用户 |
-| POST | `/api/friends/request` | 发送好友请求（body = 对方 Guid 的 JSON 字符串） |
-| GET | `/api/friends/requests` | 收到的好友请求 |
-| POST | `/api/friends/accept` | 接受好友请求 |
-| GET | `/api/friends` | 好友列表 |
-| POST | `/api/groups` | 建群 `{name, memberIds}` |
-| GET | `/api/groups` | 我的群 |
-| GET | `/api/conversations` | 会话列表 |
-| GET | `/api/messages/private/{friendId}` | 私聊历史 |
-| GET | `/api/messages/group/{groupId}` | 群聊历史 |
-| POST | `/api/files/upload` | 上传文件（multipart，字段 `file`） |
-
-### SignalR Hub `/hubs/chat`
-- 连接：`withUrl("<API_BASE>/hubs/chat", { accessTokenFactory: () => token })`（浏览器 WebSocket 走 query 的 `access_token`）
-- 发送私聊：`SendPrivateMessage(toUserId, content, type, mediaUrl)` — `type ∈ {Text, Image, File}`
-- 发送群聊：`SendGroupMessage(groupId, content, type, mediaUrl)`
-- 加入群：`JoinGroup(groupId)`
-- 服务端推送：`ReceiveMessage(message)`、`UserOnline(userId)`、`UserOffline(userId)`
-
----
-
-## 5. CI/CD 与前端静态发布
+## 4. CI/CD 与前端静态发布
 
 `.github/workflows/ci-cd.yml` 在 push / PR 时跑质量门禁（.NET 构建 + Flutter analyze），
 push 到 `main` 时额外构建两个 Flutter Web 应用 **和 Android APK**，合并后一起发布：
@@ -154,23 +131,13 @@ push 到 `main` 时额外构建两个 Flutter Web 应用 **和 Android APK**，�
 | `client/flutter_chat`（用户端） | <https://servestatic.github.io/Chat/> |
 | `client/flutter_admin`（管理端） | <https://servestatic.github.io/Chat/admin/> |
 | Android APK 下载页 | <https://servestatic.github.io/Chat/download/> |
+| 配置链接生成器 | <https://servestatic.github.io/Chat/config/> |
 
 站点托管在 [`ServeStatic/Chat`](https://github.com/ServeStatic/Chat) 仓库的 `gh-pages` 分支。
-由于 `actions/deploy-pages` 只能发布到工作流所在的仓库，这里改为直接把构建产物推送到目标仓库。
-
-Job 依赖关系（`build-web` 与 `build-android` 并行，缩短关键路径）：
-
-```
-server / client / server-admin / client-admin   (质量门禁)
-        │
-        ├── build-web  ──┐
-        └── build-android ┴─ assemble-dist ── deploy-static ──> ServeStatic/Chat#gh-pages
-```
 
 ### Android APK
 
-每次部署按 **CPU 架构拆分**构建安装包（不再提供 universal 包，因为 universal APK
-体积会超过 GitHub 单文件 100MB 限制），供用户在下载页选择：
+每次部署按 **CPU 架构拆分**构建安装包（universal 包因超 GitHub 单文件 100MB 限制已移除）：
 
 | 文件 | 说明 |
 | --- | --- |
@@ -178,113 +145,67 @@ server / client / server-admin / client-admin   (质量门禁)
 | `chat-armeabi-v7a.apk` | 较旧的 32 位设备 |
 | `chat-x86_64.apk` | 模拟器与部分平板 |
 
-下载页由 `.github/scripts/gen-download-page.sh` 生成，只列出**确实存在**的 APK，
-不会产出指向不存在文件的坏链接。**每个 APK 卡片都内嵌其下载地址的二维码**，
-手机扫码即可直接下载安装；页尾另提供「聊天应用」「配置生成器」的直达二维码。
+下载页由 `.github/scripts/gen-download-page.sh` 生成，每个 APK 卡片内嵌其下载地址的二维码，
+页尾另提供「聊天应用」「配置生成器」的直达二维码。
 
-#### 关于签名（重要）
+#### 关于签名
 
-当前 `android/app/build.gradle.kts` 沿用 Flutter 模板默认配置 —— **release 版仍用 debug key 签名**，
-因此 CI 不需要任何 keystore，但存在两点影响：
+release 版使用 Flutter 模板默认的 debug key 签名，因此 CI 无需 keystore，但：
+1. 安装时 Google Play 防护会提示「未知发布者」，需选「仍要安装」；
+2. 更换签名 key 会导致已装用户无法覆盖升级，必须先卸载。
 
-1. 用户安装时 Google Play 防护会提示「未知发布者」，需选择「仍要安装」；
-2. **更换签名 key 会导致已安装用户无法覆盖升级**，必须先卸载。
-
-正式发布前建议配置正式签名：在 `build.gradle.kts` 中定义 `signingConfigs.release`，
-把 keystore 用 base64 编码存进 secret（如 `ANDROID_KEYSTORE_BASE64`、`ANDROID_KEY_*`），
-在 `build-android` job 中解码后再构建。
+正式发布前建议在 `build.gradle.kts` 定义 `signingConfigs.release`，把 keystore 用 base64
+存入 secret（如 `ANDROID_KEYSTORE_BASE64`、`ANDROID_KEY_*`），在 `build-android` job 解码后构建。
 
 #### iOS 构建（可选签名）
 
-`build-ios` job 在 `macos-latest` runner 上运行（Xcode 只在 macOS 提供，**Windows / Linux 无法编译 iOS**，
-包括本地开发机）。
-
-构建**默认是未签名**的 `Runner.app`（仅作为 iOS 编译检查，无法安装到真机）。
-但当仓库配置了以下 secrets 时，会自动导入证书与描述文件，产出**已签名的 `Runner.ipa`**：
+`build-ios` 在 `macos-latest` runner 上运行（Xcode 仅 macOS 提供）。默认产出**未签名**的
+`Runner.app`（仅编译检查）。当配置了以下 secrets 时自动产出**已签名** `Runner.ipa`：
 
 | Secret | 说明 |
 | --- | --- |
 | `IOS_DIST_CERT_BASE64` | 分发证书 p12，base64 编码 |
 | `IOS_DIST_CERT_PASSWORD` | p12 密码 |
 | `IOS_PROVISIONING_PROFILE_BASE64` | `.mobileprovision`，base64 编码 |
-| `IOS_TEAM_ID`（可选） | Apple Team ID，用于导出选项 |
+| `IOS_TEAM_ID`（可选） | Apple Team ID |
 
-本地编码方式：
-
-```bash
-base64 -w0 dist.p12 > cert.b64
-base64 -w0 app.mobileprovision > profile.b64
-```
-
-签名路径使用 `flutter build ipa`（ad-hoc 导出），无需 Mac 即可由 CI 产出可安装的 IPA；
-未配置 secrets 时自动回退到未签名构建，CI 不会因此失败。`ExportOptions.plist` 模板位于
+未配置 secrets 时自动回退未签名构建，CI 不失败。`ExportOptions.plist` 位于
 `client/flutter_chat/ios/ExportOptions.plist`。
-
-由于每次部署都是「全新单 commit + force push」，仓库历史不会累积，
-仓库体积约等于一次产物大小。
-
-#### 发布前建议修改（当前仍是模板默认值）
-
-| 位置 | 当前值 | 说明 |
-| --- | --- | --- |
-| `android/app/build.gradle.kts` | `applicationId = "com.example.flutter_chat"` | 包名必须唯一，否则无法上架、且会与同包名应用冲突 |
-| `android/app/src/main/AndroidManifest.xml` | `android:label="flutter_chat"` | 手机桌面上显示的应用名 |
-
-修改 `applicationId` 后，如需同时调整 Kotlin 包结构，请一并改动
-`android/app/src/main/kotlin/` 下的目录与 `MainActivity.kt` 的 package 声明。
-
-> 已修复：`main/AndroidManifest.xml` 原先缺少 `INTERNET` 权限。
-> `debug/` 与 `profile/` 变体自带该权限，但 **release 只继承 `main/`**，
-> 缺失时 release APK 安装后完全无法联网（登录、收发消息全部失败）。
 
 ### 一次性配置
 
-> `gh-pages` 分支**不需要手动创建**。首次部署时 workflow 会用
-> `git push --force ... HEAD:gh-pages` 自动在目标仓库建出该分支（即使是空仓库）。
-> 但 Pages 设置的分支下拉框只列**已存在**的分支，所以第 3 步必须排在首次部署之后。
+> `gh-pages` 分支首次部署时由 workflow 自动创建（force push），无需手动建；但 Pages 设置
+> 只列已存在分支，故「开启 Pages」须排在首次部署之后。
 
-1. **创建 PAT**：生成一个对 `ServeStatic/Chat` 有写权限（`repo` scope）的 Personal Access Token，
-   在本仓库 **Settings → Secrets and variables → Actions** 添加为 `SERVESTATIC_DEPLOY_TOKEN`。
-2. **（可选）指定线上 API 地址**：在本仓库 **Settings → Secrets and variables → Actions → Variables** 添加
-   - `PUBLIC_API_BASE` —— 注入 `AppConfig.defaultApiBase`（`--dart-define=API_BASE`）
-   - `PUBLIC_ADMIN_API_BASE` —— 注入 `Constants.apiBaseUrl`（`--dart-define=ADMIN_API_BASE`）
-   - `PUBLIC_WEB_BASE` —— 下载页等静态页的根地址（`gen-download-page.sh` 的第 4 参数），
-     默认 `https://servestatic.github.io/Chat/`。自定义域名时设置，影响下载页里的二维码指向。
+1. **部署令牌**：生成对 `ServeStatic/Chat` 有写权限（`repo` scope）的 PAT，在本仓库
+   **Settings → Secrets and variables → Actions** 添加为 `SERVESTATIC_DEPLOY_TOKEN`。
+2. **（可选）线上 API 地址**：在 **Settings → Secrets and variables → Actions → Variables** 添加
+   - `PUBLIC_API_BASE` —— 用户端 API 基址（`--dart-define=API_BASE`）
+   - `PUBLIC_ADMIN_API_BASE` —— 管理端 API 基址（`--dart-define=ADMIN_API_BASE`）
+   - `PUBLIC_WEB_BASE` —— 静态站点根地址，默认 `https://servestatic.github.io/Chat/`，
+     影响下载页二维码指向（自定义域名时设置）
 
-   不设置的话，发布出去的页面仍会去连 `http://localhost:5298` / `:5299`。
-   用户端也可在「设置」中手动覆盖 API 地址（存于 SharedPreferences）。
-   建议在首次部署前设好，否则还要再部署一次才生效。
-
-3. **（可选）指定下载页地址**：若静态站点与 API 不在同一域名下，可构建时注入
+   未设置则发布版仍连 `http://localhost:5298 / :5299`；用户也可在「设置」中手动覆盖。
+3. **（可选）下载页地址**：若静态站点与 API 不同域，构建时注入
    `DOWNLOAD_URL`（`--dart-define=DOWNLOAD_URL=https://example.com/download/`），
-   登录页「下载客户端」按钮与默认 `AppConfig.downloadUrl` 都会用它。
-   也可用配置链接在运行时下发（见 `docs/HELP.md` 的「配置链接」一节）。
-3. **触发首次部署**：push 到 `main`，等 `Deploy to ServeStatic/Chat` job 跑完。
-   此时 `ServeStatic/Chat` 才出现 `gh-pages` 分支。
-4. **开启 Pages**：在 `ServeStatic/Chat` 的 **Settings → Pages** 中选择
-   *Build and deployment → Source: Deploy from a branch*，分支选 `gh-pages`、目录选 `/ (root)`。
-   首次生效需等几十秒到几分钟。
+   登录页「下载客户端」按钮会随之变化；亦可用配置链接在运行时下发（见 `docs/HELP.md`）。
+4. **触发首次部署**：push 到 `main`，等 `Deploy to ServeStatic/Chat` job 完成（此时才出现 `gh-pages` 分支）。
+5. **开启 Pages**：在 `ServeStatic/Chat` 的 **Settings → Pages** 选择
+   *Build and deployment → Source: Deploy from a branch*，分支 `gh-pages`、目录 `/ (root)`。
 
-> **注意**：项目页的 URL 路径大小写敏感，因此 `--base-href` 用的是 `/Chat/`、`/Chat/admin/`。
-> 若改用自定义域或组织主页，需相应改为 `/`、`/admin/`。
+> 项目页 URL 大小写敏感，`--base-href` 使用 `/Chat/`、`/Chat/admin/`；自定义域或组织主页需改为 `/`、`/admin/`。
 
-### 客户端功能：扫一扫 / 配置链接 / 下载页
+### 客户端功能
 
-用户端（`client/flutter_chat`，Flutter）提供以下便捷能力，详见 [`docs/HELP.md`](docs/HELP.md)：
-
-- **扫码（扫一扫）**：登录页与「发现」页均入口，可扫描
-  - 普通网页链接 → 直接打开；
-  - `fairchat://config?...` 配置链接 → 一键导入服务器地址、品牌名、Logo、下载页等；
-  - 纯文本 → 弹窗显示。
-- **下载页**：<https://servestatic.github.io/Chat/download/>，列出各架构 APK，每个卡片带二维码；
-  登录页也提供「下载客户端」按钮，跳转到该下载页。
-- **配置链接生成器**：<https://servestatic.github.io/Chat/config/>，可视化生成 `fairchat://config` 链接，
-  可嵌入二维码方便分发。
+- **扫一扫**：登录页与「发现」页入口，可识别网页链接、配置链接（`fairchat://config`）、纯文本。
+- **下载页**：<https://servestatic.github.io/Chat/download/>，各架构 APK 带二维码。
+- **配置链接生成器**：<https://servestatic.github.io/Chat/config/>，可视化生成 `fairchat://config` 链接。
 
 ---
 
-## 6. 已知边界与后续扩展
-- **持久化**：当前为内存友好型 PostgreSQL + EF Core，未做消息分页游标 / 已读回执落库（协议已预留 `ReadReceipt` 事件）。
-- **水平扩展**：SignalR 目前为单机内存 `PresenceTracker`；多实例需接入 `Backplane`（Redis）+ 外部 ID 分发（如 Redis / 数据库序列）。
-- **安全**：JWT 密钥与 CORS 为演示配置，生产请使用强密钥、HTTPS、严格 CORS 源、文件类型 / 大小校验与病毒扫描。
+## 5. 已知边界与后续扩展
+
+- **持久化**：PostgreSQL + EF Core，未做消息分页游标 / 已读回执落库（协议已预留 `ReadReceipt`）。
+- **水平扩展**：SignalR 单机内存 `PresenceTracker`；多实例需 Redis Backplane + 外部 ID 分发。
+- **安全**：JWT 密钥与 CORS 为演示配置，生产请用强密钥、HTTPS、严格 CORS、文件校验与病毒扫描。
 - **推送**：原生端生产建议接入 FCM / APNs 做离线推送（SignalR 仅在线实时通道）。
