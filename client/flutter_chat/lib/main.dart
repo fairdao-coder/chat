@@ -8,6 +8,7 @@ import 'config/app_config.dart';
 import 'l10n/app_localizations.dart';
 import 'providers/auth_provider.dart';
 import 'providers/call_provider.dart';
+import 'providers/config_link_provider.dart';
 import 'providers/locale_provider.dart';
 import 'providers/theme_mode_provider.dart';
 import 'pages/call_overlay.dart';
@@ -60,6 +61,8 @@ class _MyAppState extends ConsumerState<MyApp> {
     ref.read(authProvider.notifier).init();
     // 預實例化通話控制器，使其訂閱 SignalR 來電事件（否則來電期間 overlay 不顯示）。
     ref.read(callProvider);
+    // 配置深鏈監聽（App 級別）：任何頁面收到配置鏈接都會彈確認框。
+    ref.read(configLinkProvider);
   }
 
   @override

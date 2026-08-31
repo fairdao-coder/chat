@@ -147,6 +147,11 @@ class L10n {
     '确定要应用这些配置吗？': '确定要应用这些配置吗？',
     '应用': '应用',
     '配置已应用': '配置已应用',
+    '扫一扫导入配置': '扫一扫导入配置',
+    '将二维码放入框内，即可自动识别': '将二维码放入框内，即可自动识别',
+    '切换摄像头': '切换摄像头',
+    '闪光灯': '闪光灯',
+    '扫码结果': '扫码结果',
   };
 
   static const Map<String, String> _zhHant = {
@@ -267,6 +272,11 @@ class L10n {
     '确定要应用这些配置吗？': '確定要套用這些設定嗎？',
     '应用': '套用',
     '配置已应用': '設定已套用',
+    '扫一扫导入配置': '掃一掃匯入設定',
+    '将二维码放入框内，即可自动识别': '將 QR Code 放入框內，即可自動辨識',
+    '切换摄像头': '切換鏡頭',
+    '闪光灯': '閃光燈',
+    '扫码结果': '掃描結果',
   };
 
   static const Map<String, String> _en = {
@@ -387,6 +397,11 @@ class L10n {
     '确定要应用这些配置吗？': 'Apply these settings?',
     '应用': 'Apply',
     '配置已应用': 'Configuration applied',
+    '扫一扫导入配置': 'Scan to import config',
+    '将二维码放入框内，即可自动识别': 'Place the QR code within the frame to scan automatically',
+    '切换摄像头': 'Switch camera',
+    '闪光灯': 'Flash',
+    '扫码结果': 'Scan result',
   };
 
   static const Map<String, String> _es = {
@@ -507,6 +522,11 @@ class L10n {
     '确定要应用这些配置吗？': '¿Aplicar esta configuración?',
     '应用': 'Aplicar',
     '配置已应用': 'Configuración aplicada',
+    '扫一扫导入配置': 'Escanear para importar config',
+    '将二维码放入框内，即可自动识别': 'Coloca el código QR en el marco para escanearlo',
+    '切换摄像头': 'Cambiar cámara',
+    '闪光灯': 'Flash',
+    '扫码结果': 'Resultado del escaneo',
   };
 
   static AppLocalizations _resolve(Locale locale) {

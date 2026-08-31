@@ -199,6 +199,25 @@ server / client / server-admin / client-admin   (质量门禁)
 单文件 100MB 提示阈值。若 CI 日志出现对应 `::warning`，可以从 `build-android` 中
 移除「Build universal APK」步骤，只发布按架构拆分的安装包。
 
+#### iOS 构建
+
+`build-ios` job 在 `macos-latest` runner 上运行（Xcode 只在 macOS 提供，**Windows / Linux 无法编译 iOS**，
+包括本地开发机）。当前产出的是**未签名**的 `Runner.app`：
+
+- 作用：验证 iOS 编译通过（能提前暴露 iOS 独有的插件 / API 兼容性问题），
+  有 Mac 的人可下载后自行签名。
+- 限制：未签名的 app **无法安装到真实 iPhone**，也不能上架。
+- 未加入下载页（对用户无实际用途）。
+
+要产出可安装的 IPA / TestFlight 构建，需要：
+
+1. Apple Developer 账号（年费）与 App ID（`com.servestatic.chat`）。
+2. 分发证书 + Provisioning Profile，导出为 base64 存入仓库 secret。
+3. 在 `build-ios` 中先导入证书到临时 keychain，再执行
+   `flutter build ipa --export-options-plist=...`。
+
+需要的话可以按这套流程补齐。
+
 由于每次部署都是「全新单 commit + force push」，仓库历史不会累积，
 仓库体积约等于一次产物大小。
 

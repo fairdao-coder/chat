@@ -153,6 +153,7 @@ HEAD
       <span>建置時間 <code>${built}</code></span>
       <span>Commit <code>${sha}</code></span>
       <span><a href="../">返回聊天應用</a></span>
+      <span><a href="../config/">設定連結產生器</a></span>
     </footer>
   </div>
 </body>

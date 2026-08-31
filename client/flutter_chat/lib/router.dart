@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -10,14 +11,20 @@ import 'pages/discover_page.dart';
 import 'pages/friend_requests_page.dart';
 import 'pages/login_page.dart';
 import 'pages/main_shell.dart';
+import 'pages/scan_page.dart';
 import 'pages/settings_page.dart';
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
+
+/// Root navigator key. Lets app-level services (e.g. the config-link dialog)
+/// show dialogs without depending on a specific page being mounted.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
 
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authProvider);
   final loggedIn = auth.user != null;
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: loggedIn ? '/' : '/login',
     redirect: (context, state) {
       final goingToLogin = state.matchedLocation == '/login';
@@ -90,6 +97,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/create-group',
         builder: (context, state) => const CreateGroupPage(),
+      ),
+      GoRoute(
+        path: '/scan',
+        builder: (context, state) => const ScanPage(),
       ),
     ],
   );

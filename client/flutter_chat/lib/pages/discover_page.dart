@@ -41,6 +41,12 @@ class DiscoverPage extends ConsumerWidget {
             title: context.tr('创建群聊'),
             onTap: () => context.push('/create-group'),
           ),
+          _Entry(
+            icon: Icons.qr_code_scanner_outlined,
+            color: Colors.teal,
+            title: context.tr('扫一扫'),
+            onTap: () => context.push('/scan'),
+          ),
         ],
       ),
     );

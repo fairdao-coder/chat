@@ -330,6 +330,69 @@ jobs:
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
+  # iOS build. Must run on macOS: Xcode is only available there, so this
+  # cannot be produced on a Linux or Windows runner (nor on a dev's Windows
+  # machine) -- Apple's toolchain restriction.
+  #
+  # Currently UNSIGNED: produces Runner.app without a signing identity, which
+  # cannot be installed on a physical iPhone. It is still valuable as a
+  # compile check (catches iOS-only plugin/API breakage) and lets anyone with
+  # a Mac sign it locally. To ship a real IPA/App Store build, add a Developer
+  # certificate + provisioning profile as secrets; see README section 5.
+  #
+  # Gated to main because macOS minutes are billed at 10x Linux on private repos.
+  # ---------------------------------------------------------------------------
+  build-ios:
+    name: Build iOS (unsigned)
+    needs: [client]
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: client/flutter_chat
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.2"
+          cache: true
+
+      - name: Pub get
+        run: flutter pub get
+
+      # Podfile was missing from the repo; `flutter build ios` runs pod install
+      # implicitly, but doing it explicitly surfaces CocoaPods errors sooner.
+      - name: Install CocoaPods dependencies
+        run: cd ios && pod install && cd ..
+
+      - name: Build unsigned iOS app
+        run: |
+          set -euo pipefail
+          args=(--release --no-codesign)
+          if [ -n "${{ vars.PUBLIC_API_BASE }}" ]; then
+            args+=(--dart-define=API_BASE="${{ vars.PUBLIC_API_BASE }}")
+          fi
+          flutter build ios "${args[@]}"
+
+      - name: Package
+        run: |
+          set -euo pipefail
+          mkdir -p ios-out
+          # ditto preserves the .app bundle structure (a plain zip would not).
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/ios/iphoneos/Runner.app ios-out/Runner-unsigned.zip
+          ls -lh ios-out
+
+      - name: Upload iOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-unsigned
+          path: ios-out
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
   # Merge the web build and the Android APKs into the final published tree:
   #     /          -> chat client
   #     /admin/    -> admin client
@@ -362,6 +425,20 @@ jobs:
           sed -i 's/\r$//' .github/scripts/gen-download-page.sh
           version="$(sed -n 's/^version:[[:space:]]*//p' client/flutter_chat/pubspec.yaml | head -1 | tr -d '\r')"
           bash .github/scripts/gen-download-page.sh "$PWD/dist/download" "$version" "${GITHUB_SHA::7}"
+
+      - name: Generate config link page
+        run: |
+          set -euo pipefail
+          sed -i 's/\r$//' .github/scripts/gen-config-page.sh
+          version="$(sed -n 's/^version:[[:space:]]*//p' client/flutter_chat/pubspec.yaml | head -1 | tr -d '\r')"
+          bash .github/scripts/gen-config-page.sh "$PWD/dist/config" "$version" "${GITHUB_SHA::7}"
+
+      - name: Copy config page SPA fallback
+        if: always()
+        run: |
+          set -euo pipefail
+          # 與聊天客戶端一致：刷新 /config/ 深鏈時需要 404 回退。
+          cp dist/config/index.html dist/config/404.html 2>/dev/null || true
 
       - name: Upload final site
         uses: actions/upload-artifact@v4
