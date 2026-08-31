@@ -29,8 +29,8 @@ final configLinkProvider =
   return ConfigLinkController(ref);
 });
 
-/// 配置項三元組，與 AppConfig.parseLink 的返回一致。
-typedef LinkConfig = ({String? name, String? api, String? logo});
+/// 配置項，與 AppConfig.parseLink 的返回一致。
+typedef LinkConfig = ({String? name, String? api, String? logo, String? download});
 
 class ConfigLinkController extends StateNotifier<bool> {
   final Ref _ref;
@@ -148,6 +148,7 @@ class _ConfigDialog extends StatelessWidget {
           if (cfg.name != null) _cfgRow(c, c.tr('应用名'), cfg.name!),
           if (cfg.api != null) _cfgRow(c, c.tr('服务器地址'), cfg.api!),
           if (cfg.logo != null) _cfgRow(c, 'Logo', cfg.logo!, isLogo: true),
+          if (cfg.download != null) _cfgRow(c, c.tr('下载页地址'), cfg.download!),
           const SizedBox(height: 10),
           Text(
             c.tr('确定要应用这些配置吗？'),

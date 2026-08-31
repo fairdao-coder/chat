@@ -154,6 +154,7 @@ class L10n {
     '扫码结果': '扫码结果',
     '下载客户端': '下载客户端',
     '无法打开下载页': '无法打开下载页',
+    '下载页地址': '下载页地址',
   };
 
   static const Map<String, String> _zhHant = {
@@ -281,6 +282,7 @@ class L10n {
     '扫码结果': '掃描結果',
     '下载客户端': '下載客戶端',
     '无法打开下载页': '無法開啟下載頁',
+    '下载页地址': '下載頁地址',
   };
 
   static const Map<String, String> _en = {
@@ -408,6 +410,7 @@ class L10n {
     '扫码结果': 'Scan result',
     '下载客户端': 'Download app',
     '无法打开下载页': 'Could not open download page',
+    '下载页地址': 'Download page URL',
   };
 
   static const Map<String, String> _es = {
@@ -535,6 +538,7 @@ class L10n {
     '扫码结果': 'Resultado del escaneo',
     '下载客户端': 'Descargar app',
     '无法打开下载页': 'No se pudo abrir la página de descarga',
+    '下载页地址': 'URL de la página de descarga',
   };
 
   static AppLocalizations _resolve(Locale locale) {
