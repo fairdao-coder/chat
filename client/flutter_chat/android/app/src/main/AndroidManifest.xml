@@ -17,7 +17,7 @@
     <!-- 开发期允许访问 http:// 后端（如 localhost / 内网 IP）。
          生产环境应改为 https 并移除该属性。 -->
     <application
-        android:label="flutter_chat"
+        android:label="My Chat"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
@@ -41,6 +41,14 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- 配置深链：fairchat://config?name=品牌名&api=服务器地址
+                 分享该链接给用户，点开后登录页弹确认框一键完成配置。 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="fairchat" android:host="config" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

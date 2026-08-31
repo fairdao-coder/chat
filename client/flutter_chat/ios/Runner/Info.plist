@@ -6,8 +6,20 @@
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<!-- 配置深链：fairchat://config?name=品牌名&api=服务器地址 -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.servestatic.chat</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>fairchat</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleDisplayName</key>
-	<string>Flutter Chat</string>
+	<string>My Chat</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

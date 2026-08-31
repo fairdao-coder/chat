@@ -139,6 +139,14 @@ class L10n {
     '扫一扫': '扫一扫',
     '简体中文': '简体中文',
     '繁體中文': '繁體中文',
+    '服务器地址': '服务器地址',
+    '修改后随登录自动生效': '修改后随登录自动生效',
+    '服务器地址已保存': '服务器地址已保存',
+    '检测到配置链接': '检测到配置链接',
+    '应用名': '应用名',
+    '确定要应用这些配置吗？': '确定要应用这些配置吗？',
+    '应用': '应用',
+    '配置已应用': '配置已应用',
   };
 
   static const Map<String, String> _zhHant = {
@@ -251,6 +259,14 @@ class L10n {
     '扫一扫': '掃一掃',
     '简体中文': '簡體中文',
     '繁體中文': '繁體中文',
+    '服务器地址': '伺服器位址',
+    '修改后随登录自动生效': '修改後隨登入自動生效',
+    '服务器地址已保存': '伺服器位址已儲存',
+    '检测到配置链接': '檢測到配置連結',
+    '应用名': '應用名稱',
+    '确定要应用这些配置吗？': '確定要套用這些設定嗎？',
+    '应用': '套用',
+    '配置已应用': '設定已套用',
   };
 
   static const Map<String, String> _en = {
@@ -363,6 +379,14 @@ class L10n {
     '扫一扫': 'Scan',
     '简体中文': '简体中文',
     '繁體中文': '繁體中文',
+    '服务器地址': 'Server address',
+    '修改后随登录自动生效': 'Changes apply automatically on sign-in',
+    '服务器地址已保存': 'Server address saved',
+    '检测到配置链接': 'Configuration link detected',
+    '应用名': 'App name',
+    '确定要应用这些配置吗？': 'Apply these settings?',
+    '应用': 'Apply',
+    '配置已应用': 'Configuration applied',
   };
 
   static const Map<String, String> _es = {
@@ -475,6 +499,14 @@ class L10n {
     '扫一扫': 'Escanear',
     '简体中文': '简体中文',
     '繁體中文': '繁體中文',
+    '服务器地址': 'Dirección del servidor',
+    '修改后随登录自动生效': 'Los cambios se aplican al iniciar sesión',
+    '服务器地址已保存': 'Dirección del servidor guardada',
+    '检测到配置链接': 'Enlace de configuración detectado',
+    '应用名': 'Nombre de la aplicación',
+    '确定要应用这些配置吗？': '¿Aplicar esta configuración?',
+    '应用': 'Aplicar',
+    '配置已应用': 'Configuración aplicada',
   };
 
   static AppLocalizations _resolve(Locale locale) {

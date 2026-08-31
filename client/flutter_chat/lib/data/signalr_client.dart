@@ -16,6 +16,10 @@ import '../models/message_dto.dart';
 class ChatHubClient {
   HubConnection? _connection;
   String? _token;
+  // 記錄當前連接指向的 hub 地址；登錄頁修改服務器地址後，
+  // connect() 據此丟棄舊連接、按新地址重建，而無需更換本單例
+  // （callProvider 等既有訂閱者因此自動跟隨新地址）。
+  String? _connectedUrl;
 
   final _messageController = StreamController<MessageDto>.broadcast();
   final _onlineController = StreamController<String>.broadcast();
@@ -48,6 +52,16 @@ class ChatHubClient {
 
   Future<void> connect(String token) async {
     _token = token;
+    // 服務器地址被修改後：丟棄指向舊地址的連接，按新地址重建。
+    final url = AppConfig.hubUrl;
+    if (_connection != null && _connectedUrl != url) {
+      try {
+        await _connection!.stop();
+      } catch (_) {}
+      _connection = null;
+    }
+    _connectedUrl = url;
+
     if (_connection != null) {
       if (_connection!.state == HubConnectionState.Disconnected) {
         await _connection!.start();
