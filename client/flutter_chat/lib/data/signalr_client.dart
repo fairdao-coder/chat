@@ -5,6 +5,7 @@ import 'package:signalr_netcore/signalr_client.dart';
 import '../config/app_config.dart';
 import '../config/constants.dart';
 import '../models/call_signal.dart';
+import '../models/friend_request_dto.dart';
 import '../models/message_dto.dart';
 
 /// Singleton wrapper around the SignalR `/hubs/chat` connection.
@@ -25,6 +26,7 @@ class ChatHubClient {
   final _onlineController = StreamController<String>.broadcast();
   final _offlineController = StreamController<String>.broadcast();
   final _stateController = StreamController<bool>.broadcast();
+  final _friendRequestCtl = StreamController<FriendRequestDto>.broadcast();
 
   // 通話信令事件
   final _incomingCallCtl = StreamController<CallInvite>.broadcast();
@@ -39,6 +41,7 @@ class ChatHubClient {
   Stream<String> get onUserOnline => _onlineController.stream;
   Stream<String> get onUserOffline => _offlineController.stream;
   Stream<bool> get onConnectionState => _stateController.stream;
+  Stream<FriendRequestDto> get onFriendRequest => _friendRequestCtl.stream;
 
   Stream<CallInvite> get onIncomingCall => _incomingCallCtl.stream;
   Stream<String> get onCallAccepted => _callAcceptedCtl.stream;
@@ -92,6 +95,15 @@ class ChatHubClient {
     });
     _connection!.on(HubEvents.userOffline, (args) {
       if (args != null && args.isNotEmpty) _offlineController.add(args[0].toString());
+    });
+    _connection!.on(HubEvents.receiveFriendRequest, (args) {
+      if (args != null && args.isNotEmpty) {
+        try {
+          _friendRequestCtl.add(FriendRequestDto.fromJson(args[0] as Map<String, dynamic>));
+        } catch (_) {
+          // ignore malformed payloads
+        }
+      }
     });
 
     // 通話信令

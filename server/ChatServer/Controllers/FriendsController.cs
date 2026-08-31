@@ -1,8 +1,10 @@
 using ChatServer.Data;
 using ChatServer.DTOs;
 using ChatServer.Entities;
+using ChatServer.Hubs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChatServer.Controllers;
@@ -13,7 +15,12 @@ namespace ChatServer.Controllers;
 public class FriendsController : ApiControllerBase
 {
     private readonly AppDbContext _db;
-    public FriendsController(AppDbContext db) => _db = db;
+    private readonly IHubContext<ChatHub> _hub;
+    public FriendsController(AppDbContext db, IHubContext<ChatHub> hub)
+    {
+        _db = db;
+        _hub = hub;
+    }
 
     [HttpPost("request")]
     public async Task<IActionResult> SendRequest([FromBody] Guid friendId)
@@ -22,13 +29,23 @@ public class FriendsController : ApiControllerBase
         if (!await _db.Users.AnyAsync(u => u.Id == friendId)) return NotFound("用戶不存在");
         if (await _db.Friendships.AnyAsync(f => f.RequesterId == UserId && f.AddresseeId == friendId))
             return Conflict("請求已存在");
-        _db.Friendships.Add(new Friendship
+        var fs = new Friendship
         {
             RequesterId = UserId,
             AddresseeId = friendId,
             Status = FriendshipStatus.Pending
-        });
+        };
+        _db.Friendships.Add(fs);
         await _db.SaveChangesAsync();
+
+        // 实时通知被邀请方，使其无需重启 App 即可在好友请求里看到新邀请。
+        var requester = await _db.Users
+            .Where(u => u.Id == UserId)
+            .Select(u => new FriendRequestDto(fs.Id, u.Id, u.UserName, u.NickName, u.AvatarUrl, fs.CreatedAt))
+            .FirstAsync();
+        await _hub.Clients.User(friendId.ToString())
+            .SendAsync("ReceiveFriendRequest", requester);
+
         return Ok();
     }
 

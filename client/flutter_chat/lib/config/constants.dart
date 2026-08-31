@@ -38,6 +38,7 @@ class HubEvents {
   static const String receiveMessage = 'ReceiveMessage';
   static const String userOnline = 'UserOnline';
   static const String userOffline = 'UserOffline';
+  static const String receiveFriendRequest = 'ReceiveFriendRequest';
   // 通話信令
   static const String incomingCall = 'OnIncomingCall';
   static const String callAccepted = 'OnCallAccepted';

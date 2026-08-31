@@ -8,6 +8,7 @@ import 'config/app_config.dart';
 import 'l10n/app_localizations.dart';
 import 'providers/auth_provider.dart';
 import 'providers/call_provider.dart';
+import 'providers/conversations_provider.dart';
 import 'providers/config_link_provider.dart';
 import 'providers/locale_provider.dart';
 import 'providers/theme_mode_provider.dart';
@@ -63,6 +64,8 @@ class _MyAppState extends ConsumerState<MyApp> {
     ref.read(callProvider);
     // 配置深鏈監聽（App 級別）：任何頁面收到配置鏈接都會彈確認框。
     ref.read(configLinkProvider);
+    // 監聽好友請求推送：收到新邀請即時刷新好友請求列表與紅點（無需重啟 App）。
+    ref.read(friendRequestPushProvider);
   }
 
   @override
