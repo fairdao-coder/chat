@@ -31,6 +31,9 @@ class _ScanPageState extends ConsumerState<ScanPage> {
   // 相机初始化失败时的错误信息（简体中文 key，会自动 fallback）。
   String? _cameraError;
 
+  // 最近一次底层错误对象，用于调试展示。
+  Object? _lastScannerError;
+
   @override
   void initState() {
     super.initState();
@@ -57,24 +60,38 @@ class _ScanPageState extends ConsumerState<ScanPage> {
     // 在权限未授权前不要创建 controller，否则 mobile_scanner 会报
     // "An unexpected error occurred"。
     if (_cameraGranted != true) return;
+    if (!mounted) return;
     _scannerLog('启动相机');
-    _controller?.dispose();
-    final controller = MobileScannerController(
-      detectionSpeed: DetectionSpeed.normal,
-      facing: CameraFacing.back,
-    );
-    if (!mounted) {
-      controller.dispose();
-      return;
-    }
+    // 先停止并释放旧 controller，再清状态；否则旧 session 未释放会导致
+    // 新 controller 初始化失败（"An unexpected error occurred"）。
+    _stopScanner();
     setState(() {
-      _controller = controller;
       _cameraError = null;
+      _lastScannerError = null;
     });
+
+    // 给页面切换 / 相机关闭预留一点时间，避免某些机型因
+    // 旧 camera session 未完全释放而立即初始化失败。
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
+
+    try {
+      final controller = MobileScannerController(
+        detectionSpeed: DetectionSpeed.normal,
+        facing: CameraFacing.back,
+        formats: [BarcodeFormat.all],
+      );
+      _scannerLog('创建相机控制器');
+      setState(() => _controller = controller);
+    } catch (e) {
+      _scannerLog('创建控制器异常: $e');
+      if (mounted) setState(() => _cameraError = context.tr('相机启动失败'));
+    }
   }
 
   void _stopScanner() {
     _scannerLog('停止相机');
+    _controller?.stop().ignore();
     _controller?.dispose();
     _controller = null;
   }
@@ -82,7 +99,10 @@ class _ScanPageState extends ConsumerState<ScanPage> {
   void _onScannerError(Object error, BuildContext context) {
     _scannerLog('相机错误: $error');
     if (!mounted) return;
-    setState(() => _cameraError = context.tr('相机启动失败'));
+    setState(() {
+      _cameraError = context.tr('相机启动失败');
+      _lastScannerError = error;
+    });
   }
 
   void _scannerLog(String message) {
@@ -216,13 +236,29 @@ class _ScanPageState extends ConsumerState<ScanPage> {
                 textAlign: TextAlign.center,
               ),
               if (_cameraError != null) ...[
+                if (_lastScannerError != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _lastScannerError.toString(),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: cs.error),
+                    textAlign: TextAlign.center,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
                 const SizedBox(height: 20),
                 FilledButton.icon(
                   icon: const Icon(Icons.refresh),
                   label: Text(loc.t('重试')),
-                  onPressed: () {
-                    setState(() => _cameraError = null);
-                    _startScanner();
+                  onPressed: () async {
+                    setState(() {
+                      _cameraError = null;
+                      _lastScannerError = null;
+                    });
+                    await _startScanner();
                   },
                 ),
               ] else ...[

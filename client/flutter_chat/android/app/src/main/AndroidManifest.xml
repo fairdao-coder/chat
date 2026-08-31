@@ -11,8 +11,11 @@
         android:usesPermissionFlags="neverForLocation"
         android:label="@string/microphone_usage" />
 
-    <!-- 视频通话：摄像头权限（flutter_webrtc 必需）。 -->
+    <!-- 视频通话 / 扫码：摄像头权限（flutter_webrtc / mobile_scanner 必需）。 -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- 声明相机硬件特性；required="false" 让无相机设备也能安装，
+         但运行时仍会动态检查并拒绝无法使用相机的场景。 -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <!-- 开发期允许访问 http:// 后端（如 localhost / 内网 IP）。
          生产环境应改为 https 并移除该属性。 -->
