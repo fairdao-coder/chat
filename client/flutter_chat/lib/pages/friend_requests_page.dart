@@ -70,17 +70,27 @@ class FriendRequestsPage extends ConsumerWidget {
                           FilledButton(
                             onPressed: () async {
                               final messenger = ScaffoldMessenger.of(context);
+                              // 提前捕获文案，避免 async 间隙使用 BuildContext。
+                              final greet = context.tr('我们已成了好朋友');
+                              final added = context.tr('已添加');
                               try {
                                 await ref
                                     .read(apiProvider)
                                     .acceptFriendRequest(r.userId);
+                                // 接受後自動向對方發一條歡迎語（REST 兜底，即時推送）。
+                                try {
+                                  await ref
+                                      .read(apiProvider)
+                                      .sendPrivateText(r.userId, greet);
+                                } catch (_) {
+                                  // 問候語失敗不影響好友添加結果。
+                                }
                                 // 這裡是 onPressed 閉包，沒有 State.mounted，改用 context.mounted。
                                 if (!context.mounted) return;
                                 ref.invalidate(friendRequestsProvider);
                                 ref.invalidate(conversationsProvider);
                                 messenger.showSnackBar(SnackBar(
-                                    content: Text(
-                                        '${context.tr('已添加')} ${r.nickName}')));
+                                    content: Text('$added ${r.nickName}')));
                               } on ApiException catch (e) {
                                 messenger.showSnackBar(
                                     SnackBar(content: Text(e.message)));

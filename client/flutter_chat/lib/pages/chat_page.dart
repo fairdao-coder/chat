@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -216,6 +217,31 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       developer.log('voice upload error',
           name: 'chat', error: e, stackTrace: st);
       _toast('${_lt('语音消息')}: $e');
+    }
+  }
+
+  /// 取消錄音：停止並丟棄當前錄音，不發送任何消息。
+  Future<void> _cancelRecording() async {
+    if (!_recording) return;
+    _recordTimer?.cancel();
+    try {
+      await _recorder.stop();
+    } catch (e, st) {
+      developer.log('cancel recording stop error',
+          name: 'chat', error: e, stackTrace: st);
+    }
+    final path = kIsWeb
+        ? null
+        : (_recordPath != null && _recordPath!.isNotEmpty
+            ? _recordPath!
+            : null);
+    _recordPath = null;
+    if (mounted) setState(() => _recording = false);
+    // 清理臨時錄音文件，避免殘留。
+    try {
+      if (path != null) await File(path).delete();
+    } catch (_) {
+      // ignore cleanup errors
     }
   }
 
@@ -439,6 +465,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             recordSeconds: _recordSeconds,
             onRecordStart: _startRecording,
             onRecordStop: _stopRecording,
+            onRecordCancel: _cancelRecording,
             controller: _ctrl,
           ),
         ],
@@ -499,36 +526,42 @@ class _Bubble extends StatelessWidget {
           if (!isMe && m.senderName.isNotEmpty) _senderName(context),
           GestureDetector(
             onTap: () => openImageViewer(context, url),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: CachedNetworkImage(
-                imageUrl: url,
-                width: 200,
-                height: 200,
-                fit: BoxFit.cover,
-                placeholder: (c, _) => Container(
-                  width: 200,
-                  height: 200,
-                  color: dark
-                      ? AppColors.darkSurfaceVariant
-                      : const Color(0xFFEDF4F2),
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (c, _, __) => Container(
-                  width: 200,
-                  height: 200,
-                  color: dark
-                      ? AppColors.darkSurfaceVariant
-                      : const Color(0xFFEDF4F2),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.broken_image_outlined),
-                        const SizedBox(height: 4),
-                        Text(context.tr('加载失败·点击打开'),
-                            style: const TextStyle(fontSize: 12)),
-                      ],
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: 200,
+                maxHeight: 280,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: CachedNetworkImage(
+                  imageUrl: url,
+                  fit: BoxFit.contain,
+                  placeholder: (c, _) => AspectRatio(
+                    aspectRatio: 1,
+                    child: Container(
+                      color: dark
+                          ? AppColors.darkSurfaceVariant
+                          : const Color(0xFFEDF4F2),
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                  ),
+                  errorWidget: (c, _, __) => AspectRatio(
+                    aspectRatio: 1,
+                    child: Container(
+                      color: dark
+                          ? AppColors.darkSurfaceVariant
+                          : const Color(0xFFEDF4F2),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.broken_image_outlined),
+                            const SizedBox(height: 4),
+                            Text(context.tr('加载失败·点击打开'),
+                                style: const TextStyle(fontSize: 12)),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -758,6 +791,7 @@ class _InputBar extends StatefulWidget {
   final int recordSeconds;
   final VoidCallback? onRecordStart;
   final VoidCallback? onRecordStop;
+  final VoidCallback? onRecordCancel;
   const _InputBar({
     required this.controller,
     required this.onSend,
@@ -768,6 +802,7 @@ class _InputBar extends StatefulWidget {
     this.recordSeconds = 0,
     this.onRecordStart,
     this.onRecordStop,
+    this.onRecordCancel,
   });
 
   @override
@@ -938,10 +973,46 @@ class _InputBarState extends State<_InputBar> {
                           const Icon(Icons.fiber_manual_record,
                               color: Colors.red, size: 12),
                           const SizedBox(width: 8),
-                          Text(
+                          Expanded(
+                            child: Text(
                               '${context.tr('正在录音')} ${widget.recordSeconds}″',
                               style:
-                                  TextStyle(color: cs.onSurfaceVariant)),
+                                  TextStyle(color: cs.onSurfaceVariant),
+                            ),
+                          ),
+                          // 取消录音
+                          InkWell(
+                            onTap: widget.onRecordCancel,
+                            borderRadius: BorderRadius.circular(6),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              child: Text(
+                                context.tr('取消'),
+                                style: TextStyle(
+                                    color: cs.error, fontSize: 14),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          // 完成并发送
+                          Material(
+                            color: AppColors.brand,
+                            borderRadius: BorderRadius.circular(6),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(6),
+                              onTap: widget.onRecordStop,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
+                                child: Text(
+                                  context.tr('完成'),
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 14),
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       )
                     : TextField(

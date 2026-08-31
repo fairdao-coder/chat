@@ -8,12 +8,36 @@ import '../providers/presence_provider.dart';
 import '../widgets/app_avatar.dart';
 import '../widgets/empty_state.dart';
 
-/// 通訊錄 tab：列出全部好友，按暱稱排序；點擊進入私聊。
-class ContactsPage extends ConsumerWidget {
+/// 通訊錄 tab：列出全部好友，按暱稱排序；支援搜尋；點擊進入私聊。
+class ContactsPage extends ConsumerStatefulWidget {
   const ContactsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ContactsPage> createState() => _ContactsPageState();
+}
+
+class _ContactsPageState extends ConsumerState<ContactsPage> {
+  final _queryCtl = TextEditingController();
+  var _query = '';
+
+  @override
+  void dispose() {
+    _queryCtl.dispose();
+    super.dispose();
+  }
+
+  List<dynamic> _filter(List<dynamic> friends) {
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return friends;
+    return friends.where((f) {
+      final name = (f.nickName ?? '').toString().toLowerCase();
+      final userName = (f.userName ?? '').toString().toLowerCase();
+      return name.contains(q) || userName.contains(q);
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final friendsAsync = ref.watch(friendsProvider);
     final onlineIds = ref.watch(presenceProvider);
 
@@ -28,31 +52,81 @@ class ContactsPage extends ConsumerWidget {
           ),
         ],
       ),
-      body: friendsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('${context.tr('加载失败')}: $e')),
-        data: (friends) => friends.isEmpty
-            ? EmptyState(
-                icon: Icons.contacts_outlined,
-                title: context.tr('暂无好友'),
-                subtitle: context.tr('还没有好友，添加一个开始聊天'),
-                action: FilledButton.icon(
-                  onPressed: () => context.push('/add-friend'),
-                  icon: const Icon(Icons.person_add_alt_1),
-                  label: Text(context.tr('添加好友')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+            child: TextField(
+              controller: _queryCtl,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: context.tr('搜索'),
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _query.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _queryCtl.clear();
+                          setState(() => _query = '');
+                        },
+                      )
+                    : null,
+                isDense: true,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide.none,
                 ),
-              )
-            : ListView(
-                children: [
-                  _SectionHeader(title: context.tr('好友')),
-                  ...friends.map(
-                    (f) => _FriendTile(
-                      user: f,
-                      online: onlineIds.contains(f.id),
-                    ),
-                  ),
-                ],
+                fillColor: Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withValues(alpha: 0.5),
+                filled: true,
               ),
+              onChanged: (v) => setState(() => _query = v),
+            ),
+          ),
+          Expanded(
+            child: friendsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) =>
+                  Center(child: Text('${context.tr('加载失败')}: $e')),
+              data: (friends) {
+                final list = _filter(friends);
+                if (friends.isEmpty) {
+                  return EmptyState(
+                    icon: Icons.contacts_outlined,
+                    title: context.tr('暂无好友'),
+                    subtitle: context.tr('还没有好友，添加一个开始聊天'),
+                    action: FilledButton.icon(
+                      onPressed: () => context.push('/add-friend'),
+                      icon: const Icon(Icons.person_add_alt_1),
+                      label: Text(context.tr('添加好友')),
+                    ),
+                  );
+                }
+                if (list.isEmpty) {
+                  return Center(
+                    child: Text(context.tr('未找到匹配的好友')),
+                  );
+                }
+                return ListView(
+                  children: [
+                    _SectionHeader(
+                        title: '${context.tr('好友')} (${list.length})'),
+                    ...list.map(
+                      (f) => _FriendTile(
+                        user: f,
+                        online: onlineIds.contains(f.id),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

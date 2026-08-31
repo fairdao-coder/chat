@@ -129,6 +129,15 @@ class ApiClient {
         options: Options(contentType: 'application/json')));
   }
 
+  /// 接受好友后向对方发送一条系统欢迎语（REST 兜底，即使 SignalR 未连也尽量送达）。
+  /// 对应服务端 POST /api/messages/private  body = {to, content}。
+  Future<void> sendPrivateText(String to, String content) async {
+    await _req(() => _dio.post('/api/messages/private', data: {
+          'to': to,
+          'content': content,
+        }));
+  }
+
   Future<List<UserDto>> getFriends() async {
     final data = await _req(() => _dio.get('/api/friends'));
     return (data as List).map((e) => UserDto.fromJson(e)).toList();

@@ -30,6 +30,8 @@ public record MessageDto(
 
 public record CreateGroupRequest(string Name, List<Guid> MemberIds);
 
+public record SendPrivateRequest(string To, string Content);
+
 public record GroupDto(
     Guid Id,
     string Name,
