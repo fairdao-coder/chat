@@ -169,17 +169,18 @@ server / client / server-admin / client-admin   (质量门禁)
 
 ### Android APK
 
-每次部署会构建两类安装包，供用户在下载页选择：
+每次部署按 **CPU 架构拆分**构建安装包（不再提供 universal 包，因为 universal APK
+体积会超过 GitHub 单文件 100MB 限制），供用户在下载页选择：
 
 | 文件 | 说明 |
 | --- | --- |
 | `chat-arm64-v8a.apk` | 绝大多数现代手机，体积最小（推荐） |
-| `chat-universal.apk` | 含全部 CPU 架构，任何设备都能装，体积最大 |
 | `chat-armeabi-v7a.apk` | 较旧的 32 位设备 |
 | `chat-x86_64.apk` | 模拟器与部分平板 |
 
 下载页由 `.github/scripts/gen-download-page.sh` 生成，只列出**确实存在**的 APK，
-不会产出指向不存在文件的坏链接。
+不会产出指向不存在文件的坏链接。**每个 APK 卡片都内嵌其下载地址的二维码**，
+手机扫码即可直接下载安装；页尾另提供「聊天应用」「配置生成器」的直达二维码。
 
 #### 关于签名（重要）
 
@@ -193,30 +194,31 @@ server / client / server-admin / client-admin   (质量门禁)
 把 keystore 用 base64 编码存进 secret（如 `ANDROID_KEYSTORE_BASE64`、`ANDROID_KEY_*`），
 在 `build-android` job 中解码后再构建。
 
-#### 关于体积
-
-`flutter_webrtc` 会带入较大的原生库，`chat-universal.apk` 有可能超过 GitHub 的
-单文件 100MB 提示阈值。若 CI 日志出现对应 `::warning`，可以从 `build-android` 中
-移除「Build universal APK」步骤，只发布按架构拆分的安装包。
-
-#### iOS 构建
+#### iOS 构建（可选签名）
 
 `build-ios` job 在 `macos-latest` runner 上运行（Xcode 只在 macOS 提供，**Windows / Linux 无法编译 iOS**，
-包括本地开发机）。当前产出的是**未签名**的 `Runner.app`：
+包括本地开发机）。
 
-- 作用：验证 iOS 编译通过（能提前暴露 iOS 独有的插件 / API 兼容性问题），
-  有 Mac 的人可下载后自行签名。
-- 限制：未签名的 app **无法安装到真实 iPhone**，也不能上架。
-- 未加入下载页（对用户无实际用途）。
+构建**默认是未签名**的 `Runner.app`（仅作为 iOS 编译检查，无法安装到真机）。
+但当仓库配置了以下 secrets 时，会自动导入证书与描述文件，产出**已签名的 `Runner.ipa`**：
 
-要产出可安装的 IPA / TestFlight 构建，需要：
+| Secret | 说明 |
+| --- | --- |
+| `IOS_DIST_CERT_BASE64` | 分发证书 p12，base64 编码 |
+| `IOS_DIST_CERT_PASSWORD` | p12 密码 |
+| `IOS_PROVISIONING_PROFILE_BASE64` | `.mobileprovision`，base64 编码 |
+| `IOS_TEAM_ID`（可选） | Apple Team ID，用于导出选项 |
 
-1. Apple Developer 账号（年费）与 App ID（`com.servestatic.chat`）。
-2. 分发证书 + Provisioning Profile，导出为 base64 存入仓库 secret。
-3. 在 `build-ios` 中先导入证书到临时 keychain，再执行
-   `flutter build ipa --export-options-plist=...`。
+本地编码方式：
 
-需要的话可以按这套流程补齐。
+```bash
+base64 -w0 dist.p12 > cert.b64
+base64 -w0 app.mobileprovision > profile.b64
+```
+
+签名路径使用 `flutter build ipa`（ad-hoc 导出），无需 Mac 即可由 CI 产出可安装的 IPA；
+未配置 secrets 时自动回退到未签名构建，CI 不会因此失败。`ExportOptions.plist` 模板位于
+`client/flutter_chat/ios/ExportOptions.plist`。
 
 由于每次部署都是「全新单 commit + force push」，仓库历史不会累积，
 仓库体积约等于一次产物大小。
@@ -246,10 +248,17 @@ server / client / server-admin / client-admin   (质量门禁)
 2. **（可选）指定线上 API 地址**：在本仓库 **Settings → Secrets and variables → Actions → Variables** 添加
    - `PUBLIC_API_BASE` —— 注入 `AppConfig.defaultApiBase`（`--dart-define=API_BASE`）
    - `PUBLIC_ADMIN_API_BASE` —— 注入 `Constants.apiBaseUrl`（`--dart-define=ADMIN_API_BASE`）
+   - `PUBLIC_WEB_BASE` —— 下载页等静态页的根地址（`gen-download-page.sh` 的第 4 参数），
+     默认 `https://servestatic.github.io/Chat/`。自定义域名时设置，影响下载页里的二维码指向。
 
    不设置的话，发布出去的页面仍会去连 `http://localhost:5298` / `:5299`。
    用户端也可在「设置」中手动覆盖 API 地址（存于 SharedPreferences）。
    建议在首次部署前设好，否则还要再部署一次才生效。
+
+3. **（可选）指定下载页地址**：若静态站点与 API 不在同一域名下，可构建时注入
+   `DOWNLOAD_URL`（`--dart-define=DOWNLOAD_URL=https://example.com/download/`），
+   登录页「下载客户端」按钮与默认 `AppConfig.downloadUrl` 都会用它。
+   也可用配置链接在运行时下发（见 `docs/HELP.md` 的「配置链接」一节）。
 3. **触发首次部署**：push 到 `main`，等 `Deploy to ServeStatic/Chat` job 跑完。
    此时 `ServeStatic/Chat` 才出现 `gh-pages` 分支。
 4. **开启 Pages**：在 `ServeStatic/Chat` 的 **Settings → Pages** 中选择
@@ -258,6 +267,19 @@ server / client / server-admin / client-admin   (质量门禁)
 
 > **注意**：项目页的 URL 路径大小写敏感，因此 `--base-href` 用的是 `/Chat/`、`/Chat/admin/`。
 > 若改用自定义域或组织主页，需相应改为 `/`、`/admin/`。
+
+### 客户端功能：扫一扫 / 配置链接 / 下载页
+
+用户端（`client/flutter_chat`，Flutter）提供以下便捷能力，详见 [`docs/HELP.md`](docs/HELP.md)：
+
+- **扫码（扫一扫）**：登录页与「发现」页均入口，可扫描
+  - 普通网页链接 → 直接打开；
+  - `fairchat://config?...` 配置链接 → 一键导入服务器地址、品牌名、Logo、下载页等；
+  - 纯文本 → 弹窗显示。
+- **下载页**：<https://servestatic.github.io/Chat/download/>，列出各架构 APK，每个卡片带二维码；
+  登录页也提供「下载客户端」按钮，跳转到该下载页。
+- **配置链接生成器**：<https://servestatic.github.io/Chat/config/>，可视化生成 `fairchat://config` 链接，
+  可嵌入二维码方便分发。
 
 ---
 
