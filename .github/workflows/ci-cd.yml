@@ -275,7 +275,7 @@ jobs:
       - name: Build universal APK
         run: |
           set -euo pipefail
-          args=(--release)
+          args=(--release --no-build-cache)
           if [ -n "${{ vars.PUBLIC_API_BASE }}" ]; then
             args+=(--dart-define=API_BASE="${{ vars.PUBLIC_API_BASE }}")
           fi
@@ -284,7 +284,7 @@ jobs:
       - name: Build split-per-abi APKs
         run: |
           set -euo pipefail
-          args=(--release --split-per-abi)
+          args=(--release --split-per-abi --no-build-cache)
           if [ -n "${{ vars.PUBLIC_API_BASE }}" ]; then
             args+=(--dart-define=API_BASE="${{ vars.PUBLIC_API_BASE }}")
           fi
