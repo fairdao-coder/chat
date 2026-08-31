@@ -241,9 +241,10 @@ jobs:
       run:
         working-directory: client/flutter_chat
     env:
-      # CI 環境下禁用 Gradle daemon 與檔案系統監視，避免偶發的
-      # "Already watching path" 錯誤，並減少記憶體佔用。
-      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.vfs.watch=false"
+      # CI 環境下禁用 Gradle daemon、檔案系統監視與 build cache，
+      # 避免偶發的 "Already watching path" 錯誤，並確保 compileSdk 等
+      # 配置變更不會被緩存遮蔽。
+      GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.vfs.watch=false -Dorg.gradle.caching=false"
     steps:
       - uses: actions/checkout@v4
 
@@ -275,7 +276,7 @@ jobs:
       - name: Build universal APK
         run: |
           set -euo pipefail
-          args=(--release --no-build-cache)
+          args=(--release)
           if [ -n "${{ vars.PUBLIC_API_BASE }}" ]; then
             args+=(--dart-define=API_BASE="${{ vars.PUBLIC_API_BASE }}")
           fi
@@ -284,7 +285,7 @@ jobs:
       - name: Build split-per-abi APKs
         run: |
           set -euo pipefail
-          args=(--release --split-per-abi --no-build-cache)
+          args=(--release --split-per-abi)
           if [ -n "${{ vars.PUBLIC_API_BASE }}" ]; then
             args+=(--dart-define=API_BASE="${{ vars.PUBLIC_API_BASE }}")
           fi
