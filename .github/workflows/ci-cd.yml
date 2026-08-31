@@ -389,7 +389,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ios-unsigned
-          path: ios-out
+          # defaults.run.working-directory 不影響 uses 步驟，必須從倉庫根目錄指定完整相對路徑。
+          path: client/flutter_chat/ios-out
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
