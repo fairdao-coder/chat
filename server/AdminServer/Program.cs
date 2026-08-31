@@ -46,7 +46,17 @@ builder.Services.AddScoped<IAuditService, AuditService>();
 // ---- CORS（與 ChatServer 一致；生產請通過 Cors:Origins 顯式配置）----
 builder.Services.AddCors(o => o.AddPolicy("allow", p =>
 {
-    var origins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>();
+    // 支持 JSON 陣列與逗號/空白分隔字串兩種形態（與 ChatServer 一致）。
+    var raw = builder.Configuration["Cors:Origins"];
+    string[]? origins = null;
+    if (!string.IsNullOrWhiteSpace(raw))
+    {
+        origins = raw.Split([',', ';', ' ', '\t', '\n', '\r'],
+                StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => s.Trim())
+            .Where(s => s.Length > 0)
+            .ToArray();
+    }
     if (origins == null || origins.Length == 0)
         origins = new[]
         {

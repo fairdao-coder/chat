@@ -65,7 +65,20 @@ builder.Services.AddScoped<IFileStore, FileStore>();
 // （後者會把請求 Origin 反射回 Access-Control-Allow-Origin，等價於動態允許）。
 builder.Services.AddCors(o => o.AddPolicy("allow", p =>
 {
-    var origins = builder.Configuration.GetSection("Cors:Origins").Get<string[]>();
+    // 支持多種配置形態：
+    //   1) JSON 陣列（appsettings.json："Cors": { "Origins": ["http://a", "http://b"] }）
+    //   2) 逗號/空白分隔字串（環境變數 Cors__Origins=http://a,http://b）
+    // 直接 Get<string[]>() 在字串情況下會按 JSON 解析失敗而回傳 null，故這裡手動分割。
+    var raw = builder.Configuration["Cors:Origins"];
+    string[]? origins = null;
+    if (!string.IsNullOrWhiteSpace(raw))
+    {
+        origins = raw.Split([',', ';', ' ', '\t', '\n', '\r'],
+                StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => s.Trim())
+            .Where(s => s.Length > 0)
+            .ToArray();
+    }
     if (origins == null || origins.Length == 0)
         // 默認允許常見前端開發來源：Vite(5173)、CRA(3000)，以及 Flutter Web 默認端口(8080/8081)。
         // 瀏覽器裡 127.0.0.1 與 localhost 被視為不同源，需分別列出。
