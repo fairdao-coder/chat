@@ -748,7 +748,7 @@ class _VoiceBubbleState extends State<_VoiceBubble> {
   }
 }
 
-class _InputBar extends StatelessWidget {
+class _InputBar extends StatefulWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
   final VoidCallback onImage;
@@ -771,61 +771,181 @@ class _InputBar extends StatelessWidget {
   });
 
   @override
+  State<_InputBar> createState() => _InputBarState();
+}
+
+class _InputBarState extends State<_InputBar> {
+  late TextEditingController _controller;
+  var _hasText = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = widget.controller;
+    _hasText = _controller.text.trim().isNotEmpty;
+    _controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _InputBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onTextChanged);
+      _controller = widget.controller;
+      _controller.addListener(_onTextChanged);
+      _hasText = _controller.text.trim().isNotEmpty;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onTextChanged);
+    super.dispose();
+  }
+
+  void _onTextChanged() {
+    final v = _controller.text.trim().isNotEmpty;
+    if (v != _hasText) setState(() => _hasText = v);
+  }
+
+  void _insertEmoji(String emoji) {
+    final text = _controller.text;
+    final sel = _controller.selection;
+    final newText = text.replaceRange(sel.start, sel.end, emoji);
+    final newSel = TextSelection.collapsed(offset: sel.start + emoji.length);
+    _controller.value = TextEditingValue(text: newText, selection: newSel);
+  }
+
+  void _showPlusSheet() {
+    final cs = Theme.of(context).colorScheme;
+    showModalBottomSheet(
+      context: context,
+      builder: (c) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _ActionItem(
+                icon: Icons.image_outlined,
+                label: context.tr('图片'),
+                onTap: () {
+                  Navigator.of(c).pop();
+                  widget.onImage();
+                },
+              ),
+              _ActionItem(
+                icon: Icons.attach_file_outlined,
+                label: context.tr('文件'),
+                onTap: () {
+                  Navigator.of(c).pop();
+                  widget.onFile();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      backgroundColor: cs.surface,
+    );
+  }
+
+  void _showEmojiSheet() {
+    const emojis = [
+      '😀','😂','🥰','😘','😭','😡','👍','👎','🙏','🎉',
+      '❤️','💔','🔥','👋','🤔','😎','😅','😊','🥳','🤮',
+      '👀','✨','🎁','🎄','🌹','☀️','🌙','⭐','🍎','🍺',
+      '🍰','🎂','🍜','🍕','🍔','⚽','🏀','🏸','🎮','🎵',
+    ];
+    showModalBottomSheet(
+      context: context,
+      builder: (c) => SafeArea(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: emojis.map((e) {
+              return InkWell(
+                onTap: () {
+                  _insertEmoji(e);
+                  Navigator.of(c).pop();
+                },
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: Text(e, style: const TextStyle(fontSize: 28)),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final busy = uploading || recording;
-    final inputBg = dark ? cs.surfaceContainerHighest : const Color(0xFFF5F5F5);
+    final busy = widget.uploading || widget.recording;
+    final inputBg = dark ? cs.surface : Colors.white;
 
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
-          color: dark ? cs.surface : Colors.white,
+          color: dark ? cs.surface : const Color(0xFFF7F7F7),
           border: Border(
-            top: BorderSide(color: cs.outline.withValues(alpha: 0.15)),
+            top: BorderSide(color: cs.outline.withValues(alpha: 0.12)),
           ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            // 语音切换
             IconButton(
-              onPressed: busy ? null : onImage,
-              icon: Icon(Icons.image_outlined, color: cs.onSurfaceVariant),
-              tooltip: context.tr('图片'),
-              style: IconButton.styleFrom(foregroundColor: cs.onSurfaceVariant),
+              onPressed: busy
+                  ? null
+                  : (widget.recording
+                      ? widget.onRecordStop
+                      : widget.onRecordStart),
+              icon: widget.recording
+                  ? const Icon(Icons.stop_circle_rounded, color: Colors.red)
+                  : Icon(Icons.mic_none_rounded, color: cs.onSurfaceVariant),
+              style: IconButton.styleFrom(
+                  foregroundColor: cs.onSurfaceVariant),
             ),
-            IconButton(
-              onPressed: busy ? null : onFile,
-              icon: Icon(Icons.attach_file_outlined, color: cs.onSurfaceVariant),
-              tooltip: context.tr('文件'),
-              style: IconButton.styleFrom(foregroundColor: cs.onSurfaceVariant),
-            ),
+            // 输入框
             Expanded(
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 constraints: const BoxConstraints(
-                  minHeight: 44,
+                  minHeight: 40,
                   maxHeight: 140,
                 ),
                 alignment: Alignment.centerLeft,
                 decoration: BoxDecoration(
                   color: inputBg,
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                      color: cs.outline.withValues(alpha: 0.2)),
                 ),
-                child: recording
+                child: widget.recording
                     ? Row(
                         children: [
                           const Icon(Icons.fiber_manual_record,
                               color: Colors.red, size: 12),
                           const SizedBox(width: 8),
-                          Text('${context.tr('正在录音')} $recordSeconds″',
-                              style: TextStyle(color: cs.onSurfaceVariant)),
+                          Text(
+                              '${context.tr('正在录音')} ${widget.recordSeconds}″',
+                              style:
+                                  TextStyle(color: cs.onSurfaceVariant)),
                         ],
                       )
                     : TextField(
-                        controller: controller,
+                        controller: _controller,
                         keyboardType: TextInputType.multiline,
                         textInputAction: TextInputAction.send,
                         minLines: 1,
@@ -839,46 +959,88 @@ class _InputBar extends StatelessWidget {
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
                           contentPadding:
-                              const EdgeInsets.symmetric(vertical: 12),
+                              const EdgeInsets.symmetric(vertical: 10),
                           isDense: true,
                         ),
-                        onSubmitted: (_) => onSend(),
+                        onSubmitted: (_) => widget.onSend(),
                       ),
               ),
             ),
-            IconButton(
-              onPressed: recording ? onRecordStop : onRecordStart,
-              icon: recording
-                  ? const Icon(Icons.stop_circle_rounded, color: Colors.red)
-                  : Icon(Icons.mic_none_rounded, color: cs.onSurfaceVariant),
-              tooltip: recording ? context.tr('正在录音') : context.tr('语音'),
-              style: IconButton.styleFrom(foregroundColor: cs.onSurfaceVariant),
-            ),
-            if (!recording)
-              uploading
-                  ? const SizedBox(
-                      width: 44,
-                      height: 44,
-                      child: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
-                      ),
-                    )
-                  : Material(
+            // 表情
+            if (!widget.recording)
+              IconButton(
+                onPressed: busy ? null : _showEmojiSheet,
+                icon: Icon(Icons.emoji_emotions_outlined,
+                    color: cs.onSurfaceVariant),
+                style: IconButton.styleFrom(
+                    foregroundColor: cs.onSurfaceVariant),
+              ),
+            // 发送 / 更多
+            if (!widget.recording)
+              _hasText
+                  ? Material(
                       color: AppColors.brand,
                       borderRadius: BorderRadius.circular(8),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(8),
-                        onTap: onSend,
+                        onTap: widget.onSend,
                         child: Container(
-                          width: 44,
-                          height: 44,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
                           alignment: Alignment.center,
-                          child: const Icon(Icons.send_rounded,
-                              color: Colors.white, size: 22),
+                          child: Text(
+                            context.tr('发送'),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500),
+                          ),
                         ),
                       ),
+                    )
+                  : IconButton(
+                      onPressed: busy ? null : _showPlusSheet,
+                      icon: Icon(Icons.add_circle_outline,
+                          color: cs.onSurfaceVariant),
+                      style: IconButton.styleFrom(
+                          foregroundColor: cs.onSurfaceVariant),
                     ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  const _ActionItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: 80,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: cs.onSurfaceVariant),
+            const SizedBox(height: 8),
+            Text(label, style: const TextStyle(fontSize: 13)),
           ],
         ),
       ),
