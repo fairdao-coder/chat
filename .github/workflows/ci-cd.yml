@@ -507,7 +507,13 @@ jobs:
           # bash would otherwise fail on the shebang line.
           sed -i 's/\r$//' .github/scripts/gen-download-page.sh
           version="$(sed -n 's/^version:[[:space:]]*//p' client/flutter_chat/pubspec.yaml | head -1 | tr -d '\r')"
-          bash .github/scripts/gen-download-page.sh "$PWD/dist/download" "$version" "${GITHUB_SHA::7}"
+          # The 4th arg is the deployed site base. Override with the
+          # PUBLIC_WEB_BASE repo variable when serving from a custom domain.
+          site_base="https://servestatic.github.io/Chat/"
+          if [ -n "${{ vars.PUBLIC_WEB_BASE }}" ]; then
+            site_base="${{ vars.PUBLIC_WEB_BASE }}"
+          fi
+          bash .github/scripts/gen-download-page.sh "$PWD/dist/download" "$version" "${GITHUB_SHA::7}" "$site_base"
 
       - name: Generate config link page
         run: |
