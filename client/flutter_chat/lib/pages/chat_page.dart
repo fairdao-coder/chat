@@ -775,74 +775,109 @@ class _InputBar extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final busy = uploading || recording;
+    final inputBg = dark ? cs.surfaceContainerHighest : const Color(0xFFF5F5F5);
+
     return SafeArea(
       child: Container(
-        margin: const EdgeInsets.fromLTRB(10, 4, 10, 10),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
-          color: dark ? AppColors.darkSurface : Colors.white,
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: cs.outline.withValues(alpha: 0.6)),
+          color: dark ? cs.surface : Colors.white,
+          border: Border(
+            top: BorderSide(color: cs.outline.withValues(alpha: 0.15)),
+          ),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             IconButton(
               onPressed: busy ? null : onImage,
-              icon: const Icon(Icons.image_outlined),
+              icon: Icon(Icons.image_outlined, color: cs.onSurfaceVariant),
               tooltip: context.tr('图片'),
+              style: IconButton.styleFrom(foregroundColor: cs.onSurfaceVariant),
             ),
             IconButton(
               onPressed: busy ? null : onFile,
-              icon: const Icon(Icons.attach_file_outlined),
+              icon: Icon(Icons.attach_file_outlined, color: cs.onSurfaceVariant),
               tooltip: context.tr('文件'),
+              style: IconButton.styleFrom(foregroundColor: cs.onSurfaceVariant),
             ),
             Expanded(
-              child: recording
-                  ? Row(
-                      children: [
-                        const Icon(Icons.fiber_manual_record,
-                            color: Colors.red, size: 12),
-                        const SizedBox(width: 8),
-                        Text('${context.tr('正在录音')} $recordSeconds″',
-                            style: TextStyle(color: cs.onSurfaceVariant)),
-                      ],
-                    )
-                  : TextField(
-                      controller: controller,
-                      decoration: InputDecoration(
-                        hintText: context.tr('输入消息…'),
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 8),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                constraints: const BoxConstraints(
+                  minHeight: 44,
+                  maxHeight: 140,
+                ),
+                alignment: Alignment.centerLeft,
+                decoration: BoxDecoration(
+                  color: inputBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: recording
+                    ? Row(
+                        children: [
+                          const Icon(Icons.fiber_manual_record,
+                              color: Colors.red, size: 12),
+                          const SizedBox(width: 8),
+                          Text('${context.tr('正在录音')} $recordSeconds″',
+                              style: TextStyle(color: cs.onSurfaceVariant)),
+                        ],
+                      )
+                    : TextField(
+                        controller: controller,
+                        keyboardType: TextInputType.multiline,
+                        textInputAction: TextInputAction.send,
+                        minLines: 1,
+                        maxLines: null,
+                        decoration: InputDecoration(
+                          hintText: context.tr('输入消息…'),
+                          hintStyle: TextStyle(
+                              color: cs.onSurfaceVariant
+                                  .withValues(alpha: 0.6)),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 12),
+                          isDense: true,
+                        ),
+                        onSubmitted: (_) => onSend(),
                       ),
-                      onSubmitted: (_) => onSend(),
-                    ),
+              ),
             ),
-            const SizedBox(width: 4),
             IconButton(
               onPressed: recording ? onRecordStop : onRecordStart,
               icon: recording
-                  ? const Icon(Icons.stop_circle_rounded)
-                  : const Icon(Icons.mic_none_rounded),
+                  ? const Icon(Icons.stop_circle_rounded, color: Colors.red)
+                  : Icon(Icons.mic_none_rounded, color: cs.onSurfaceVariant),
               tooltip: recording ? context.tr('正在录音') : context.tr('语音'),
-              color: recording ? Colors.red : null,
+              style: IconButton.styleFrom(foregroundColor: cs.onSurfaceVariant),
             ),
             if (!recording)
               uploading
                   ? const SizedBox(
-                      width: 40,
-                      height: 40,
+                      width: 44,
+                      height: 44,
                       child: Padding(
-                        padding: EdgeInsets.all(10),
+                        padding: EdgeInsets.all(12),
                         child: CircularProgressIndicator(strokeWidth: 2.5),
                       ),
                     )
-                  : IconButton.filled(
-                      onPressed: onSend,
-                      icon: const Icon(Icons.send_rounded),
-                      tooltip: context.tr('发送'),
+                  : Material(
+                      color: AppColors.brand,
+                      borderRadius: BorderRadius.circular(8),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: onSend,
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          alignment: Alignment.center,
+                          child: const Icon(Icons.send_rounded,
+                              color: Colors.white, size: 22),
+                        ),
+                      ),
                     ),
           ],
         ),

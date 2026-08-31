@@ -46,7 +46,9 @@ class _ImageViewerPageState extends ConsumerState<ImageViewerPage> {
       if (kIsWeb) {
         // Web 端无法直接写相册，打开新标签页供用户另存。
         final uri = Uri.parse(widget.url);
-        if (await canLaunchUrl(uri)) {
+        final ok = await canLaunchUrl(uri);
+        if (!mounted) return;
+        if (ok) {
           await launchUrl(uri, webOnlyWindowName: '_blank');
         } else {
           _toast(context.tr('保存失败'));
