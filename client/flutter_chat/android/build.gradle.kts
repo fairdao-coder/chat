@@ -18,11 +18,10 @@ subprojects {
 // flutter_plugin_android_lifecycle 2.0.35+ 要求所有依賴它的 Android 子項目
 // compileSdk >= 36，但 file_picker 等插件仍寫死 flutter.compileSdkVersion（34）。
 //
-// AGP 9.1 已把舊 DSL 的 BaseExtension 標記為 ERROR 級棄用——在 Kotlin DSL 中
-// 連類名都不能引用（引用即編譯失敗），而項目 gradle.properties 又是
-// android.newDsl=false（用舊擴展實現，新 DSL 的 CommonExtension 類型對不上）。
-// 因此用反射調用 setter：setCompileSdk(int) 覆蓋新實現，
-// setCompileSdkVersion(int) 覆蓋舊實現，兩種 AGP 配置都能工作。
+// Flutter 3.47 最低要求 AGP 8.11.1，且仍使用舊 DSL（android.newDsl=false）。
+// 故固定 AGP 8.11.1，並保留反射兼容邏輯。
+// 在舊 DSL 下無法直接引用 CommonExtension，故用反射調用 setter：
+// setCompileSdk(int) 覆蓋新 DSL 實現，setCompileSdkVersion(int) 覆蓋舊 DSL 實現。
 //
 // 注意順序：此塊必須位於下方 evaluationDependsOn 之前註冊。evaluationDependsOn
 // 會立即觸發 :app 的評估，若在本塊之後執行，再對已評估的項目調用 afterEvaluate

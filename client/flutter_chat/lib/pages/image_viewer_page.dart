@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:gal/gal.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/app_localizations.dart';
@@ -55,11 +55,11 @@ class _ImageViewerPageState extends ConsumerState<ImageViewerPage> {
         }
         return;
       }
-      final res = await ImageGallerySaver.saveImage(bytes,
-          quality: 100, name: _fileName);
+      await Gal.putImageBytes(bytes, name: _fileName);
       if (!mounted) return;
-      final ok = res is Map && res['isSuccess'] == true;
-      _toast(ok ? context.tr('保存成功') : context.tr('保存失败'));
+      _toast(context.tr('保存成功'));
+    } on GalException catch (e) {
+      if (mounted) _toast('${context.tr('保存失败')}: ${e.type.message}');
     } catch (_) {
       if (mounted) _toast(context.tr('保存失败'));
     } finally {
