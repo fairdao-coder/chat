@@ -52,7 +52,7 @@ builder.Services.AddCors(o => o.AddPolicy("allow", p =>
     string[]? origins = null;
     if (!string.IsNullOrWhiteSpace(raw))
     {
-        Console.WriteLine($"CORS origins: {raw}");
+     
         origins = raw.Split([',', ';', ' ', '\t', '\n', '\r'],
                 StringSplitOptions.RemoveEmptyEntries)
             .Select(s => s.Trim())
@@ -65,8 +65,9 @@ builder.Services.AddCors(o => o.AddPolicy("allow", p =>
             "http://localhost"
         };
     p.AllowAnyHeader().AllowAnyMethod().AllowCredentials().WithOrigins(origins);
-    if (builder.Environment.IsDevelopment())
-        p.SetIsOriginAllowed(_ => true);
+       Console.WriteLine($"CORS origins: {origins.Length} = {string.Join(", ", origins)} ");
+    // 生產環境也允許任意來源回顯（公開登錄/聊天 API），確保預檢通過。
+    p.SetIsOriginAllowed(_ => true);
 }));
 
 builder.Services.AddControllers()
@@ -97,54 +98,6 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
     db.Database.EnsureCreated();
-    // EnsureCreated 不會修改已存在表的列結構；這裡補齊 DiscoverColumns 新增欄位（冪等）。
-    // 舊欄位 Link/Route/Action/Mini 已廢棄，保留不刪以免丟失數據；新邏輯僅使用 Kind + Content。
-    await db.Database.ExecuteSqlRawAsync(
-        "ALTER TABLE \"DiscoverColumns\" ADD COLUMN IF NOT EXISTS \"Kind\" text NOT NULL DEFAULT 'link';" +
-        "ALTER TABLE \"DiscoverColumns\" ADD COLUMN IF NOT EXISTS \"Content\" text;" +
-        "ALTER TABLE \"DiscoverColumns\" ADD COLUMN IF NOT EXISTS \"Pinned\" boolean NOT NULL DEFAULT false;");
-
-    // SystemSettings 為後續新增的單例配置表；EnsureCreated 不會對已存在庫補建新表，
-    // 這裡用冪等建表語句顯式創建（已存在則跳過）。
-    await db.Database.ExecuteSqlRawAsync(
-        "CREATE TABLE IF NOT EXISTS \"SystemSettings\" (" +
-        "\"Id\" uuid PRIMARY KEY, " +
-        "\"ShowOnlineStatus\" boolean NOT NULL DEFAULT true, " +
-        "\"EnableVoiceCall\" boolean NOT NULL DEFAULT true, " +
-        "\"EnableVideoCall\" boolean NOT NULL DEFAULT true, " +
-        "\"AllowFile\" boolean NOT NULL DEFAULT true, " +
-        "\"AllowVoice\" boolean NOT NULL DEFAULT true, " +
-        "\"UpdatedAt\" timestamp NOT NULL DEFAULT now());");
-
-    // 一次性數據遷移：Kind+Content 重構前，舊數據的值存放在 Link/Route/Action/Mini 中。
-    // 按 Kind 把對應舊列回填到 Content（Content 已有值則不覆蓋，冪等）。
-    // 僅當舊列存在時執行——全新建的庫沒有舊列，直接跳過（否則 SQL 報 42703）。
-    var legacyColCount = 0;
-    var dbConn = db.Database.GetDbConnection();
-    if (dbConn.State != System.Data.ConnectionState.Open) await dbConn.OpenAsync();
-    await using (var cmd = dbConn.CreateCommand())
-    {
-        cmd.CommandText =
-            "SELECT count(*) FROM information_schema.columns " +
-            "WHERE table_name = 'DiscoverColumns' " +
-            "  AND column_name IN ('Link','Route','Action','Mini')";
-        legacyColCount = Convert.ToInt32(await cmd.ExecuteScalarAsync());
-    }
-    if (legacyColCount > 0)
-    {
-        await db.Database.ExecuteSqlRawAsync(
-            "UPDATE \"DiscoverColumns\" SET \"Content\" = " +
-            "  CASE \"Kind\"" +
-            "    WHEN 'route' THEN \"Route\"" +
-            "    WHEN 'action' THEN \"Action\"" +
-            "    WHEN 'mini' THEN \"Mini\"" +
-            "    ELSE \"Link\"" +
-            "  END " +
-            "WHERE (\"Content\" IS NULL OR \"Content\" = '') " +
-            "  AND (\"Link\" IS NOT NULL OR \"Route\" IS NOT NULL " +
-            "       OR \"Action\" IS NOT NULL OR \"Mini\" IS NOT NULL);");
-    }
-
     await SeedAsync(db, builder.Configuration);
 }
 
