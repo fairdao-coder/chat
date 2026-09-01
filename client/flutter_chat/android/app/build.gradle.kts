@@ -15,7 +15,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
+ 
     defaultConfig {
         applicationId = "com.servestatic.chat"
         // You can update the following values to match your application needs.
