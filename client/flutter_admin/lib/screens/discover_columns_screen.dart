@@ -480,7 +480,7 @@ class _ColumnDialogState extends State<_ColumnDialog> {
                   label: '類型與內容',
                   children: [
                     DropdownButtonFormField<String>(
-                      value: _kind,
+                      initialValue: _kind,
                       decoration: const InputDecoration(
                         labelText: '欄目類型',
                         prefixIcon: Icon(Icons.segment),
@@ -503,7 +503,7 @@ class _ColumnDialogState extends State<_ColumnDialog> {
                     const SizedBox(height: 18),
                     if (_kind == 'action')
                       DropdownButtonFormField<String>(
-                        value: _action,
+                        initialValue: _action,
                         decoration: const InputDecoration(
                           labelText: '內置動作',
                           prefixIcon: Icon(Icons.flash_on_outlined),
@@ -525,7 +525,7 @@ class _ColumnDialogState extends State<_ColumnDialog> {
                       )
                     else if (_kind == 'tab')
                       DropdownButtonFormField<String>(
-                        value: _tabTarget,
+                        initialValue: _tabTarget,
                         decoration: const InputDecoration(
                           labelText: 'Tab 目標',
                           prefixIcon: Icon(Icons.push_pin_outlined),

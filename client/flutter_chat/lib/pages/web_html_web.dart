@@ -1,4 +1,7 @@
 // Web 端實現：用 dart:html 把內聯 HTML 註冊為 platform view。
+// 此文件僅在 Web 平臺編譯（通過條件導入），dart:html 的棄用與 web 庫提示在此需要忽略。
+// ignore_for_file: deprecated_member_use
+// ignore_for_file: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'dart:ui_web' as ui_web;
 

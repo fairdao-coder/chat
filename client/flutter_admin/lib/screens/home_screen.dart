@@ -141,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                         if (dialogCtx.mounted) Navigator.pop(dialogCtx);
                         if (mounted) {
-                          ScaffoldMessenger.of(this.context).showSnackBar(
+                          ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('密碼修改成功'),
                               backgroundColor: AppTheme.primary,

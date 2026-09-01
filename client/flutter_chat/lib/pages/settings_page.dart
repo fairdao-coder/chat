@@ -319,12 +319,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               onPressed: busy
                   ? null
                   : () async {
+                      if (!mounted) return;
                       if (!formKey.currentState!.validate()) return;
                       setDialogState(() => busy = true);
                       try {
                         await api.changePassword(oldCtrl.text, newCtrl.text);
-                        if (dialogCtx.mounted) Navigator.pop(dialogCtx);
-                        if (mounted) _toast(context.tr('密码修改成功'));
+                        if (dialogCtx.mounted) {
+                          Navigator.pop(dialogCtx);
+                          _toast(dialogCtx.tr('密码修改成功'));
+                        }
                       } on ApiException catch (e) {
                         setDialogState(() => busy = false);
                         if (dialogCtx.mounted) {
@@ -336,7 +339,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         setDialogState(() => busy = false);
                         if (dialogCtx.mounted) {
                           ScaffoldMessenger.of(dialogCtx).showSnackBar(
-                            SnackBar(content: Text(context.tr('网络错误，请重试'))),
+                            SnackBar(content: Text(dialogCtx.tr('网络错误，请重试'))),
                           );
                         }
                       }
