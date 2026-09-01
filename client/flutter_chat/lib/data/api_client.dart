@@ -7,6 +7,7 @@ import '../config/app_config.dart';
 import '../models/auth_result.dart';
 import '../models/contact_dto.dart';
 import '../models/discover_column.dart';
+import '../models/feature_settings.dart';
 import '../models/file_upload_result.dart';
 import '../models/friend_request_dto.dart';
 import '../models/group_dto.dart';
@@ -90,6 +91,18 @@ class ApiClient {
   Future<List<DiscoverColumn>> getDiscoverColumns() async {
     final data = await _req(() => _dio.get('/api/discover'));
     return (data as List).map((e) => DiscoverColumn.fromJson(e)).toList();
+  }
+
+  /// 拉取底部固定導航欄目（pinned=true 且啟用，公開接口）。
+  Future<List<DiscoverColumn>> getPinnedColumns() async {
+    final data = await _req(() => _dio.get('/api/discover/pinned'));
+    return (data as List).map((e) => DiscoverColumn.fromJson(e)).toList();
+  }
+
+  /// 拉取系統功能開關（公開接口，無需登錄）。
+  Future<FeatureSettings> getFeatures() async {
+    final data = await _req(() => _dio.get('/api/features'));
+    return FeatureSettings.fromJson(data as Map<String, dynamic>);
   }
 
   // ---------- Conversations / Contacts ----------

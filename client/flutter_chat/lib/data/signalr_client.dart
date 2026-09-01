@@ -27,6 +27,8 @@ class ChatHubClient {
   final _offlineController = StreamController<String>.broadcast();
   final _stateController = StreamController<bool>.broadcast();
   final _friendRequestCtl = StreamController<FriendRequestDto>.broadcast();
+  // 正在輸入狀態：(對方用戶 ID, 是否正在輸入)
+  final _typingCtl = StreamController<(String, bool)>.broadcast();
 
   // 通話信令事件
   final _incomingCallCtl = StreamController<CallInvite>.broadcast();
@@ -42,6 +44,7 @@ class ChatHubClient {
   Stream<String> get onUserOffline => _offlineController.stream;
   Stream<bool> get onConnectionState => _stateController.stream;
   Stream<FriendRequestDto> get onFriendRequest => _friendRequestCtl.stream;
+  Stream<(String, bool)> get onTyping => _typingCtl.stream;
 
   Stream<CallInvite> get onIncomingCall => _incomingCallCtl.stream;
   Stream<String> get onCallAccepted => _callAcceptedCtl.stream;
@@ -103,6 +106,12 @@ class ChatHubClient {
         } catch (_) {
           // ignore malformed payloads
         }
+      }
+    });
+
+    _connection!.on(HubEvents.typing, (args) {
+      if (args != null && args.length >= 2) {
+        _typingCtl.add((args[0].toString(), args[1] == true));
       }
     });
 
@@ -184,6 +193,16 @@ class ChatHubClient {
   Future<void> leaveGroup(String groupId) async {
     await _ensureConnected();
     await _connection!.invoke(HubMethods.leaveGroup, args: [groupId]);
+  }
+
+  /// 上報"正在輸入"狀態。異常靜默忽略（輸入提示屬錦上添花，不應打斷輸入體驗）。
+  Future<void> sendTyping(String toUserId, bool isTyping) async {
+    try {
+      await _ensureConnected();
+      await _connection!.invoke(HubMethods.sendTyping, args: [toUserId, isTyping]);
+    } catch (_) {
+      // 忽略：連接中斷時自動重連後會由下一輪輸入重新上報。
+    }
   }
 
   // ---- 通話信令 invokes（方法名/參數順序與 ChatHub.cs 保持一致） ----

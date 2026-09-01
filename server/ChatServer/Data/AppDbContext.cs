@@ -13,6 +13,8 @@ public class AppDbContext : DbContext
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<DiscoverColumn> DiscoverColumns => Set<DiscoverColumn>();
+    // 只讀：表由 AdminServer 建立，ChatServer 僅查詢功能開關。
+    public DbSet<SystemSettings> SystemSettings => Set<SystemSettings>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -52,5 +54,7 @@ public class AppDbContext : DbContext
             .OnDelete(DeleteBehavior.NoAction);
 
         b.Entity<DiscoverColumn>().HasIndex(c => c.Sort);
+
+        b.Entity<SystemSettings>().HasKey(s => s.Id);
     }
 }

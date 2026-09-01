@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -23,27 +24,34 @@ final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 void _reportError(Object error) {
   final msg = error.toString();
-  // Some errors are noisy/no-op (e.g. platform gesture noise); keep it short.
-  scaffoldMessengerKey.currentState?.showSnackBar(
-    SnackBar(content: Text('發生錯誤: $msg'), duration: const Duration(seconds: 4)),
-  );
+  // ScaffoldMessenger.showSnackBar cannot be called during build; schedule it
+  // for the next frame so the message is safe to display.
+  SchedulerBinding.instance.addPostFrameCallback((_) {
+    scaffoldMessengerKey.currentState?.showSnackBar(
+      SnackBar(content: Text('發生錯誤: $msg'), duration: const Duration(seconds: 4)),
+    );
+  });
 }
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await AppConfig.load();
-
-  // Surface uncaught errors (e.g. from platform callbacks / async gaps) instead
-  // of letting them become a silent "Uncaught Error" in the console.
-  FlutterError.onError = (details) => _reportError(details.exceptionAsString());
-  // ignore: deprecated_member_use
-  WidgetsBinding.instance.platformDispatcher.onError = (error, _) {
-    _reportError(error);
-    return true;
-  };
-
+  // ensureInitialized() 必須與 runApp 處於同一 zone，否則會觸發 Zone mismatch
+  // （Flutter bindings 在根 zone 初始化，runApp 卻在 runZonedGuarded 的子 zone）。
   runZonedGuarded(
-    () => runApp(const ProviderScope(child: MyApp())),
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      await AppConfig.load();
+
+      // Surface uncaught errors (e.g. from platform callbacks / async gaps) instead
+      // of letting them become a silent "Uncaught Error" in the console.
+      FlutterError.onError = (details) => _reportError(details.exceptionAsString());
+      // ignore: deprecated_member_use
+      WidgetsBinding.instance.platformDispatcher.onError = (error, _) {
+        _reportError(error);
+        return true;
+      };
+
+      runApp(const ProviderScope(child: MyApp()));
+    },
     (error, _) => _reportError(error),
   );
 }

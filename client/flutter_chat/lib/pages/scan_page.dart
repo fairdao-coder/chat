@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,10 +7,11 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/app_localizations.dart';
 import '../providers/config_link_provider.dart';
+import '../utils/platform_check.dart';
 
 /// 相机扫码仅支持 Android / iOS。桌面与 Web 平台不支持，直接提示。
-bool get _cameraSupported =>
-    Platform.isAndroid || Platform.isIOS;
+/// 注意：不能直接用 dart:io 的 Platform（Web 上會拋 Unsupported operation）。
+bool get _cameraSupported => kIsMobilePlatform;
 
 /// 掃一掃頁面。
 ///

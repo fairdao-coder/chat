@@ -1,0 +1,21 @@
+{
+  "roots": [
+    "vm_dump"
+  ],
+  "packages": [
+    {
+      "name": "vm_dump",
+      "version": "0.0.0",
+      "dependencies": [
+        "vm_service"
+      ],
+      "devDependencies": []
+    },
+    {
+      "name": "vm_service",
+      "version": "15.3.0",
+      "dependencies": []
+    }
+  ],
+  "configVersion": 1
+}

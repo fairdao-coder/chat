@@ -154,11 +154,7 @@ app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");
 app.MapHealthChecks("/health");
 
-// 開發期自動建庫（生產請用 EF Migration）
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
-}
+// 資料庫與表統一由 AdminServer 負責建立；ChatServer 僅連接並使用已存在的 chatdb。
+// 若啟動時資料庫或表不存在，請先啟動 AdminServer 執行 EnsureCreated 建表。
 
 app.Run();

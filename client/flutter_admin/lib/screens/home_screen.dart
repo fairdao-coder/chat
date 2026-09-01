@@ -9,6 +9,7 @@ import 'roles_screen.dart';
 import 'audit_screen.dart';
 import 'accounts_screen.dart';
 import 'discover_columns_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -32,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
       Dest('審計日誌', Icons.history, 'audit.read', AuditScreen()),
       Dest('管理員', Icons.manage_accounts, 'admins.read', AccountsScreen()),
       Dest('發現頁欄目', Icons.explore, 'discover.read', DiscoverColumnsScreen()),
+      Dest('系統配置', Icons.tune, 'settings.read', SettingsScreen()),
     ];
   }
 
@@ -53,18 +55,36 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(current?.title ?? '後臺管理'),
+        title: Row(
+          children: [
+            if (current != null) Icon(current.icon, size: 20, color: AppTheme.primary),
+            const SizedBox(width: 8),
+            Text(current?.title ?? '後臺管理'),
+          ],
+        ),
+        elevation: 0,
         actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Center(
-              child: Text(
-                '${auth.admin?.displayName ?? ''}（${auth.admin?.roleName ?? ''}）',
-                style: const TextStyle(fontSize: 13, color: AppTheme.textSub),
-              ),
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.primarySoft,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.account_circle, size: 18, color: AppTheme.primary),
+                const SizedBox(width: 6),
+                Text(
+                  '${auth.admin?.displayName ?? ''} · ${auth.admin?.roleName ?? ''}',
+                  style: const TextStyle(fontSize: 13, color: AppTheme.textMain),
+                ),
+              ],
             ),
           ),
           IconButton(onPressed: _logout, icon: const Icon(Icons.logout), tooltip: '退出登錄'),
+          const SizedBox(width: 8),
         ],
       ),
       drawer: AppDrawer(

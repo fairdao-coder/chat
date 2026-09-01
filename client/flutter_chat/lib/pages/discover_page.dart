@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,9 +7,10 @@ import '../data/api_client.dart';
 import '../l10n/app_localizations.dart';
 import '../models/discover_column.dart';
 import '../providers/conversations_provider.dart';
+import '../theme.dart';
 
-/// 發現 tab：聚合應用的次級入口（添加好友 / 好友請求 / 創建群聊）
-/// 以及由管理後臺維護的欄目列表（點擊在 WebView 打開鏈接）。
+/// 發現 tab：展示由管理後臺維護的欄目列表（鏈接 / 路由 / 動作 / 小應用）。
+/// 內置固化入口已移除，入口統一由數據庫驅動（後臺可增刪改、固定到底部）。
 class DiscoverPage extends ConsumerStatefulWidget {
   const DiscoverPage({super.key});
 
@@ -30,11 +32,61 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
     setState(() => _loadingColumns = true);
     try {
       final list = await ApiClient().getDiscoverColumns();
-      if (mounted) setState(() => _columns = list);
+      // tab 類型欄目屬於底部固定導航，不重複展示在發現頁列表。
+      if (mounted) {
+        setState(() => _columns =
+            list.where((c) => c.kind != DiscoverKind.tab).toList());
+      }
     } catch (_) {
       // 欄目加載失敗不影響內置入口，靜默忽略。
     } finally {
       if (mounted) setState(() => _loadingColumns = false);
+    }
+  }
+
+  void _openColumn(DiscoverColumn col) {
+    final content = col.content ?? '';
+    switch (col.kind) {
+      case DiscoverKind.link:
+        if (content.isNotEmpty) {
+          context.push('/webview?url=${Uri.encodeComponent(content)}'
+              '&title=${Uri.encodeComponent(col.title)}');
+        }
+        break;
+      case DiscoverKind.route:
+        if (content.isNotEmpty) {
+          context.push(content);
+        }
+        break;
+      case DiscoverKind.action:
+        _runAction(content.isEmpty ? 'scan' : content);
+        break;
+      case DiscoverKind.mini:
+        if (content.isNotEmpty) {
+          context.push('/mini?name=${Uri.encodeComponent(content)}'
+              '&title=${Uri.encodeComponent(col.title)}');
+        }
+        break;
+      case DiscoverKind.tab:
+        // 底部 Tab 欄目不在發現頁打開（已過濾），此處僅為窮盡枚舉。
+        break;
+    }
+  }
+
+  void _runAction(String action) {
+    switch (action) {
+      case 'addFriend':
+        context.push('/add-friend');
+        break;
+      case 'createGroup':
+        context.push('/create-group');
+        break;
+      case 'friendRequests':
+        context.push('/friend-requests');
+        break;
+      case 'scan':
+        context.push('/scan');
+        break;
     }
   }
 
@@ -47,65 +99,99 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
       orElse: () => 0,
     );
 
-    final children = <Widget>[
-      _Entry(
-        icon: Icons.person_add_alt_1,
-        color: Colors.green,
-        title: context.tr('添加好友'),
-        onTap: () => context.push('/add-friend'),
-      ),
-      _Entry(
-        icon: Icons.mark_email_unread_outlined,
-        color: Colors.orange,
-        title: context.tr('好友请求'),
-        badge: pending,
-        onTap: () => context.push('/friend-requests'),
-      ),
-      _Entry(
-        icon: Icons.group_add,
-        color: Colors.blue,
-        title: context.tr('创建群聊'),
-        onTap: () => context.push('/create-group'),
-      ),
-      _Entry(
-        icon: Icons.qr_code_scanner_outlined,
-        color: Colors.teal,
-        title: context.tr('扫一扫'),
-        onTap: () => context.push('/scan'),
-      ),
-    ];
-
-    // 管理後臺配置的欄目。
-    if (_loadingColumns) {
-      children.add(const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
-        child: Center(child: CircularProgressIndicator()),
-      ));
-    } else if (_columns.isNotEmpty) {
-      children.add(const SizedBox(height: 12));
-      for (final col in _columns) {
-        children.add(_Entry(
-          icon: Icons.link,
-          color: Colors.purple,
-          leadingText: col.icon,
-          title: col.title,
-          onTap: () {
-            if (col.link?.isNotEmpty == true) {
-              context.push('/webview?url=${Uri.encodeComponent(col.link!)}'
-                  '&title=${Uri.encodeComponent(col.title)}');
-            }
-          },
-        ));
-      }
+    // 僅展示管理後臺配置的欄目（固化內置入口已移除，統一由數據庫驅動）。
+    Widget body;
+    if (_loadingColumns && _columns.isEmpty) {
+      body = const Center(child: CircularProgressIndicator());
+    } else if (_columns.isEmpty) {
+      body = Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.explore_outlined,
+                size: 56, color: Theme.of(context).colorScheme.outlineVariant),
+            const SizedBox(height: 12),
+            Text(
+              context.tr('暂无栏目'),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.outline,
+                fontFamilyFallback: kIsWeb ? kFontFamilyFallback : null,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      body = ListView(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        children: [
+          for (final col in _columns)
+            _Entry(
+              icon: _columnIcon(col.kind),
+              color: _kindColor(col.kind),
+              leadingText: col.icon ?? _kindChar(col.kind),
+              title: col.title,
+              // 好友邀請欄目顯示未處理請求數角標
+              badge:
+                  col.kind == DiscoverKind.action && col.content == 'friendRequests'
+                      ? pending
+                      : 0,
+              onTap: () => _openColumn(col),
+            ),
+        ],
+      );
     }
 
     return Scaffold(
       appBar: AppBar(title: Text(context.tr('发现'))),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        children: children,
-      ),
+      body: body,
     );
+  }
+}
+
+/// 欄目類型對應的圖標底色。
+Color _kindColor(DiscoverKind kind) {
+  switch (kind) {
+    case DiscoverKind.route:
+      return Colors.blue;
+    case DiscoverKind.action:
+      return Colors.green;
+    case DiscoverKind.mini:
+      return Colors.purple;
+    case DiscoverKind.link:
+      return Colors.teal;
+    case DiscoverKind.tab:
+      return Colors.orange;
+  }
+}
+
+IconData _columnIcon(DiscoverKind kind) {
+  switch (kind) {
+    case DiscoverKind.route:
+      return Icons.open_in_new;
+    case DiscoverKind.action:
+      return Icons.flash_on_outlined;
+    case DiscoverKind.mini:
+      return Icons.apps_outlined;
+    case DiscoverKind.link:
+      return Icons.link;
+    case DiscoverKind.tab:
+      return Icons.push_pin_outlined;
+  }
+}
+
+String _kindChar(DiscoverKind kind) {
+  switch (kind) {
+    case DiscoverKind.route:
+      return '↗';
+    case DiscoverKind.action:
+      return '⚡';
+    case DiscoverKind.mini:
+      return '▦';
+    case DiscoverKind.link:
+      return '🔗';
+    case DiscoverKind.tab:
+      return '📌';
   }
 }
 
@@ -157,7 +243,11 @@ class _Entry extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    fontFamilyFallback: kIsWeb ? kFontFamilyFallback : null,
+                  ),
                 ),
               ),
               if (badge > 0)

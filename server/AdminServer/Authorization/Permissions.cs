@@ -18,6 +18,8 @@ public static class Permissions
     public const string AdminsWrite = "admins.write";
     public const string DiscoverRead = "discover.read";
     public const string DiscoverWrite = "discover.write";
+    public const string SettingsRead = "settings.read";
+    public const string SettingsWrite = "settings.write";
 }
 
 public static class PermissionHelper

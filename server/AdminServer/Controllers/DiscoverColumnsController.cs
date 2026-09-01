@@ -32,7 +32,7 @@ public class DiscoverColumnsController : ControllerBase
         var items = await _db.DiscoverColumns
             .OrderBy(c => c.Sort)
             .ThenBy(c => c.CreatedAt)
-            .Select(c => new DiscoverColumnDto(c.Id, c.Title, c.Icon, c.Link, c.Sort, c.Enabled, c.CreatedAt))
+            .Select(c => new DiscoverColumnDto(c.Id, c.Title, c.Icon, c.Kind, c.Content, c.Sort, c.Enabled, c.Pinned, c.CreatedAt))
             .ToListAsync();
         return Ok(items);
     }
@@ -51,15 +51,17 @@ public class DiscoverColumnsController : ControllerBase
             Id = Guid.NewGuid(),
             Title = req.Title,
             Icon = req.Icon,
-            Link = req.Link,
+            Kind = req.Kind ?? "link",
+            Content = req.Content,
             Sort = req.Sort,
             Enabled = req.Enabled,
+            Pinned = req.Pinned,
             CreatedAt = DateTime.UtcNow,
         };
         _db.DiscoverColumns.Add(col);
         await _db.SaveChangesAsync();
-        await _audit.LogAsync("discover.create", target: col.Title, detail: col.Link);
-        return Ok(new DiscoverColumnDto(col.Id, col.Title, col.Icon, col.Link, col.Sort, col.Enabled, col.CreatedAt));
+        await _audit.LogAsync("discover.create", target: col.Title, detail: col.Content);
+        return Ok(new DiscoverColumnDto(col.Id, col.Title, col.Icon, col.Kind, col.Content, col.Sort, col.Enabled, col.Pinned, col.CreatedAt));
     }
 
     [HttpPut("{id:guid}")]
@@ -76,12 +78,14 @@ public class DiscoverColumnsController : ControllerBase
 
         col.Title = req.Title;
         col.Icon = req.Icon;
-        col.Link = req.Link;
+        col.Kind = req.Kind ?? "link";
+        col.Content = req.Content;
         col.Sort = req.Sort;
         col.Enabled = req.Enabled;
+        col.Pinned = req.Pinned;
         await _db.SaveChangesAsync();
-        await _audit.LogAsync("discover.update", target: col.Title, detail: col.Link);
-        return Ok(new DiscoverColumnDto(col.Id, col.Title, col.Icon, col.Link, col.Sort, col.Enabled, col.CreatedAt));
+        await _audit.LogAsync("discover.update", target: col.Title, detail: col.Content);
+        return Ok(new DiscoverColumnDto(col.Id, col.Title, col.Icon, col.Kind, col.Content, col.Sort, col.Enabled, col.Pinned, col.CreatedAt));
     }
 
     [HttpDelete("{id:guid}")]

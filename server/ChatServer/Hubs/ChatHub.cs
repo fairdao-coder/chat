@@ -152,6 +152,19 @@ public class ChatHub : Hub
         }
     }
 
+    // ===================== 正在輸入狀態（實時中繼，不持久化） =====================
+    /// <summary>
+    /// 客戶端輸入時上報，服務端即時轉發給對方。
+    /// 停止輸入由客戶端定時器判定後上報 false（避免服務端維護超時狀態）。
+    /// </summary>
+    public async Task SendTyping(string toUserId, bool isTyping)
+    {
+        var fromId = Context.UserIdentifier!;
+        if (!Guid.TryParse(toUserId, out _)) return;
+        if (toUserId == fromId) return;
+        await Clients.User(toUserId).SendAsync("OnTyping", fromId, isTyping);
+    }
+
     public async Task JoinGroup(string groupId)
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, "group_" + groupId);

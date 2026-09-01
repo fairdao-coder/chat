@@ -1,0 +1,7 @@
+name: vm_dump
+description: 临时工具：连接 Dart VM Service 触发 Flutter debugDumpApp
+publish_to: none
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+dependencies:
+  vm_service: any

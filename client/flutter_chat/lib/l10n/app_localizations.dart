@@ -65,6 +65,7 @@ class L10n {
     '你们还没有成为好友': '你们还没有成为好友',
     '在线': '在线',
     '离线': '离线',
+    '正在输入...': '正在输入...',
     '私聊': '私聊',
     '还不是好友': '还不是好友',
     '稍后': '稍后',
@@ -138,6 +139,7 @@ class L10n {
     '我': '我',
     '好友': '好友',
     '暂无好友': '暂无好友',
+    '暂无栏目': '暂无栏目',
     '还没有好友，添加一个开始聊天': '还没有好友，添加一个开始聊天',
     '新的朋友': '新的朋友',
     '扫一扫': '扫一扫',
@@ -170,6 +172,8 @@ class L10n {
     '保存图片': '保存图片',
     '保存成功': '保存成功',
     '保存失败': '保存失败',
+    '请在手机端打开小应用': '请在手机端打开小应用',
+    '小应用加载失败': '小应用加载失败',
   };
 
   static const Map<String, String> _zhHant = {
@@ -208,6 +212,7 @@ class L10n {
     '你们还没有成为好友': '你們還沒有成為好友',
     '在线': '在線',
     '离线': '離線',
+    '正在输入...': '正在輸入...',
     '私聊': '私聊',
     '还不是好友': '還不是好友',
     '稍后': '稍後',
@@ -281,6 +286,7 @@ class L10n {
     '我': '我',
     '好友': '好友',
     '暂无好友': '暫無好友',
+    '暂无栏目': '暫無欄目',
     '还没有好友，添加一个开始聊天': '還沒有好友，新增一個開始聊天',
     '新的朋友': '新的朋友',
     '扫一扫': '掃一掃',
@@ -313,6 +319,8 @@ class L10n {
     '保存图片': '保存圖片',
     '保存成功': '保存成功',
     '保存失败': '保存失敗',
+    '请在手机端打开小应用': '請在手機端打開小應用',
+    '小应用加载失败': '小應用加載失敗',
   };
 
   static const Map<String, String> _en = {
@@ -351,6 +359,7 @@ class L10n {
     '你们还没有成为好友': 'You are not friends yet',
     '在线': 'Online',
     '离线': 'Offline',
+    '正在输入...': 'typing…',
     '私聊': 'Private chat',
     '还不是好友': 'Not friends yet',
     '稍后': 'Later',
@@ -424,6 +433,7 @@ class L10n {
     '我': 'Me',
     '好友': 'Friends',
     '暂无好友': 'No friends',
+    '暂无栏目': 'No columns',
     '还没有好友，添加一个开始聊天': 'No friends yet. Add one to start chatting.',
     '新的朋友': 'New friends',
     '扫一扫': 'Scan',
@@ -456,6 +466,8 @@ class L10n {
     '保存图片': 'Save image',
     '保存成功': 'Saved',
     '保存失败': 'Save failed',
+    '请在手机端打开小应用': 'Open the mini app on your phone',
+    '小应用加载失败': 'Mini app failed to load',
   };
 
   static const Map<String, String> _es = {
@@ -494,6 +506,7 @@ class L10n {
     '你们还没有成为好友': 'Aún no son amigos',
     '在线': 'En línea',
     '离线': 'Desconectado',
+    '正在输入...': 'escribiendo…',
     '私聊': 'Chat privado',
     '还不是好友': 'Aún no son amigos',
     '稍后': 'Más tarde',
@@ -567,6 +580,7 @@ class L10n {
     '我': 'Yo',
     '好友': 'Amigos',
     '暂无好友': 'Sin amigos',
+    '暂无栏目': 'Sin columnas',
     '还没有好友，添加一个开始聊天': 'Aún no tienes amigos. Agrega uno para chatear.',
     '新的朋友': 'Nuevos amigos',
     '扫一扫': 'Escanear',
@@ -599,6 +613,8 @@ class L10n {
     '保存图片': 'Guardar imagen',
     '保存成功': 'Guardado',
     '保存失败': 'Error al guardar',
+    '请在手机端打开小应用': 'Abre la mini app en tu teléfono',
+    '小应用加载失败': 'Error al cargar la mini app',
   };
 
   static AppLocalizations _resolve(Locale locale) {

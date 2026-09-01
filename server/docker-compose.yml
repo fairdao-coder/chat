@@ -18,7 +18,7 @@ services:
   api:
     build: ./ChatServer
     depends_on:
-      postgres:
+      admin-api:
         condition: service_healthy
     environment:
       - ASPNETCORE_URLS=http://+:8080

@@ -1,7 +1,37 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'config/app_colors.dart';
+
+/// 中文/多語言字體回退列表。
+/// Web 平臺默認字體（Roboto）不含中文字形，中文會顯示為方框/亂碼；
+/// 這裡指定系統中文字體，Web 會映射到 CSS font-family。
+const List<String> kFontFamilyFallback = <String>[
+  'Microsoft YaHei',
+  'PingFang SC',
+  'Hiragino Sans GB',
+  'Noto Sans CJK SC',
+  'Noto Sans SC',
+  'WenQuanYi Micro Hei',
+  'Heiti SC',
+  'sans-serif',
+];
+
+/// 帶中文字體回退的文本樣式構造helper。
+TextStyle ts({
+  double? fontSize,
+  FontWeight? fontWeight,
+  Color? color,
+  double? letterSpacing,
+}) =>
+    TextStyle(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      letterSpacing: letterSpacing,
+      fontFamilyFallback: kIsWeb ? kFontFamilyFallback : null,
+    );
 
 /// 亮色主題（青綠清新 / Fresh Teal）
 ThemeData get lightTheme => _buildTheme(Brightness.light);
@@ -40,7 +70,7 @@ ThemeData _buildTheme(Brightness brightness) {
     filled: true,
     fillColor: inputFill,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    hintStyle: TextStyle(color: dark ? AppColors.textHintDark : AppColors.textHintLight),
+    hintStyle: ts(color: dark ? AppColors.textHintDark : AppColors.textHintLight),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
       borderSide: BorderSide.none,
@@ -61,7 +91,7 @@ ThemeData _buildTheme(Brightness brightness) {
       borderRadius: BorderRadius.circular(14),
       borderSide: const BorderSide(color: AppColors.danger, width: 1.5),
     ),
-    labelStyle: TextStyle(color: textSecondary),
+    labelStyle: ts(color: textSecondary),
   );
 
   final buttonShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(14));
@@ -78,7 +108,7 @@ ThemeData _buildTheme(Brightness brightness) {
       scrolledUnderElevation: 0,
       backgroundColor: scaffoldBg,
       foregroundColor: textPrimary,
-      titleTextStyle: TextStyle(
+      titleTextStyle: ts(
         fontSize: 20,
         fontWeight: FontWeight.w700,
         color: textPrimary,
@@ -100,8 +130,8 @@ ThemeData _buildTheme(Brightness brightness) {
 
     listTileTheme: ListTileThemeData(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      titleTextStyle: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: textPrimary),
-      subtitleTextStyle: TextStyle(fontSize: 13, color: textSecondary),
+      titleTextStyle: ts(fontSize: 15, fontWeight: FontWeight.w600, color: textPrimary),
+      subtitleTextStyle: ts(fontSize: 13, color: textSecondary),
       iconColor: textSecondary,
     ),
 
@@ -114,7 +144,7 @@ ThemeData _buildTheme(Brightness brightness) {
     chipTheme: ChipThemeData(
       backgroundColor: inputFill,
       selectedColor: scheme.primary.withValues(alpha: 0.15),
-      labelStyle: TextStyle(color: textPrimary, fontSize: 13),
+      labelStyle: ts(color: textPrimary, fontSize: 13),
       side: BorderSide.none,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -126,7 +156,7 @@ ThemeData _buildTheme(Brightness brightness) {
         foregroundColor: Colors.white,
         minimumSize: const Size(0, 50),
         shape: buttonShape,
-        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        textStyle: ts(fontSize: 15, fontWeight: FontWeight.w600),
       ),
     ),
 
@@ -174,15 +204,15 @@ ThemeData _buildTheme(Brightness brightness) {
       backgroundColor: dark ? AppColors.darkSurface : Colors.white,
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-      titleTextStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: textPrimary),
-      contentTextStyle: TextStyle(fontSize: 14, color: textSecondary),
+      titleTextStyle: ts(fontSize: 18, fontWeight: FontWeight.w700, color: textPrimary),
+      contentTextStyle: ts(fontSize: 14, color: textSecondary),
     ),
 
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: dark ? const Color(0xFF22403C) : const Color(0xFF1F3B37),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      contentTextStyle: const TextStyle(fontSize: 14, color: Colors.white),
+      contentTextStyle: ts(fontSize: 14, color: Colors.white),
       elevation: 6,
     ),
 
@@ -198,8 +228,8 @@ ThemeData _buildTheme(Brightness brightness) {
       labelColor: scheme.primary,
       unselectedLabelColor: textSecondary,
       indicatorSize: TabBarIndicatorSize.tab,
-      labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-      unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+      labelStyle: ts(fontWeight: FontWeight.w700, fontSize: 15),
+      unselectedLabelStyle: ts(fontWeight: FontWeight.w500, fontSize: 15),
     ),
 
     progressIndicatorTheme: const ProgressIndicatorThemeData(
@@ -215,11 +245,11 @@ ThemeData _buildTheme(Brightness brightness) {
     ),
 
     textTheme: TextTheme(
-      titleLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w700),
-      titleMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
-      bodyLarge: TextStyle(color: textPrimary),
-      bodyMedium: TextStyle(color: textSecondary),
-      labelLarge: const TextStyle(fontWeight: FontWeight.w600),
+      titleLarge: ts(color: textPrimary, fontWeight: FontWeight.w700),
+      titleMedium: ts(color: textPrimary, fontWeight: FontWeight.w600),
+      bodyLarge: ts(color: textPrimary),
+      bodyMedium: ts(color: textSecondary),
+      labelLarge: ts(fontWeight: FontWeight.w600),
     ),
 
     visualDensity: VisualDensity.adaptivePlatformDensity,

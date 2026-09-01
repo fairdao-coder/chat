@@ -76,4 +76,15 @@ class ApiClient {
   Future<void> deleteDiscover(String id) async {
     await delete('/api/admin/discover/$id');
   }
+
+  // ---- 系統功能開關 ----
+  Future<SystemSettingsDto> getSettings() async {
+    final data = await get('/api/admin/settings');
+    return SystemSettingsDto.fromJson(data);
+  }
+
+  Future<SystemSettingsDto> updateSettings(SystemSettingsDto s) async {
+    final data = await put('/api/admin/settings', s.toJson());
+    return SystemSettingsDto.fromJson(data);
+  }
 }

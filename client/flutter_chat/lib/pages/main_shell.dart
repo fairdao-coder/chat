@@ -2,69 +2,97 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../l10n/app_localizations.dart';
+import '../models/discover_column.dart';
+import '../providers/bottom_tabs_provider.dart';
 import '../providers/conversations_provider.dart';
 
-/// 微信風格的底部導航宿主：信息 / 通訊錄 / 發現 / 我。
+/// 底部導航宿主：Tab 來自數據庫固定欄目（任何類型均可固定），
+/// 順序與 `router.dart` 中動態生成的 branches 一一對應。
 ///
 /// 由 `router.dart` 的 `StatefulShellRoute.indexedStack` 提供 [navigationShell]，
-/// 每個 tab 擁有獨立 Navigator，切換時保留各自頁面狀態（如會話列表滾動位置）。
+/// 每個 tab 擁有獨立 Navigator，切換時保留各自頁面狀態。
 class MainShell extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
 
   const MainShell({required this.navigationShell, super.key});
 
-  void _onTap(int index) => navigationShell.goBranch(index);
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final loc = L10n.of(context);
+    final tabs = ref.watch(effectiveTabsProvider);
     final requests = ref.watch(friendRequestsProvider);
     final pending = requests.maybeWhen(
       data: (list) => list.length,
       orElse: () => 0,
     );
 
-    // 通訊錄 tab 的未讀好友請求紅點
-    final contactsIcon = pending > 0
-        ? Badge(
-            label: Text(pending.toString()),
-            child: const Icon(Icons.contacts_outlined),
-          )
-        : const Icon(Icons.contacts_outlined);
+    // 分支數可能大於 destinations 數（存在未固定的內置保底分支），
+    // 這裡 clamp 防止 NavigationBar 越界。
+    final index = navigationShell.currentIndex;
+    final maxIndex = tabs.length - 1;
 
     return Scaffold(
       // navigationShell 本身即各分支頁面的 IndexedStack
       body: navigationShell,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: _onTap,
+        selectedIndex: index > maxIndex ? maxIndex : index,
+        onDestinationSelected: (i) => navigationShell.goBranch(i),
         destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.chat_bubble_outline),
-            selectedIcon: const Icon(Icons.chat_bubble),
-            label: loc.t('信息'),
-          ),
-          NavigationDestination(
-            icon: contactsIcon,
-            selectedIcon: Badge(
-              label: Text(pending.toString()),
-              child: const Icon(Icons.contacts),
+          for (final c in tabs)
+            NavigationDestination(
+              icon: _tabIcon(c, selected: false, pending: pending),
+              selectedIcon: _tabIcon(c, selected: true, pending: pending),
+              label: c.title,
             ),
-            label: loc.t('通讯录'),
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.explore_outlined),
-            selectedIcon: const Icon(Icons.explore),
-            label: loc.t('发现'),
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.person_outline),
-            selectedIcon: const Icon(Icons.person),
-            label: loc.t('我'),
-          ),
         ],
       ),
     );
+  }
+
+  /// 構建 tab 圖標：tab 類型用固定映射；其它類型優先顯示 emoji 圖標，
+  /// 無圖標時按類型回退。
+  Widget _tabIcon(DiscoverColumn c,
+      {required bool selected, required int pending}) {
+    Widget base;
+    if (c.kind == DiscoverKind.tab) {
+      final content = c.content ?? 'chat';
+      base = Icon(_tabIconData(content, selected: selected));
+    } else if ((c.icon ?? '').isNotEmpty) {
+      base = Text(c.icon!, style: const TextStyle(fontSize: 22));
+    } else {
+      base = Icon(_kindIconData(c.kind));
+    }
+    // 通訊錄 tab 的未讀好友請求紅點
+    if (c.content == 'contacts' && pending > 0) {
+      base = Badge(label: Text(pending.toString()), child: base);
+    }
+    return base;
+  }
+
+  IconData _tabIconData(String content, {required bool selected}) {
+    switch (content) {
+      case 'contacts':
+        return selected ? Icons.contacts : Icons.contacts_outlined;
+      case 'discover':
+        return selected ? Icons.explore : Icons.explore_outlined;
+      case 'me':
+        return selected ? Icons.person : Icons.person_outline;
+      default:
+        return selected ? Icons.chat_bubble : Icons.chat_bubble_outline;
+    }
+  }
+
+  IconData _kindIconData(DiscoverKind kind) {
+    switch (kind) {
+      case DiscoverKind.link:
+        return Icons.public;
+      case DiscoverKind.route:
+        return Icons.open_in_new;
+      case DiscoverKind.action:
+        return Icons.flash_on_outlined;
+      case DiscoverKind.mini:
+        return Icons.apps_outlined;
+      case DiscoverKind.tab:
+        return Icons.circle_outlined;
+    }
   }
 }

@@ -23,3 +23,10 @@ public enum FriendshipStatus
     Pending = 0,
     Accepted = 1
 }
+
+public enum GroupMemberRole
+{
+    Member = 0,
+    Admin = 1,
+    Owner = 2
+}

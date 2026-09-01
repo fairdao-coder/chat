@@ -25,7 +25,23 @@ public class DiscoverController : ControllerBase
             .Where(c => c.Enabled)
             .OrderBy(c => c.Sort)
             .ThenBy(c => c.CreatedAt)
-            .Select(c => new DiscoverColumnDto(c.Id, c.Title, c.Icon, c.Link, c.Sort))
+            .Select(c => new DiscoverColumnDto(c.Id, c.Title, c.Icon, c.Kind, c.Content, c.Sort, c.Pinned))
+            .ToListAsync();
+        return Ok(list);
+    }
+
+    /// <summary>
+    /// 底部固定導航欄目（Pinned=true 且啟用）。客戶端據此動態渲染底部 Tab。
+    /// </summary>
+    [HttpGet("pinned")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Pinned()
+    {
+        var list = await _db.DiscoverColumns
+            .Where(c => c.Pinned && c.Enabled)
+            .OrderBy(c => c.Sort)
+            .ThenBy(c => c.CreatedAt)
+            .Select(c => new DiscoverColumnDto(c.Id, c.Title, c.Icon, c.Kind, c.Content, c.Sort, c.Pinned))
             .ToListAsync();
         return Ok(list);
     }

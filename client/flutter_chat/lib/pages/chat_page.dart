@@ -16,12 +16,15 @@ import '../config/constants.dart';
 import '../utils/file_pick.dart';
 import '../utils/format.dart';
 import '../models/enums.dart';
+import '../models/feature_settings.dart';
 import '../models/message_dto.dart';
 import '../providers/auth_provider.dart';
 import '../providers/call_provider.dart';
+import '../providers/features_provider.dart';
 import '../providers/chat_provider.dart';
 import '../providers/core_providers.dart';
 import '../providers/presence_provider.dart';
+import '../providers/typing_provider.dart';
 import '../utils/url.dart';
 import '../utils/record_bytes.dart';
 import '../l10n/app_localizations.dart';
@@ -51,15 +54,50 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   Timer? _recordTimer;
   String? _recordPath; // native 錄音文件路徑（web 用 stop() 返回值）
 
+  // ---- 正在輸入狀態上報 ----
+  Timer? _typingStopTimer;
+  bool _typingActive = false;
+
   @override
   void initState() {
     super.initState();
     // 進頁面時立刻拉一次服務端在線快照，避免首個輪詢週期前的空窗期。
     unawaited(ref.read(presenceProvider.notifier).refresh());
+    _ctrl.addListener(_onTextChanged);
+  }
+
+  /// 輸入框內容變化時上報「正在輸入」；清空則立即上報「停止輸入」。
+  void _onTextChanged() {
+    if (widget.target.isGroup) return; // 羣聊暫不支援
+    if (_ctrl.text.isEmpty) {
+      _stopTyping();
+    } else {
+      _notifyTyping();
+    }
+  }
+
+  /// 上報正在輸入，並重置 2 秒停止定時器（避免每敲一個字都發一次）。
+  void _notifyTyping() {
+    if (!_typingActive) {
+      _typingActive = true;
+      unawaited(ref.read(hubProvider).sendTyping(widget.target.id, true));
+    }
+    _typingStopTimer?.cancel();
+    _typingStopTimer = Timer(const Duration(seconds: 2), _stopTyping);
+  }
+
+  void _stopTyping() {
+    _typingStopTimer?.cancel();
+    if (_typingActive) {
+      _typingActive = false;
+      unawaited(ref.read(hubProvider).sendTyping(widget.target.id, false));
+    }
   }
 
   @override
   void dispose() {
+    _stopTyping();
+    _ctrl.removeListener(_onTextChanged);
     _ctrl.dispose();
     _scroll.dispose();
     _recordTimer?.cancel();
@@ -93,6 +131,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final err =
         await ref.read(chatProvider(widget.target).notifier).sendText(text);
     if (err == null) {
+      _stopTyping(); // 消息已發出，對方不應再看到「正在輸入」
       _ctrl.clear();
     } else {
       _handleHubError(err);
@@ -344,10 +383,16 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final chat = ref.watch(chatProvider(widget.target));
     final myId = ref.watch(authProvider).user?.id;
     final msgs = chat.messages;
-    final cs = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
     // 在線狀態以 presence（實時事件 + 服務端輪詢快照）為唯一數據源。
     final peerOnline = ref.watch(presenceProvider).contains(widget.target.id);
+    // 對方正在輸入（4 秒無新事件自動過期）。
+    final peerTyping = ref.watch(typingProvider).contains(widget.target.id);
+    // 系統功能開關：加載中/失敗時回退到全開。
+    final features = ref.watch(featuresProvider).maybeWhen(
+          data: (f) => f,
+          orElse: () => FeatureSettings.allEnabled(),
+        );
 
     if (msgs.length > _lastLen) {
       _lastLen = msgs.length;
@@ -364,48 +409,37 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           children: [
             Text(title),
             if (!widget.target.isGroup)
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    margin: const EdgeInsets.only(right: 5),
-                    decoration: BoxDecoration(
-                      color: peerOnline ? AppColors.online : AppColors.offline,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  Text(
-                    peerOnline ? _lt('在线') : _lt('离线'),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.normal,
-                      color:
-                          peerOnline ? AppColors.online : cs.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+              _PeerStatus(
+                online: peerOnline,
+                typing: peerTyping,
+                // 後臺可關閉在線狀態展示；「正在輸入」不受其影響。
+                showOnline: features.showOnlineStatus,
+                onlineLabel: _lt('在线'),
+                offlineLabel: _lt('离线'),
+                typingLabel: _lt('正在输入...'),
               ),
           ],
         ),
         actions: widget.target.isGroup
             ? null
             : [
-                IconButton(
-                  onPressed: () => ref
-                      .read(callProvider.notifier)
-                      .startCall(widget.target.id, _peerName(), 'voice'),
-                  icon: const Icon(Icons.call_rounded),
-                  tooltip: context.tr('语音通话'),
-                ),
-                IconButton(
-                  onPressed: () => ref
-                      .read(callProvider.notifier)
-                      .startCall(widget.target.id, _peerName(), 'video'),
-                  icon: const Icon(Icons.videocam_rounded),
-                  tooltip: context.tr('视频通话'),
-                ),
+                // 通話入口受後臺功能開關控制。
+                if (features.enableVoiceCall)
+                  IconButton(
+                    onPressed: () => ref
+                        .read(callProvider.notifier)
+                        .startCall(widget.target.id, _peerName(), 'voice'),
+                    icon: const Icon(Icons.call_rounded),
+                    tooltip: context.tr('语音通话'),
+                  ),
+                if (features.enableVideoCall)
+                  IconButton(
+                    onPressed: () => ref
+                        .read(callProvider.notifier)
+                        .startCall(widget.target.id, _peerName(), 'video'),
+                    icon: const Icon(Icons.videocam_rounded),
+                    tooltip: context.tr('视频通话'),
+                  ),
               ],
       ),
       body: Column(
@@ -467,8 +501,140 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             onRecordStop: _stopRecording,
             onRecordCancel: _cancelRecording,
             controller: _ctrl,
+            allowFile: features.allowFile,
+            allowVoice: features.allowVoice,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 標題欄下方的狀態行：在線 / 離線 / 正在輸入。
+class _PeerStatus extends StatelessWidget {
+  final bool online;
+  final bool typing;
+  /// 後臺是否開啟在線狀態展示；關閉且非輸入中時整行隱藏。
+  final bool showOnline;
+  final String onlineLabel;
+  final String offlineLabel;
+  final String typingLabel;
+
+  const _PeerStatus({
+    required this.online,
+    required this.typing,
+    required this.showOnline,
+    required this.onlineLabel,
+    required this.offlineLabel,
+    required this.typingLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    // 正在輸入比在線狀態更即時有用，優先展示（且不受在線狀態開關影響）。
+    if (typing) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const _TypingDots(),
+          const SizedBox(width: 6),
+          Text(
+            typingLabel,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.normal,
+              color: AppColors.online,
+            ),
+          ),
+        ],
+      );
+    }
+
+    // 後臺關閉在線狀態展示時，非輸入狀態下整行隱藏。
+    if (!showOnline) return const SizedBox.shrink();
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          margin: const EdgeInsets.only(right: 5),
+          decoration: BoxDecoration(
+            color: online ? AppColors.online : AppColors.offline,
+            shape: BoxShape.circle,
+          ),
+        ),
+        Text(
+          online ? onlineLabel : offlineLabel,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.normal,
+            color: online ? AppColors.online : cs.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 「正在輸入」的三點跳動動畫。
+class _TypingDots extends StatefulWidget {
+  const _TypingDots();
+
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 22,
+      height: 8,
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, _) {
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(3, (i) {
+              // 三個點依次錯開相位，形成波浪跳動。
+              final phase = (_c.value - i * 0.15).clamp(0.0, 1.0);
+              final scale = 0.6 + 0.4 * (phase < 0.5 ? phase * 2 : (1 - phase) * 2);
+              return Transform.scale(
+                scale: scale,
+                child: Container(
+                  width: 5,
+                  height: 5,
+                  decoration: const BoxDecoration(
+                    color: AppColors.online,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              );
+            }),
+          );
+        },
       ),
     );
   }
@@ -792,6 +958,10 @@ class _InputBar extends StatefulWidget {
   final VoidCallback? onRecordStart;
   final VoidCallback? onRecordStop;
   final VoidCallback? onRecordCancel;
+  /// 是否允許發送文件（含圖片），由後臺開關控制。
+  final bool allowFile;
+  /// 是否允許發送語音消息，由後臺開關控制。
+  final bool allowVoice;
   const _InputBar({
     required this.controller,
     required this.onSend,
@@ -803,6 +973,8 @@ class _InputBar extends StatefulWidget {
     this.onRecordStart,
     this.onRecordStop,
     this.onRecordCancel,
+    this.allowFile = true,
+    this.allowVoice = true,
   });
 
   @override
@@ -924,7 +1096,6 @@ class _InputBarState extends State<_InputBar> {
     final cs = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final busy = widget.uploading || widget.recording;
-    final inputBg = dark ? cs.surface : Colors.white;
 
     return SafeArea(
       child: Container(
@@ -938,23 +1109,24 @@ class _InputBarState extends State<_InputBar> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // 语音切换
-            IconButton(
-              onPressed: busy
-                  ? null
-                  : (widget.recording
-                      ? widget.onRecordStop
-                      : widget.onRecordStart),
-              icon: widget.recording
-                  ? const Icon(Icons.stop_circle_rounded, color: Colors.red)
-                  : Icon(Icons.mic_none_rounded, color: cs.onSurfaceVariant),
-              style: IconButton.styleFrom(
-                foregroundColor: cs.onSurfaceVariant,
-                padding: EdgeInsets.zero,
-                minimumSize: const Size(36, 36),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            // 语音切换（受後臺「允許發送語音」開關控制）
+            if (widget.allowVoice)
+              IconButton(
+                onPressed: busy
+                    ? null
+                    : (widget.recording
+                        ? widget.onRecordStop
+                        : widget.onRecordStart),
+                icon: widget.recording
+                    ? const Icon(Icons.stop_circle_rounded, color: Colors.red)
+                    : Icon(Icons.mic_none_rounded, color: cs.onSurfaceVariant),
+                style: IconButton.styleFrom(
+                  foregroundColor: cs.onSurfaceVariant,
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(36, 36),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
               ),
-            ),
             // 输入框
             Expanded(
               child: Container(
@@ -963,7 +1135,6 @@ class _InputBarState extends State<_InputBar> {
                 height: 36,
                 alignment: Alignment.centerLeft,
                 decoration: BoxDecoration(
-                  color: inputBg,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                       color: cs.outline.withValues(alpha: 0.2)),
@@ -1077,17 +1248,19 @@ class _InputBarState extends State<_InputBar> {
                         ),
                       ),
                     )
-                  : IconButton(
-                      onPressed: busy ? null : _showPlusSheet,
-                      icon: Icon(Icons.add_circle_outline,
-                          color: cs.onSurfaceVariant),
-                      style: IconButton.styleFrom(
-                        foregroundColor: cs.onSurfaceVariant,
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(36, 36),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
+                  : widget.allowFile
+                      ? IconButton(
+                          onPressed: busy ? null : _showPlusSheet,
+                          icon: Icon(Icons.add_circle_outline,
+                              color: cs.onSurfaceVariant),
+                          style: IconButton.styleFrom(
+                            foregroundColor: cs.onSurfaceVariant,
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(36, 36),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        )
+                      : const SizedBox.shrink(),
           ],
         ),
       ),

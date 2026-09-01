@@ -121,21 +121,115 @@ class PagedResult<T> {
   int get totalPages => (total / pageSize).ceil();
 }
 
+/// 系統功能開關（單例配置）。
+class SystemSettingsDto {
+  final bool showOnlineStatus;
+  final bool enableVoiceCall;
+  final bool enableVideoCall;
+  final bool allowFile;
+  final bool allowVoice;
+  final DateTime? updatedAt;
+
+  SystemSettingsDto({
+    required this.showOnlineStatus,
+    required this.enableVoiceCall,
+    required this.enableVideoCall,
+    required this.allowFile,
+    required this.allowVoice,
+    this.updatedAt,
+  });
+
+  factory SystemSettingsDto.fromJson(Map<String, dynamic> j) =>
+      SystemSettingsDto(
+        showOnlineStatus: j['showOnlineStatus'] ?? true,
+        enableVoiceCall: j['enableVoiceCall'] ?? true,
+        enableVideoCall: j['enableVideoCall'] ?? true,
+        allowFile: j['allowFile'] ?? true,
+        allowVoice: j['allowVoice'] ?? true,
+        updatedAt:
+            j['updatedAt'] == null ? null : DateTime.tryParse(j['updatedAt']),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'showOnlineStatus': showOnlineStatus,
+        'enableVoiceCall': enableVoiceCall,
+        'enableVideoCall': enableVideoCall,
+        'allowFile': allowFile,
+        'allowVoice': allowVoice,
+      };
+
+  SystemSettingsDto copyWith({
+    bool? showOnlineStatus,
+    bool? enableVoiceCall,
+    bool? enableVideoCall,
+    bool? allowFile,
+    bool? allowVoice,
+    DateTime? updatedAt,
+  }) =>
+      SystemSettingsDto(
+        showOnlineStatus: showOnlineStatus ?? this.showOnlineStatus,
+        enableVoiceCall: enableVoiceCall ?? this.enableVoiceCall,
+        enableVideoCall: enableVideoCall ?? this.enableVideoCall,
+        allowFile: allowFile ?? this.allowFile,
+        allowVoice: allowVoice ?? this.allowVoice,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+}
+
 class DiscoverColumnDto {
   final String id;
   final String title;
   final String? icon;
-  final String? link;
+  final String kind;
+  final String? content;
   final int sort;
   final bool enabled;
+  final bool pinned;
   final DateTime createdAt;
+
+  DiscoverColumnDto({
+    required this.id,
+    required this.title,
+    this.icon,
+    required this.kind,
+    this.content,
+    required this.sort,
+    required this.enabled,
+    this.pinned = false,
+    required this.createdAt,
+  });
 
   DiscoverColumnDto.fromJson(Map<String, dynamic> j)
       : id = j['id'],
         title = j['title'],
         icon = j['icon'],
-        link = j['link'],
+        kind = j['kind'] ?? 'link',
+        content = j['content'],
         sort = j['sort'] ?? 0,
         enabled = j['enabled'] ?? true,
+        pinned = j['pinned'] ?? false,
         createdAt = DateTime.parse(j['createdAt']);
+
+  DiscoverColumnDto copyWith({
+    String? id,
+    String? title,
+    String? icon,
+    String? kind,
+    String? content,
+    int? sort,
+    bool? enabled,
+    bool? pinned,
+    DateTime? createdAt,
+  }) =>
+      DiscoverColumnDto(
+        id: id ?? this.id,
+        title: title ?? this.title,
+        icon: icon ?? this.icon,
+        kind: kind ?? this.kind,
+        content: content ?? this.content,
+        sort: sort ?? this.sort,
+        enabled: enabled ?? this.enabled,
+        pinned: pinned ?? this.pinned,
+        createdAt: createdAt ?? this.createdAt,
+      );
 }

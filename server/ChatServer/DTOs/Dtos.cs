@@ -67,5 +67,17 @@ public record DiscoverColumnDto(
     Guid Id,
     string Title,
     string? Icon,
-    string? Link,
-    int Sort);
+    string Kind,
+    string? Content,
+    int Sort,
+    bool Pinned);
+
+/// <summary>
+/// 客戶端功能開關。字段與 AdminServer 的 SystemSettings 一一對應。
+/// </summary>
+public record FeatureSettingsDto(
+    bool ShowOnlineStatus,
+    bool EnableVoiceCall,
+    bool EnableVideoCall,
+    bool AllowFile,
+    bool AllowVoice);

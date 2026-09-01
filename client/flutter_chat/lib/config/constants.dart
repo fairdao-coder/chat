@@ -24,6 +24,8 @@ class HubMethods {
   static const String sendGroupMessage = 'SendGroupMessage';
   static const String joinGroup = 'JoinGroup';
   static const String leaveGroup = 'LeaveGroup';
+  // 正在輸入狀態
+  static const String sendTyping = 'SendTyping';
   // 通話信令
   static const String inviteCall = 'InviteCall';
   static const String acceptCall = 'AcceptCall';
@@ -39,6 +41,8 @@ class HubEvents {
   static const String userOnline = 'UserOnline';
   static const String userOffline = 'UserOffline';
   static const String receiveFriendRequest = 'ReceiveFriendRequest';
+  // 正在輸入狀態
+  static const String typing = 'OnTyping';
   // 通話信令
   static const String incomingCall = 'OnIncomingCall';
   static const String callAccepted = 'OnCallAccepted';

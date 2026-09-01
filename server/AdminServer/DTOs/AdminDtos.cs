@@ -37,6 +37,29 @@ public record UpdateRoleRequest(string Name, string Permissions, string? Descrip
 public record CreateAdminRequest(string UserName, string DisplayName, string Password, Guid RoleId);
 
 public record DiscoverColumnDto(
-    Guid Id, string Title, string? Icon, string? Link, int Sort, bool Enabled, DateTime CreatedAt);
+    Guid Id, string Title, string? Icon, string Kind, string? Content,
+    int Sort, bool Enabled, bool Pinned, DateTime CreatedAt);
 
-public record UpsertDiscoverColumnRequest(string Title, string? Icon, string? Link, int Sort, bool Enabled);
+public record UpsertDiscoverColumnRequest(
+    string Title, string? Icon = null, string Kind = "link", string? Content = null,
+    int Sort = 0, bool Enabled = true, bool Pinned = false);
+
+// ---- 系統功能開關 ----
+
+/// <summary>
+/// 全系統功能開關（單例）。客戶端據此控制功能可用性。
+/// </summary>
+public record SystemSettingsDto(
+    bool ShowOnlineStatus,
+    bool EnableVoiceCall,
+    bool EnableVideoCall,
+    bool AllowFile,
+    bool AllowVoice,
+    DateTime UpdatedAt);
+
+public record UpdateSystemSettingsRequest(
+    bool ShowOnlineStatus,
+    bool EnableVoiceCall,
+    bool EnableVideoCall,
+    bool AllowFile,
+    bool AllowVoice);
