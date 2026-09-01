@@ -115,7 +115,14 @@ ThemeData _buildTheme(Brightness brightness) {
         letterSpacing: 0.2,
       ),
       iconTheme: IconThemeData(color: textPrimary),
-      systemOverlayStyle: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      systemOverlayStyle: dark
+          ? SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent)
+          // 亮色：深色圖標 + 淺色狀態欄背景，保證安卓端時間/電量清晰可見。
+          : SystemUiOverlayStyle.dark.copyWith(
+              statusBarColor: AppColors.lightBg,
+              systemNavigationBarColor: AppColors.lightBg,
+              systemNavigationBarIconBrightness: Brightness.dark,
+            ),
     ),
 
     inputDecorationTheme: inputTheme,

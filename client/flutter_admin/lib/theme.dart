@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class AppTheme {
   static const Color primary = Color(0xFF3B5BDB);
@@ -32,11 +33,18 @@ class AppTheme {
       'sans-serif',
     ],
     colorScheme: ColorScheme.fromSeed(seedColor: primary, primary: primary),
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: Colors.white,
       foregroundColor: textMain,
       elevation: 0,
       scrolledUnderElevation: 1,
+      // 亮色主題：狀態欄用深色圖標 + 淺色背景，保證安卓端時間/電量清晰可見。
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.white,
+        statusBarIconBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
       titleTextStyle: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: textMain),
     ),
     cardTheme: CardThemeData(

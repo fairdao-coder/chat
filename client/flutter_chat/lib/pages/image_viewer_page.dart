@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gal/gal.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -112,6 +113,9 @@ class _ImageViewerPageState extends ConsumerState<ImageViewerPage> {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         elevation: 0,
+        // 全屏黑底查看器：狀態欄用淺色圖標（白字），與黑底協調。
+        systemOverlayStyle: SystemUiOverlayStyle.light
+            .copyWith(statusBarColor: Colors.transparent),
         actions: [
           IconButton(
             icon: _saving

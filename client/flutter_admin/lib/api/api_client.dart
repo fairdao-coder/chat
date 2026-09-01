@@ -50,8 +50,11 @@ class ApiClient {
     String msg = res.body;
     try {
       final decoded = jsonDecode(utf8.decode(res.bodyBytes));
-      msg = decoded is Map ? (decoded['message'] ?? decoded['title'] ?? res.body) : res.body;
+      msg = decoded is Map
+          ? (decoded['message'] ?? decoded['title'] ?? res.body)
+          : res.body;
     } catch (_) {}
+    if (msg.trim().isEmpty) msg = '請求失敗（HTTP ${res.statusCode}）';
     if (res.statusCode == 401) throw ApiException(401, '登錄已過期，請重新登錄');
     if (res.statusCode == 403) throw ApiException(403, '權限不足，請聯繫超級管理員');
     throw ApiException(res.statusCode, msg);

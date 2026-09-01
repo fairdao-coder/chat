@@ -4,6 +4,9 @@ namespace AdminServer.DTOs;
 
 public record AdminLoginRequest(string UserName, string Password);
 public record AdminLoginResult(string Token, AdminUserDto Admin, string[] Permissions);
+
+/// <summary>管理員自助修改密碼請求。</summary>
+public record AdminChangePasswordRequest(string OldPassword, string NewPassword);
 public record AdminUserDto(
     Guid Id, string UserName, string DisplayName, string RoleName,
     bool IsActive, DateTime CreatedAt, DateTime? LastLoginAt);

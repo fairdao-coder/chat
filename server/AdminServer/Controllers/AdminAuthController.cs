@@ -58,6 +58,30 @@ public class AdminAuthController : ControllerBase
         return Ok(new AdminLoginResult("", ToDto(admin), perms));
     }
 
+    /// <summary>
+    /// 當前登錄管理員自助修改密碼：需舊密碼驗證，成功後記錄審計日誌。
+    /// 不要求特定權限點——任何管理員都可以修改自己的密碼。
+    /// </summary>
+    [HttpPost("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword(AdminChangePasswordRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.NewPassword) || req.NewPassword.Length < 6)
+            return BadRequest("新密碼長度至少 6 位");
+
+        var id = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var admin = await _db.AdminUsers.FirstOrDefaultAsync(a => a.Id == id);
+        if (admin is null) return Unauthorized();
+
+        if (!_hasher.Verify(admin.PasswordHash, req.OldPassword))
+            return BadRequest("舊密碼錯誤");
+
+        admin.PasswordHash = _hasher.HashPassword(req.NewPassword);
+        await _db.SaveChangesAsync();
+        await _audit.LogAsync("auth.change_password", target: admin.UserName);
+        return Ok();
+    }
+
     private static string[] ParsePerms(string? raw) =>
         (raw ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 

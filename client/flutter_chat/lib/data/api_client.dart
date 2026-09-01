@@ -85,6 +85,12 @@ class ApiClient {
     return AuthResult.fromJson(data);
   }
 
+  /// 當前登錄用戶修改密碼（需提供舊密碼驗證）。
+  Future<void> changePassword(String oldPassword, String newPassword) async {
+    await _req(() => _dio.post('/api/auth/change-password',
+        data: {'oldPassword': oldPassword, 'newPassword': newPassword}));
+  }
+
   // ---------- Discover ----------
 
   /// 拉取發現頁欄目（公開接口，無需登錄）。

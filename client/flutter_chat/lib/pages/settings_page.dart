@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../config/app_config.dart';
+import '../data/api_client.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/auth_provider.dart';
+import '../providers/core_providers.dart';
 import '../providers/locale_provider.dart';
 import '../providers/theme_mode_provider.dart';
 import '../widgets/app_avatar.dart';
@@ -222,19 +224,133 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const SizedBox(height: 14),
 
-          // 退出登錄
+          // 賬戶操作
           Card(
             child: Padding(
               padding: const EdgeInsets.all(8),
-              child: ListTile(
-                leading: const Icon(Icons.logout_outlined),
-                title: Text(context.tr('退出登录')),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: _logout,
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.lock_outline),
+                    title: Text(context.tr('修改密码')),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _changePassword,
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.logout_outlined),
+                    title: Text(context.tr('退出登录')),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _logout,
+                  ),
+                ],
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 彈出修改密碼對話框：舊密碼 + 新密碼 + 確認，提交到後端校驗舊密碼。
+  Future<void> _changePassword() async {
+    final oldCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var busy = false;
+    // 提前捕獲 api 引用，避免在異步閉包中再次 ref.read 觸發
+    // Riverpod 在 didChangeDependencies 期間的 assert 異常。
+    final api = ref.read(apiProvider);
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          title: Text(context.tr('修改密码')),
+          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: oldCtrl,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: context.tr('旧密码'),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                  ),
+                  validator: (v) =>
+                      v == null || v.isEmpty ? context.tr('请输入旧密码') : null,
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: newCtrl,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: context.tr('新密码'),
+                    helperText: context.tr('至少6位'),
+                    prefixIcon: const Icon(Icons.lock),
+                  ),
+                  validator: (v) =>
+                      v == null || v.length < 6 ? context.tr('密码长度至少6位') : null,
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: confirmCtrl,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: context.tr('确认新密码'),
+                    prefixIcon: const Icon(Icons.lock),
+                  ),
+                  validator: (v) => v != newCtrl.text
+                      ? context.tr('两次输入的新密码不一致')
+                      : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: busy ? null : () => Navigator.pop(dialogCtx),
+              child: Text(context.tr('取消')),
+            ),
+            FilledButton(
+              onPressed: busy
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setDialogState(() => busy = true);
+                      try {
+                        await api.changePassword(oldCtrl.text, newCtrl.text);
+                        if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                        if (mounted) _toast(context.tr('密码修改成功'));
+                      } on ApiException catch (e) {
+                        setDialogState(() => busy = false);
+                        if (dialogCtx.mounted) {
+                          ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                            SnackBar(content: Text(e.message)),
+                          );
+                        }
+                      } catch (_) {
+                        setDialogState(() => busy = false);
+                        if (dialogCtx.mounted) {
+                          ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                            SnackBar(content: Text(context.tr('网络错误，请重试'))),
+                          );
+                        }
+                      }
+                    },
+              child: busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(context.tr('确认修改')),
+            ),
+          ],
+        ),
       ),
     );
   }

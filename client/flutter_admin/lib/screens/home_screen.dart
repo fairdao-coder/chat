@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../api/api_client.dart';
 import '../providers/auth_provider.dart';
 import '../theme.dart';
 import '../widgets/app_drawer.dart';
@@ -46,6 +47,133 @@ class _HomeScreenState extends State<HomeScreen> {
     await context.read<AuthProvider>().logout();
   }
 
+  /// 當前管理員自助修改密碼：舊密碼 + 新密碼 + 確認，提交到後端校驗。
+  Future<void> _changePassword() async {
+    final oldCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var busy = false;
+    String? errorMsg;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          title: const Text('修改密碼'),
+          contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: oldCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: '舊密碼',
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
+                  validator: (v) => v == null || v.isEmpty ? '請輸入舊密碼' : null,
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: newCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: '新密碼',
+                    helperText: '至少6位',
+                    prefixIcon: Icon(Icons.lock),
+                  ),
+                  validator: (v) =>
+                      v == null || v.length < 6 ? '密碼長度至少6位' : null,
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: confirmCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: '確認新密碼',
+                    prefixIcon: Icon(Icons.lock),
+                  ),
+                  validator: (v) =>
+                      v != newCtrl.text ? '兩次輸入的新密碼不一致' : null,
+                ),
+                if (errorMsg != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      errorMsg!,
+                      style: const TextStyle(color: Colors.red, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: busy ? null : () => Navigator.pop(dialogCtx),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: busy
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setDialogState(() {
+                        busy = true;
+                        errorMsg = null;
+                      });
+                      try {
+                        await context.read<AuthProvider>().api.post(
+                              '/admin/auth/change-password',
+                              {
+                                'oldPassword': oldCtrl.text,
+                                'newPassword': newCtrl.text,
+                              },
+                            );
+                        if (dialogCtx.mounted) Navigator.pop(dialogCtx);
+                        if (mounted) {
+                          ScaffoldMessenger.of(this.context).showSnackBar(
+                            const SnackBar(
+                              content: Text('密碼修改成功'),
+                              backgroundColor: AppTheme.primary,
+                            ),
+                          );
+                        }
+                      } on ApiException catch (e) {
+                        setDialogState(() {
+                          busy = false;
+                          errorMsg = e.message;
+                        });
+                      } catch (_) {
+                        setDialogState(() {
+                          busy = false;
+                          errorMsg = '網絡錯誤，請重試';
+                        });
+                      }
+                    },
+              child: busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('確認修改'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -83,6 +211,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+          IconButton(
+              onPressed: _changePassword,
+              icon: const Icon(Icons.lock_outline),
+              tooltip: '修改密碼'),
           IconButton(onPressed: _logout, icon: const Icon(Icons.logout), tooltip: '退出登錄'),
           const SizedBox(width: 8),
         ],

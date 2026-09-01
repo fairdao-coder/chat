@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'config/app_colors.dart';
 import 'config/app_config.dart';
 import 'l10n/app_localizations.dart';
 import 'providers/auth_provider.dart';
@@ -83,13 +84,23 @@ class _MyAppState extends ConsumerState<MyApp> {
     final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
 
-    // 让系统状态栏图标颜色跟随主题：亮主题用深色图标，暗主题用浅色图标。
+    // 让系统状态栏图标颜色跟随主题：亮主题用深色图标（可见），暗主题用浅色图标。
+    // 注意：此处不能依赖 MaterialApp 子树内的 MediaQuery（build 时尚未就绪，
+    // 易导致 system 模式下误判亮度，使亮色背景下用了浅色图标而看不见时间/电量）。
+    // 改用 platformDispatcher 直接读取系统真实亮度，最可靠。
+    final platformBrightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
     final isDarkMode = themeMode == ThemeMode.dark ||
-        (themeMode == ThemeMode.system &&
-            MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+        (themeMode == ThemeMode.system && platformBrightness == Brightness.dark);
     SystemChrome.setSystemUIOverlayStyle(
-      (isDarkMode ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
-          .copyWith(statusBarColor: Colors.transparent),
+      isDarkMode
+          ? SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent)
+          // 亮色模式：深色图标 + 浅色状态栏背景，保证时间/电量清晰可见。
+          : SystemUiOverlayStyle.dark.copyWith(
+              statusBarColor: AppColors.lightBg,
+              systemNavigationBarColor: AppColors.lightBg,
+              systemNavigationBarIconBrightness: Brightness.dark,
+            ),
     );
 
     return MaterialApp.router(

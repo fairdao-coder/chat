@@ -6,6 +6,9 @@ public record RegisterRequest(string UserName, string Password, string? NickName
 
 public record LoginRequest(string UserName, string Password);
 
+/// <summary>修改密碼請求（聊天用戶自助）。</summary>
+public record ChangePasswordRequest(string OldPassword, string NewPassword);
+
 public record AuthResult(string Token, UserDto User);
 
 public record UserDto(
