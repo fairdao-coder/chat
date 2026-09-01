@@ -1,7 +1,7 @@
 name: flutter_chat
 description: Flutter chat client (rewrite of MauiChat) for the ChatServer SignalR backend.
 publish_to: 'none'
-version: 0.1.6+7
+version: 0.1.7+8
 
 environment:
   sdk: ^3.5.0
