@@ -657,7 +657,7 @@ jobs:
             exit 0
           fi
 
-          git commit -m "Deploy ${GITHUB_REPOSITORY}@${GITHUB_SHA::7} to ${TARGET_REPO}#${TARGET_BRANCH}"
+          git commit -m "${TARGET_REPO}#${TARGET_BRANCH}"
 
           # Send the token as an Authorization header instead of embedding it
           # in the remote URL, so it never shows up in git error output.
