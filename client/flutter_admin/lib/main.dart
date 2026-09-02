@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'theme.dart';
 import 'providers/auth_provider.dart';
+import 'providers/theme_skin_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 
@@ -12,13 +13,18 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => AuthProvider()..loadFromStorage(),
-      child: MaterialApp(
-        title: '聊天后臺管理系統',
-        theme: AppTheme.light,
-        home: const RootDecider(),
-        debugShowCheckedModeBanner: false,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()..loadFromStorage()),
+        ChangeNotifierProvider(create: (_) => ThemeSkinProvider()),
+      ],
+      child: Consumer<ThemeSkinProvider>(
+        builder: (context, skin, _) => MaterialApp(
+          title: '聊天后臺管理系統',
+          theme: AppTheme.active,
+          home: const RootDecider(),
+          debugShowCheckedModeBanner: false,
+        ),
       ),
     );
   }

@@ -5,18 +5,19 @@ class StatCard extends StatelessWidget {
   final String title;
   final String value;
   final IconData icon;
-  final Color color;
+  final Color? color;
 
   const StatCard({
     super.key,
     required this.title,
     required this.value,
     required this.icon,
-    this.color = AppTheme.primary,
+    this.color,
   });
 
   @override
   Widget build(BuildContext context) {
+    final Color c = color ?? AppTheme.activePrimary;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -24,8 +25,8 @@ class StatCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 24,
-              backgroundColor: color.withAlpha(26),
-              child: Icon(icon, color: color),
+              backgroundColor: c.withAlpha(26),
+              child: Icon(icon, color: c),
             ),
             const SizedBox(width: 14),
             Expanded(

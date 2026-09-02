@@ -107,8 +107,8 @@ class _MyAppState extends ConsumerState<MyApp> {
           ? SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent)
           // 亮色模式：深色图标 + 浅色状态栏背景，保证时间/电量清晰可见。
           : SystemUiOverlayStyle.dark.copyWith(
-              statusBarColor: AppColors.lightBg,
-              systemNavigationBarColor: AppColors.lightBg,
+              statusBarColor: AppColors.lightSurface,
+              systemNavigationBarColor: AppColors.lightSurface,
               systemNavigationBarIconBrightness: Brightness.dark,
             ),
     );

@@ -7,7 +7,7 @@ import 'form_widgets.dart';
 
 /// 新增 / 編輯欄目的對話框。
 ///
-/// 返回 Map<String, dynamic> 作為請求體；取消則返回 null。
+/// 返回 `Map<String, dynamic>` 作為請求體；取消則返回 null。
 class ColumnDialog extends StatefulWidget {
   final DiscoverColumnDto? initial;
 
@@ -141,8 +141,8 @@ class _ColumnDialogState extends State<ColumnDialog> {
                                   value: e.key,
                                   child: Row(
                                     children: [
-                                      const Icon(Icons.radio_button_unchecked,
-                                          size: 16, color: AppTheme.primary),
+                                      Icon(Icons.radio_button_unchecked,
+                                          size: 16, color: AppTheme.activePrimary),
                                       const SizedBox(width: 10),
                                       Text(e.value),
                                     ],
@@ -163,8 +163,8 @@ class _ColumnDialogState extends State<ColumnDialog> {
                                   value: e.key,
                                   child: Row(
                                     children: [
-                                      const Icon(Icons.tab_outlined,
-                                          size: 16, color: AppTheme.primary),
+                                      Icon(Icons.tab_outlined,
+                                          size: 16, color: AppTheme.activePrimary),
                                       const SizedBox(width: 10),
                                       Text(e.value),
                                     ],
@@ -272,8 +272,8 @@ class _ColumnDialogState extends State<ColumnDialog> {
                           style:
                               TextStyle(fontSize: 12, color: AppTheme.textSub),
                         ),
-                        secondary: const Icon(Icons.visibility,
-                            color: AppTheme.primary),
+                        secondary: Icon(Icons.visibility,
+                            color: AppTheme.activePrimary),
                         value: _enabled,
                         onChanged: (v) => setState(() => _enabled = v ?? true),
                       ),

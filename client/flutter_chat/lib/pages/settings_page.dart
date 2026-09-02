@@ -9,6 +9,8 @@ import '../providers/auth_provider.dart';
 import '../providers/core_providers.dart';
 import '../providers/locale_provider.dart';
 import '../providers/theme_mode_provider.dart';
+import '../providers/theme_skin_provider.dart';
+import '../config/app_colors.dart';
 import '../widgets/app_avatar.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -51,6 +53,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
     final mode = ref.watch(themeModeProvider);
+    final skin = ref.watch(themeSkinProvider);
     final locale = ref.watch(localeProvider);
     final cs = Theme.of(context).colorScheme;
     final loc = L10n.of(context);
@@ -136,6 +139,33 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         value: ThemeMode.system,
                         label: Text(context.tr('系统')),
                         icon: const Icon(Icons.settings_brightness),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.brush_outlined),
+                    title: Text(context.tr('色彩皮肤')),
+                    subtitle: Text(
+                      '${context.tr('青绿')} / ${context.tr('鼠尾草绿')}',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SegmentedButton<ThemeSkin>(
+                    selected: {skin},
+                    onSelectionChanged: (s) =>
+                        ref.read(themeSkinProvider.notifier).set(s.first),
+                    segments: [
+                      ButtonSegment(
+                        value: ThemeSkin.teal,
+                        label: Text(context.tr('青绿')),
+                        icon: const Icon(Icons.gradient),
+                      ),
+                      ButtonSegment(
+                        value: ThemeSkin.sage,
+                        label: Text(context.tr('鼠尾草绿')),
+                        icon: const Icon(Icons.eco),
                       ),
                     ],
                   ),

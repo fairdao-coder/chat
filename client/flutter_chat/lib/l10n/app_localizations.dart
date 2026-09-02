@@ -32,6 +32,9 @@ class L10n {
   static const Map<String, String> _zhHans = {
     '设置': '设置',
     '外观主题': '外观主题',
+    '色彩皮肤': '色彩皮肤',
+    '青绿': '青绿',
+    '鼠尾草绿': '鼠尾草绿',
     '亮色': '亮色',
     '暗色': '暗色',
     '系统': '系统',
@@ -183,6 +186,9 @@ class L10n {
   static const Map<String, String> _zhHant = {
     '设置': '設定',
     '外观主题': '外觀主題',
+    '色彩皮肤': '色彩皮膚',
+    '青绿': '青綠',
+    '鼠尾草绿': '鼠尾草綠',
     '亮色': '亮色',
     '暗色': '暗色',
     '系统': '系統',
@@ -345,6 +351,9 @@ class L10n {
   static const Map<String, String> _en = {
     '设置': 'Settings',
     '外观主题': 'Appearance',
+    '色彩皮肤': 'Color skin',
+    '青绿': 'Teal',
+    '鼠尾草绿': 'Sage green',
     '亮色': 'Light',
     '暗色': 'Dark',
     '系统': 'System',
@@ -507,6 +516,9 @@ class L10n {
   static const Map<String, String> _es = {
     '设置': 'Ajustes',
     '外观主题': 'Apariencia',
+    '色彩皮肤': 'Tema de color',
+    '青绿': 'Verde azulado',
+    '鼠尾草绿': 'Verde salvia',
     '亮色': 'Claro',
     '暗色': 'Oscuro',
     '系统': 'Sistema',

@@ -106,7 +106,7 @@ ThemeData _buildTheme(Brightness brightness) {
       centerTitle: false,
       elevation: 0,
       scrolledUnderElevation: 0,
-      backgroundColor: scaffoldBg,
+      backgroundColor: dark ? Colors.transparent : AppColors.lightSurface,
       foregroundColor: textPrimary,
       titleTextStyle: ts(
         fontSize: 20,
@@ -119,8 +119,8 @@ ThemeData _buildTheme(Brightness brightness) {
           ? SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent)
           // 亮色：深色圖標 + 淺色狀態欄背景，保證安卓端時間/電量清晰可見。
           : SystemUiOverlayStyle.dark.copyWith(
-              statusBarColor: AppColors.lightBg,
-              systemNavigationBarColor: AppColors.lightBg,
+              statusBarColor: AppColors.lightSurface,
+              systemNavigationBarColor: AppColors.lightSurface,
               systemNavigationBarIconBrightness: Brightness.dark,
             ),
     ),

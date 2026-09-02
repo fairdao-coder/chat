@@ -1,30 +1,30 @@
 import 'package:flutter/material.dart';
 
-/// 設計系統 - 顏色 Token（青綠清新 / Fresh Teal）
+/// 設計系統 - 顏色 Token
 ///
-/// 集中管理品牌色、漸變、表面層、文字層級與狀態色，供亮色/暗色主題
-/// 以及各頁面組件共用，保證全應用配色統一、可維護。
+/// 品牌主色支持多套皮膚（teal / sage）。表面層、文字層級與語義色為中性，
+/// 跨皮膚復用。切換皮膚時調用 [AppColors.apply] 重設品牌相關字段。
 class AppColors {
   AppColors._();
 
-  // —— 品牌主色（Teal 系）——
-  static const Color brand = Color(0xFF0D9488); // teal-600  主操作（亮色）
-  static const Color brandStrong = Color(0xFF0F766E); // teal-700 按壓/深色背景
-  static const Color brandSoft = Color(0xFF14B8A6); // teal-500
-  static const Color brandBright = Color(0xFF2DD4BF); // teal-400 暗色主操作 / 漸變起點
+  // —— 當前激活皮膚的品牌色（運行時可變）——
+  static Color brand = const Color(0xFF0D9488); // 主操作（亮色）
+  static Color brandStrong = const Color(0xFF0F766E); // 按壓/深色背景
+  static Color brandSoft = const Color(0xFF14B8A6); // 淺色強調
+  static Color brandBright = const Color(0xFF2DD4BF); // 暗色主操作 / 漸變起點
 
-  // —— 品牌漸變 ——
-  static const Gradient brandGradient = LinearGradient(
+  // —— 品牌漸變（運行時可變）——
+  static Gradient brandGradient = const LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [Color(0xFF2DD4BF), Color(0xFF0D9488)],
   );
-  static const Gradient brandGradientV = LinearGradient(
+  static Gradient brandGradientV = const LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [Color(0xFF2DD4BF), Color(0xFF0D9488)],
   );
-  static const Gradient bubbleMine = LinearGradient(
+  static Gradient bubbleMine = const LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [Color(0xFF2DD4BF), Color(0xFF0D9488)],
@@ -62,9 +62,57 @@ class AppColors {
   static const Color bubbleTextPeerLight = Color(0xFF10211F);
   static const Color bubbleTextPeerDark = Color(0xFFE7F1EF);
 
+  /// 按皮膚重設品牌色（teal 默認，sage 鼠尾草綠）。
+  static void apply(ThemeSkin skin) {
+    if (skin == ThemeSkin.sage) {
+      brand = const Color(0xFF5F7A52); // 深鼠尾草，主操作（亮色）
+      brandStrong = const Color(0xFF4A6240);
+      brandSoft = const Color(0xFF7C9A78);
+      brandBright = const Color(0xFF9DBB8F); // 暗色主操作 / 漸變起點
+      brandGradient = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF9DBB8F), Color(0xFF5F7A52)],
+      );
+      brandGradientV = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFF9DBB8F), Color(0xFF5F7A52)],
+      );
+      bubbleMine = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF9DBB8F), Color(0xFF5F7A52)],
+      );
+    } else {
+      brand = const Color(0xFF0D9488);
+      brandStrong = const Color(0xFF0F766E);
+      brandSoft = const Color(0xFF14B8A6);
+      brandBright = const Color(0xFF2DD4BF);
+      brandGradient = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF2DD4BF), Color(0xFF0D9488)],
+      );
+      brandGradientV = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFF2DD4BF), Color(0xFF0D9488)],
+      );
+      bubbleMine = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Color(0xFF2DD4BF), Color(0xFF0D9488)],
+      );
+    }
+  }
+
   /// 按亮度取背景色
   static Color bg(bool dark) => dark ? darkBg : lightBg;
 
   /// 按亮度取表面色
   static Color surface(bool dark) => dark ? darkSurface : lightSurface;
 }
+
+/// 主題皮膚：青綠（默認）/ 鼠尾草綠。
+enum ThemeSkin { teal, sage }

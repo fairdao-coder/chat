@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../api/api_client.dart';
 import '../api/models.dart';
 import '../providers/auth_provider.dart';
+import '../providers/theme_skin_provider.dart';
 import '../theme.dart';
 
 /// 系統功能開關：是否顯示在線狀態、啟用語音/視頻通話、允許發送文件/語音。
@@ -100,6 +101,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     if (_settings == null) return const SizedBox.shrink();
 
+    // 本地外觀（不影響後端設置）。
+    final skin = context.watch<ThemeSkinProvider>();
+    final skinCard = Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.brush_outlined, color: AppTheme.primary),
+                const SizedBox(width: 8),
+                const Text('色彩皮膚', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                const Spacer(),
+                Text(skin.skin == ThemeSkin.sage ? '鼠尾草綠' : '藍',
+                    style: TextStyle(color: AppTheme.textSub)),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SegmentedButton<ThemeSkin>(
+              selected: {skin.skin},
+              onSelectionChanged: (s) => skin.set(s.first),
+              segments: const [
+                ButtonSegment(value: ThemeSkin.blue, label: Text('藍'), icon: Icon(Icons.water_drop)),
+                ButtonSegment(value: ThemeSkin.sage, label: Text('鼠尾草綠'), icon: Icon(Icons.eco)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
     final items = <_SettingItem>[
       _SettingItem(
         icon: Icons.visibility,
@@ -176,16 +209,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ),
+              skinCard,
               Card(
-                child: Column(
-                  children: [
-                    for (var i = 0; i < items.length; i++) ...[
-                      if (i > 0) const Divider(height: 1, indent: 16, endIndent: 16),
-                      _SettingRow(item: items[i], enabled: _canWrite),
-                    ],
-                  ],
-                ),
-              ),
+                    child: Column(
+                      children: [
+                        for (var i = 0; i < items.length; i++) ...[
+                          if (i > 0) const Divider(height: 1, indent: 16, endIndent: 16),
+                          _SettingRow(item: items[i], enabled: _canWrite),
+                        ],
+                      ],
+                    ),
+                  ),
               const SizedBox(height: 24),
               Row(
                 children: [

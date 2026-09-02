@@ -34,7 +34,7 @@ class AppDrawer extends StatelessWidget {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(20, 40, 20, 24),
-            decoration: const BoxDecoration(gradient: AppTheme.brandGradient),
+            decoration: BoxDecoration(gradient: AppTheme.activeGradient),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -92,8 +92,8 @@ class AppDrawer extends StatelessWidget {
                               Container(
                                 width: 6,
                                 height: 6,
-                                decoration: const BoxDecoration(
-                                  color: AppTheme.primary, shape: BoxShape.circle),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.activePrimary, shape: BoxShape.circle),
                               ),
                           ],
                         ),
