@@ -1,10 +1,11 @@
 # 多阶段构建：.NET 10 SDK 编译，ASP.NET 10 运行时运行
+# Build context 必须是 server/ 目录（这样才能访问 Chat.Shared 项目引用）：
+#   docker build -f AdminServer/Dockerfile -t adminserver:local server
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY AdminServer.csproj .
-RUN dotnet restore AdminServer.csproj
 COPY . .
-RUN dotnet publish AdminServer.csproj -c Release -o /app/out
+RUN dotnet restore AdminServer/AdminServer.csproj
+RUN dotnet publish AdminServer/AdminServer.csproj -c Release -o /app/out --no-restore
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app

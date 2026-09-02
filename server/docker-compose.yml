@@ -16,7 +16,9 @@ services:
       retries: 10
 
   api:
-    build: ./ChatServer
+    build:
+      context: .
+      dockerfile: ChatServer/Dockerfile
     depends_on:
       admin-api:
         condition: service_healthy
@@ -27,7 +29,9 @@ services:
       - "8080:8080"
 
   admin-api:
-    build: ./AdminServer
+    build:
+      context: .
+      dockerfile: AdminServer/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy

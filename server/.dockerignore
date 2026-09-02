@@ -1,0 +1,10 @@
+**/bin
+**/obj
+**/out
+**/publish
+**/.vs
+**/.idea
+**/node_modules
+**/*.user
+**/*.suo
+.git

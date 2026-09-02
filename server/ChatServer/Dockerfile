@@ -2,8 +2,8 @@
 #
 # Multi-stage build for the ChatServer (ASP.NET Core SignalR hub, .NET 10).
 #
-# Build context must be this folder (server/ChatServer):
-#   docker build -t chatserver:local server/ChatServer
+# Build context must be the server/ folder (so Chat.Shared is reachable):
+#   docker build -f ChatServer/Dockerfile -t chatserver:local server
 #
 # Run example (Linux/Mac, reach the host Postgres via host.docker.internal):
 #   docker run -d --name chatserver -p 5298:8080 \
@@ -21,13 +21,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Restore in its own layer so the (large) NuGet graph is cached.
-COPY ChatServer.csproj .
-RUN dotnet restore
-
-# Copy the rest and publish a framework-dependent, self-contained-free release.
+# Copy the whole server/ context (includes Chat.Shared project reference).
 COPY . .
-RUN dotnet publish ChatServer.csproj -c Release -o /app/publish --no-restore
+RUN dotnet restore ChatServer/ChatServer.csproj
+RUN dotnet publish ChatServer/ChatServer.csproj -c Release -o /app/publish --no-restore
 
 # ---- 2. Runtime ----
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
