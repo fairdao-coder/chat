@@ -2,7 +2,9 @@ using AdminServer.Authorization;
 using AdminServer.Data;
 using AdminServer.DTOs;
 using AdminServer.Entities;
+using Chat.Shared.Entities;
 using AdminServer.Services;
+using Chat.Shared.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +32,7 @@ public class DiscoverColumnsController : ControllerBase
         if (f is not null) return f;
 
         var items = await _db.DiscoverColumns
+            .AsNoTracking()
             .OrderBy(c => c.Sort)
             .ThenBy(c => c.CreatedAt)
             .Select(c => new DiscoverColumnDto(c.Id, c.Title, c.Icon, c.Kind, c.Content, c.Sort, c.Enabled, c.Pinned, c.CreatedAt))

@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../bridges/chat_bridge.dart';
 import '../l10n/app_localizations.dart';
 import 'web_html.dart';
 
@@ -17,17 +19,17 @@ import 'web_html.dart';
 ///     （需在 pubspec.yaml 的 flutter.assets 中註冊對應目錄）。
 ///
 /// Web 平臺 webview_flutter 沒有內置實現，改為外部瀏覽器打開（內聯 HTML 不支支持）。
-class MiniAppPage extends StatefulWidget {
+class MiniAppPage extends ConsumerStatefulWidget {
   final String name;
   final String? title;
 
   const MiniAppPage({super.key, required this.name, this.title});
 
   @override
-  State<MiniAppPage> createState() => _MiniAppPageState();
+  ConsumerState<MiniAppPage> createState() => _MiniAppPageState();
 }
 
-class _MiniAppPageState extends State<MiniAppPage> {
+class _MiniAppPageState extends ConsumerState<MiniAppPage> {
   late final bool _isInlineHtml;
   late final bool _allowScript;
   late final String _inlineHtml;
@@ -91,7 +93,10 @@ class _MiniAppPageState extends State<MiniAppPage> {
     }
 
     if (_isInlineHtml) {
-      _controller = WebViewController()
+      // 預註入小應用 Bridge 客戶端（定義 window.ChatBridge），讓頁面內腳本
+      // 可在加載時直接調用宿主能力。
+      final htmlWithBridge = '${chatBridgeBootstrap()}\n$_inlineHtml';
+      _controller = _applyBridge(WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setNavigationDelegate(
           NavigationDelegate(
@@ -100,9 +105,9 @@ class _MiniAppPageState extends State<MiniAppPage> {
             onWebResourceError: (_) => setState(() => _failed = true),
           ),
         )
-        ..loadHtmlString(_inlineHtml);
+        ..loadHtmlString(htmlWithBridge));
     } else if (widget.name.startsWith('http')) {
-      _controller = WebViewController()
+      _controller = _applyBridge(WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setNavigationDelegate(
           NavigationDelegate(
@@ -111,10 +116,10 @@ class _MiniAppPageState extends State<MiniAppPage> {
             onWebResourceError: (_) => setState(() => _loading = false),
           ),
         )
-        ..loadRequest(Uri.parse(_resolvedUrl));
+        ..loadRequest(Uri.parse(_resolvedUrl)));
     } else {
       // 本地 H5 包：加載 assets 中的 index.html。
-      _controller = WebViewController()
+      _controller = _applyBridge(WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setNavigationDelegate(
           NavigationDelegate(
@@ -123,8 +128,35 @@ class _MiniAppPageState extends State<MiniAppPage> {
             onWebResourceError: (_) => setState(() => _failed = true),
           ),
         )
-        ..loadFlutterAsset(_resolvedUrl);
+        ..loadFlutterAsset(_resolvedUrl));
     }
+  }
+
+  /// 為 [WebViewController] 註冊小應用 JS Bridge（移動端）。
+  ///
+  /// - 預註入 `window.ChatBridge` 包装腳本（頁面加載前執行）；
+  /// - 註冊 [kChatBridgeChannel] javascriptChannel 接收 H5 調用，分發到
+  ///   宿主能力並把結果回傳。
+  WebViewController _applyBridge(WebViewController c) {
+    return c
+      ..addJavaScriptChannel(
+        kChatBridgeChannel,
+        onMessageReceived: (message) async {
+          final req = parseBridgeRequest(message.message);
+          if (req == null) return;
+          final id = req['id'] as String;
+          try {
+            final result = await handleBridgeCall(ref, req);
+            await c.runJavaScript(
+              mobileBridgeResponseScript(id, ok: true, result: result),
+            );
+          } catch (e) {
+            await c.runJavaScript(
+              mobileBridgeResponseScript(id, ok: false, error: e.toString()),
+            );
+          }
+        },
+      );
   }
 
   @override

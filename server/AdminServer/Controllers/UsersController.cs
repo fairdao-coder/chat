@@ -2,7 +2,9 @@ using AdminServer.Authorization;
 using AdminServer.Data;
 using AdminServer.DTOs;
 using AdminServer.Entities;
+using Chat.Shared.Entities;
 using AdminServer.Services;
+using Chat.Shared.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -32,29 +34,40 @@ public class UsersController : ControllerBase
         if (page < 1) page = 1;
         if (pageSize < 1 || pageSize > 100) pageSize = 20;
 
-        var query = _db.Users.AsQueryable();
+        var query = _db.Users.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(q))
-            query = query.Where(u => u.UserName.Contains(q) || u.NickName.Contains(q));
+        {
+            var keyword = q.Trim();
+            query = query.Where(u => u.UserName.Contains(keyword) || u.NickName.Contains(keyword));
+        }
 
         var total = await query.CountAsync();
+
+        // 只投影列表所需字段，避免把 PasswordHash 等敏感列讀進內存。
         var users = await query
             .OrderByDescending(u => u.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
+            .Select(u => new { u.Id, u.UserName, u.NickName, u.AvatarUrl, u.CreatedAt, u.LastSeenAt })
             .ToListAsync();
 
         var ids = users.Select(u => u.Id).ToList();
         var bannedMap = await _db.UserFlags
+            .AsNoTracking()
             .Where(x => x.IsBanned && ids.Contains(x.UserId))
             .ToDictionaryAsync(x => x.UserId, x => x);
 
         var onlineThreshold = DateTime.UtcNow.AddMinutes(-5);
-        var items = users.Select(u => new ChatUserDto(
-            u.Id, u.UserName, u.NickName, u.AvatarUrl,
-            u.CreatedAt, u.LastSeenAt,
-            u.LastSeenAt >= onlineThreshold,
-            bannedMap.TryGetValue(u.Id, out var bf) && bf.IsBanned,
-            bannedMap.TryGetValue(u.Id, out var bf2) ? bf2.BanReason : null)).ToList();
+        var items = users.Select(u =>
+        {
+            bannedMap.TryGetValue(u.Id, out var flag);
+            return new ChatUserDto(
+                u.Id, u.UserName, u.NickName, u.AvatarUrl,
+                u.CreatedAt, u.LastSeenAt,
+                u.LastSeenAt >= onlineThreshold,
+                flag?.IsBanned ?? false,
+                flag?.BanReason);
+        }).ToList();
 
         return Ok(new PagedResult<ChatUserDto>(items, total, page, pageSize));
     }

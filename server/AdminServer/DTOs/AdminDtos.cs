@@ -1,4 +1,5 @@
 using AdminServer.Entities;
+using Chat.Shared.Entities;
 
 namespace AdminServer.DTOs;
 

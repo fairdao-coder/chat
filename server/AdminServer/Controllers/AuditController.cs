@@ -25,7 +25,7 @@ public class AuditController : ControllerBase
         if (page < 1) page = 1;
         if (pageSize < 1 || pageSize > 100) pageSize = 30;
 
-        var query = _db.AuditLogs.AsQueryable();
+        var query = _db.AuditLogs.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(q))
             query = query.Where(a => a.Action.Contains(q) || a.AdminUserName.Contains(q));
 

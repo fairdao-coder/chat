@@ -1,5 +1,6 @@
 using AdminServer.Data;
 using AdminServer.Entities;
+using Chat.Shared.Entities;
 using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
 
@@ -30,7 +31,7 @@ public class AuditService : IAuditService
 
         _db.AuditLogs.Add(new AuditLog
         {
-            AdminUserId = adminId is null ? null : Guid.Parse(adminId),
+            AdminUserId = adminId != null && Guid.TryParse(adminId, out var parsed) ? parsed : null,
             AdminUserName = userName,
             Action = action,
             Target = target,

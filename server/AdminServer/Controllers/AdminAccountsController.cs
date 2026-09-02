@@ -2,7 +2,9 @@ using AdminServer.Authorization;
 using AdminServer.Data;
 using AdminServer.DTOs;
 using AdminServer.Entities;
+using Chat.Shared.Entities;
 using AdminServer.Services;
+using Chat.Shared.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -31,7 +33,9 @@ public class AdminAccountsController : ControllerBase
         var f = this.EnsurePermission(Permissions.AdminsRead);
         if (f is not null) return f;
 
-        var list = await _db.AdminUsers.Include(a => a.Role)
+        var list = await _db.AdminUsers
+            .AsNoTracking()
+            .Include(a => a.Role)
             .Select(a => new AdminUserDto(a.Id, a.UserName, a.DisplayName, a.Role!.Name, a.IsActive, a.CreatedAt, a.LastLoginAt))
             .ToListAsync();
         return Ok(list);
@@ -43,7 +47,7 @@ public class AdminAccountsController : ControllerBase
         var f = this.EnsurePermission(Permissions.AdminsWrite);
         if (f is not null) return f;
 
-        if (await _db.AdminUsers.AnyAsync(a => a.UserName == req.UserName))
+        if (await _db.AdminUsers.AsNoTracking().AnyAsync(a => a.UserName == req.UserName))
             return Conflict("管理員賬號已存在");
 
         var role = await _db.AdminRoles.FindAsync(req.RoleId);

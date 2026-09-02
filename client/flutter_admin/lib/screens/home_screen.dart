@@ -133,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       });
                       try {
                         await context.read<AuthProvider>().api.post(
-                              '/admin/auth/change-password',
+                              '/api/admin/auth/change-password',
                               {
                                 'oldPassword': oldCtrl.text,
                                 'newPassword': newCtrl.text,

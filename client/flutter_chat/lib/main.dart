@@ -15,7 +15,10 @@ import 'providers/conversations_provider.dart';
 import 'providers/config_link_provider.dart';
 import 'providers/locale_provider.dart';
 import 'providers/theme_mode_provider.dart';
+import 'providers/notification_provider.dart';
+import 'bridges/chat_bridge.dart';
 import 'pages/call_overlay.dart';
+import 'widgets/message_banner_overlay.dart';
 import 'router.dart';
 import 'theme.dart';
 
@@ -68,6 +71,11 @@ class _MyAppState extends ConsumerState<MyApp> {
   @override
   void initState() {
     super.initState();
+    // 小應用 JS Bridge 的 toast 走全局 snack bar。
+    setBridgeToastHandler((m) => scaffoldMessengerKey.currentState
+        ?.showSnackBar(SnackBar(content: Text(m), duration: const Duration(seconds: 2))));
+    // Web 端：安裝 postMessage 橋監聽（僅 Web 生效，移動端走 WebView channel）。
+    installWebBridge(ref);
     // Restore persisted session and (re)connect the SignalR hub.
     ref.read(authProvider.notifier).init();
     // 預實例化通話控制器，使其訂閱 SignalR 來電事件（否則來電期間 overlay 不顯示）。
@@ -76,6 +84,8 @@ class _MyAppState extends ConsumerState<MyApp> {
     ref.read(configLinkProvider);
     // 監聽好友請求推送：收到新邀請即時刷新好友請求列表與紅點（無需重啟 App）。
     ref.read(friendRequestPushProvider);
+    // 訂閱全局消息推送：非當前會話收到消息時在屏幕頂部閃現橫幅（息屏再響鈴）。
+    ref.read(messageNotificationControllerProvider);
   }
 
   @override
@@ -122,6 +132,7 @@ class _MyAppState extends ConsumerState<MyApp> {
       builder: (context, child) => Stack(
         children: [
           if (child != null) child,
+          const MessageBannerOverlay(),
           const CallOverlay(),
         ],
       ),

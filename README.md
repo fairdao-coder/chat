@@ -63,6 +63,15 @@ docker compose up -d          # 启动 PostgreSQL（端口 5432，库名/账号/
 常用配置键：`ConnectionStrings:Default`（PostgreSQL 连接串）、`Jwt:Key`（签名密钥）、
 `Urls`（监听地址）、`Cors:Origins`（允许的前端来源）。
 
+> **⚠️ 配置强校验（重构后行为变更）**：`Jwt:Key` 在非 `Development` 环境下缺失、仍含占位标记
+> （`CHANGE` / `CHANGEME` / `PLEASECHANGEIT` / `DEVELOPMENTSECRET` / `YOUR_`）或长度不足 32 字符时，
+> 进程会**启动即失败**（不再退回公开默认值）。请用如下命令生成并注入：
+> ```bash
+> openssl rand -base64 48      # 输出 ≥ 44 字符，直接作为 Jwt:Key
+> # 环境变量覆盖（推荐）：Jwt__Key=<上面的输出>
+> ```
+> 同时 `Cors:Origins` 不再支持 `*` 通配，必须显式列出前端来源；缺失时拒绝跨域请求（开发环境仍宽松）。
+
 ### 运行
 ```bash
 cd server/ChatServer
@@ -206,6 +215,27 @@ release 版使用 Flutter 模板默认的 debug key 签名，因此 CI 无需 ke
 ## 5. 已知边界与后续扩展
 
 - **持久化**：PostgreSQL + EF Core，未做消息分页游标 / 已读回执落库（协议已预留 `ReadReceipt`）。
+  只读查询已统一加 `AsNoTracking`，会话列表 N+1 已压成少量批量查询。
 - **水平扩展**：SignalR 单机内存 `PresenceTracker`；多实例需 Redis Backplane + 外部 ID 分发。
-- **安全**：JWT 密钥与 CORS 为演示配置，生产请用强密钥、HTTPS、严格 CORS、文件校验与病毒扫描。
+- **安全（已升级）**：
+  - JWT 密钥启动期强校验（缺失 / 占位 / <32 字符则启动失败），CORS 不再回显任意 Origin；
+  - 文件上传已加扩展名白名单 + 魔数嗅探 + 大小限制（`UploadSafety`），令牌签发收敛到 `TokenService` / `AdminTokenService`；
+  - 认证 / 上传接口已启用限流（`RateLimitPolicies`）。生产仍建议叠加 HTTPS、文件病毒扫描与 WAF。
 - **推送**：原生端生产建议接入 FCM / APNs 做离线推送（SignalR 仅在线实时通道）。
+
+---
+
+## 6. 服务端架构（重构后）
+
+服务端已抽取共享类库 `server/Chat.Shared`，两个 Web 项目均引用之：
+
+| 层 | 内容 |
+| --- | --- |
+| `Chat.Shared/Entities` | 公共实体（AppUser / Message / Friendship / Group / GroupMember / DiscoverColumn / SystemSettings / Enums），已删除两服务中的重复定义 |
+| `Chat.Shared/Services` | `PasswordHasher`（定长安全比较）、`ConversationKeys` |
+| `Chat.Shared/Security` | `JwtSettings`（强校验）、`AddJwtAuthentication` / `AddCorsPolicy` / `UploadSafety` / `RateLimitPolicies` |
+
+`ChatServer` 业务逻辑已下沉到 `Services/`（`ConversationService` / `MessageService` / `FriendshipService` /
+`CallCoordinator` / `PresenceTracker` / `FileStore`），`ChatHub` 与 `Controllers` 仅做协议转发。
+
+完整接口 / 协议契约以 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) 为准。

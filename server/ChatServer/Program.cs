@@ -1,13 +1,13 @@
-using System.Security.Claims;
-using System.Text;
+using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
+using Chat.Shared.Security;
+using Chat.Shared.Services;
 using ChatServer.Data;
 using ChatServer.Hubs;
 using ChatServer.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.IdentityModel.Tokens;
-using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,87 +17,51 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? "Host=localhost;Port=5432;Database=chatdb;Username=postgres;Password=postgres";
 builder.Services.AddDbContext<AppDbContext>(o => o.UseNpgsql(connectionString));
 
-// ---- JWT ----
-var jwtSection = builder.Configuration.GetSection("Jwt");
-var jwtKey = jwtSection["Key"] ?? "ThisIsADevelopmentSecretKeyPleaseChangeIt123!";
-var jwtIssuer = jwtSection["Issuer"] ?? "ChatServer";
-var jwtAudience = jwtSection["Audience"] ?? "ChatClient";
+// ---- JWT（含 SignalR over WebSocket 的 ?access_token= 支持）----
+// 生產環境缺少強密鑰時這裡會直接拋異常讓進程啟動失敗，而不是靜默退回默認密鑰。
+builder.Services.AddChatAuthentication(
+    builder.Configuration, builder.Environment, hubPath: "/hubs/chat");
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtIssuer,
-            ValidAudience = jwtAudience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
-        };
-        // SignalR over WebSocket 通過 ?access_token= 傳遞 JWT
-        options.Events = new JwtBearerEvents
-        {
-            OnMessageReceived = context =>
-            {
-                var accessToken = context.Request.Query["access_token"];
-                if (!string.IsNullOrEmpty(accessToken) &&
-                    context.Request.Path.StartsWithSegments("/hubs/chat"))
-                {
-                    context.Token = accessToken;
-                }
-                return Task.CompletedTask;
-            }
-        };
-    });
+// ---- CORS（開發回顯任意來源；生產必須顯式配置 Cors:Origins）----
+builder.Services.AddChatCors();
 
 // ---- 業務服務 ----
 builder.Services.AddSingleton<PresenceTracker>();
+builder.Services.AddSingleton<ICallCoordinator, CallCoordinator>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IFileStore, FileStore>();
+builder.Services.AddScoped<IFriendshipService, FriendshipService>();
+builder.Services.AddScoped<IMessageMapper, MessageMapper>();
+builder.Services.AddScoped<IMessageService, MessageService>();
+builder.Services.AddScoped<IConversationService, ConversationService>();
 
-// ---- CORS ----
-// 開發期用 SetIsOriginAllowed 反射任意來源（含 Flutter run 的臨時端口如 30003、127.0.0.1 等），
-// 避免每次換端口都要改白名單。生產環境請通過 Cors:Origins 顯式配置來源。
-// 注意：AllowCredentials 不能和 AllowAnyOrigin() 同用，但可以和 SetIsOriginAllowed(始終 true) 同用
-// （後者會把請求 Origin 反射回 Access-Control-Allow-Origin，等價於動態允許）。
-builder.Services.AddCors(o => o.AddPolicy("allow", p =>
+// ---- 限流 ----
+// 認證接口是撞庫/暴力破解的主要入口，上傳接口容易被拿來打滿磁盤，二者必須限流。
+builder.Services.AddRateLimiter(options =>
 {
-    // 支持多種配置形態：
-    //   1) JSON 陣列（appsettings.json："Cors": { "Origins": ["http://a", "http://b"] }）
-    //   2) 逗號/空白分隔字串（環境變數 Cors__Origins=http://a,http://b）
-    // 直接 Get<string[]>() 在字串情況下會按 JSON 解析失敗而回傳 null，故這裡手動分割。
-    var raw = builder.Configuration["Cors:Origins"];
-    string[]? origins = null;
-    if (!string.IsNullOrWhiteSpace(raw))
-    {
-        origins = raw.Split([',', ';', ' ', '\t', '\n', '\r'],
-                StringSplitOptions.RemoveEmptyEntries)
-            .Select(s => s.Trim())
-            .Where(s => s.Length > 0)
-            .ToArray();
-    }
-    if (origins == null || origins.Length == 0)
-        // 默認允許常見前端開發來源：Vite(5173)、CRA(3000)，以及 Flutter Web 默認端口(8080/8081)。
-        // 瀏覽器裡 127.0.0.1 與 localhost 被視為不同源，需分別列出。
-        // 原生 Windows/Android/iOS 客戶端不受 CORS 限制；此列表僅用於瀏覽器端 fetch + SignalR WebSocket。
-        // 真機調試可用 appsettings.json 的 Cors:Origins 覆蓋（如 "http://192.168.x.x:8080"）。
-        origins = new[] {
-            "http://localhost:5173", "http://localhost:3000",
-            "http://localhost:8080", "http://localhost:8081",
-            "http://127.0.0.1:8080", "http://127.0.0.1:8081",
-            "http://127.0.0.1:3000", "http://127.0.0.1:30003",
-            "http://localhost:30003"
-        };
-    p.AllowAnyHeader()
-     .AllowAnyMethod()
-     .AllowCredentials()
-     .WithOrigins(origins);
-    if (builder.Environment.IsDevelopment())
-        p.SetIsOriginAllowed(_ => true);
-}));
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy(RateLimitPolicies.Auth, context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy(RateLimitPolicies.Upload, context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+});
 
 builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
@@ -105,6 +69,7 @@ builder.Services.AddControllers()
 // ---- 健康檢查：/health 返回數據庫連通性，用於運維探活與監控 ----
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<AppDbContext>();
+
 // SignalR 服務註冊（修復：防止 MapHub 拋出 "Unable to find the required services"）
 // 啟用字符串枚舉反序列化，使客戶端可直接以 "Text"/"Image"/"File" 傳遞 MessageType
 // 始終開啟 EnableDetailedErrors：Hub 僅會拋出帶 "E_*: ..." 錯誤碼的 HubException
@@ -112,14 +77,26 @@ builder.Services.AddHealthChecks()
 // 這些都是面向客戶端的用戶提示，不含敏感信息；關閉的話客戶端只能看到
 // "Failed to invoke '{method}' due to an error on the server." 這種通用英文，
 // 前端按錯誤碼前綴做的「添加好友」等操作式對話框就不會觸發。
-builder.Services.AddSignalR(o =>
-{
-    o.EnableDetailedErrors = true;
-})
-.AddJsonProtocol(o => o.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.AddSignalR(o => o.EnableDetailedErrors = true)
+    .AddJsonProtocol(o => o.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// 未捕獲異常統一轉為 RFC7807 ProblemDetails，避免把堆棧直接回給客戶端。
+builder.Services.AddProblemDetails();
+
+// 結構化請求日誌：只記錄方法/路徑/狀態碼/耗時，不記錄 body（含令牌與隱私內容）。
+builder.Services.AddHttpLogging(o =>
+{
+    o.LoggingFields = Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.RequestMethod
+                      | Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.RequestPath
+                      | Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.ResponseStatusCode
+                      | Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.Duration;
+    o.RequestBodyLogLimit = 0;
+    o.ResponseBodyLogLimit = 0;
+    o.CombineLogs = true;
+});
 
 var app = builder.Build();
 
@@ -129,15 +106,21 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseExceptionHandler();
+
+// 探活請求量極大且無業務信息，排除在請求日誌之外，避免淹沒有效日誌。
+app.UseWhen(ctx => !ctx.Request.Path.StartsWithSegments("/health"), b => b.UseHttpLogging());
+
 string dir = Path.Combine(app.Environment.ContentRootPath, "uploads");
 if (!Directory.Exists(dir))
 {
     Directory.CreateDirectory(dir);
 }
+
 // CORS 必須在靜態文件之前註冊：否則 /files 下的圖片會被 StaticFiles 短路返回，
 // CORS 中間件永遠沒機會寫入 Access-Control-Allow-Origin 頭
 // （Flutter Web 用 CanvasKit 渲染，圖片必須 CORS-clean 才能繪到 canvas）。
-app.UseCors("allow");
+app.UseCors(CorsExtensions.PolicyName);
 
 // 上傳的媒體文件靜態訪問
 app.UseStaticFiles(new StaticFileOptions
@@ -149,6 +132,7 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapControllers();
 app.MapHub<ChatHub>("/hubs/chat");

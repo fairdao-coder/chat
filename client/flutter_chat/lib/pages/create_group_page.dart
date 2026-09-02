@@ -20,6 +20,12 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
   final _nameCtrl = TextEditingController();
   List<UserDto> _friends = [];
   final Set<String> _selected = {};
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
+  }
   bool _loading = false;
 
   @override

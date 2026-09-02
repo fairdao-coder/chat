@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Chat.Shared</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- JwtBearer 不在共享框架內（獨立發版的 NuGet 包），鑑權擴展方法需要它。 -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
+
+    <!-- Security/ 下的 CORS、限流擴展方法依賴 ASP.NET Core 的類型。
+         本庫只被兩個 Web 項目引用，用框架引用而非 NuGet 包可避免版本錯配。 -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>

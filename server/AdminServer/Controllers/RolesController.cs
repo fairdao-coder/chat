@@ -2,7 +2,9 @@ using AdminServer.Authorization;
 using AdminServer.Data;
 using AdminServer.DTOs;
 using AdminServer.Entities;
+using Chat.Shared.Entities;
 using AdminServer.Services;
+using Chat.Shared.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +32,7 @@ public class RolesController : ControllerBase
         if (f is not null) return f;
 
         var roles = await _db.AdminRoles
+            .AsNoTracking()
             .Select(r => new RoleDto(r.Id, r.Name, r.Permissions, r.Description))
             .ToListAsync();
         return Ok(roles);
@@ -52,7 +55,7 @@ public class RolesController : ControllerBase
         var f = this.EnsurePermission(Permissions.RolesWrite);
         if (f is not null) return f;
 
-        if (await _db.AdminRoles.AnyAsync(r => r.Name == req.Name))
+        if (await _db.AdminRoles.AsNoTracking().AnyAsync(r => r.Name == req.Name))
             return Conflict("角色名已存在");
 
         var role = new AdminRole { Name = req.Name, Permissions = req.Permissions, Description = req.Description };
@@ -86,7 +89,7 @@ public class RolesController : ControllerBase
 
         var r = await _db.AdminRoles.FindAsync(id);
         if (r is null) return NotFound();
-        if (await _db.AdminUsers.AnyAsync(a => a.RoleId == id))
+        if (await _db.AdminUsers.AsNoTracking().AnyAsync(a => a.RoleId == id))
             return BadRequest("仍有管理員使用該角色，無法刪除");
         _db.AdminRoles.Remove(r);
         await _db.SaveChangesAsync();

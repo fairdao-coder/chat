@@ -5,9 +5,9 @@
       "launchBrowser": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "Cors__Origins": "http://localhost:5173,http://localhost:3000"
+        "Cors__Origins": "http://localhost:5173,http://localhost:30003"
       },
-      "applicationUrl": "https://localhost:58152;http://localhost:58153"
+      "applicationUrl": "http://localhost:5299"
     }
   }
 }

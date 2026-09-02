@@ -22,6 +22,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _ctrl = TextEditingController();
 
   @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
     _ctrl.text = AppConfig.apiBase;
@@ -262,11 +268,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     // Riverpod 在 didChangeDependencies 期間的 assert 異常。
     final api = ref.read(apiProvider);
 
-    await showDialog<void>(
-      context: context,
-      builder: (dialogCtx) => StatefulBuilder(
-        builder: (dialogCtx, setDialogState) => AlertDialog(
-          title: Text(context.tr('修改密码')),
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogCtx) => StatefulBuilder(
+          builder: (dialogCtx, setDialogState) => AlertDialog(
+            title: Text(context.tr('修改密码')),
           contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
           content: Form(
             key: formKey,
@@ -355,6 +362,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ],
         ),
       ),
-    );
+      );
+    } finally {
+      // 對話框關閉後控制器已無用，必須釋放——否則每次打開修改密碼都會洩漏三個控制器。
+      oldCtrl.dispose();
+      newCtrl.dispose();
+      confirmCtrl.dispose();
+    }
   }
 }

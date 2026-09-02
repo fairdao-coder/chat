@@ -2,6 +2,7 @@ using AdminServer.Authorization;
 using AdminServer.Data;
 using AdminServer.DTOs;
 using AdminServer.Entities;
+using Chat.Shared.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

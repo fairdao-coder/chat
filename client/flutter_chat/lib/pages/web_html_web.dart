@@ -7,6 +7,13 @@ import 'dart:ui_web' as ui_web;
 
 import 'package:flutter/widgets.dart';
 
+import '../bridges/chat_bridge.dart';
+
+// 讓 chat_bridge 的 Web 宿主側能拿到 dart:html 的 window。
+// 條件導入僅 Web 編譯，dart:html 可用。在 registerInlineHtml 時惰性初始化。
+void _ensureBridgeResolver() =>
+    registerHtmlWindowResolver(() => html.window);
+
 /// 元素允許的通用屬性（不含任何事件處理器，如 onclick/onload）。
 const List<String> _commonAttrs = <String>[
   'id', 'class', 'style', 'name', 'title', 'hidden',
@@ -79,6 +86,11 @@ html.NodeValidator _buildValidator({bool allowEvents = false}) {
 /// 為 false（默認）時腳本會被剔除，只渲染靜態內容。
 void registerInlineHtml(String viewId, String markup,
     {bool allowScript = false}) {
+  _ensureBridgeResolver();
+  // 注入小應用 JS Bridge 客戶端（定義 window.ChatBridge），讓 script: HTML
+  // 能調用宿主能力。僅在允許腳本時注入——靜態 html: 不支持腳本，無需橋。
+  final effectiveMarkup = allowScript ? '$webBridgeClientScript\n$markup' : markup;
+
   ui_web.platformViewRegistry.registerViewFactory(viewId, (int viewId) {
     final div = html.DivElement()
       ..style.width = '100%'
@@ -86,7 +98,7 @@ void registerInlineHtml(String viewId, String markup,
       ..style.overflow = 'auto'
       ..style.padding = '12px'
       ..style.boxSizing = 'border-box'
-      ..setInnerHtml(markup, validator: _buildValidator(allowEvents: allowScript));
+      ..setInnerHtml(effectiveMarkup, validator: _buildValidator(allowEvents: allowScript));
 
     if (allowScript) {
       // setInnerHtml 插入的 <script> 按 HTML 規範不會執行，

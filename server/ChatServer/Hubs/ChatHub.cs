@@ -1,7 +1,6 @@
-using System.Collections.Concurrent;
+using Chat.Shared.Entities;
 using ChatServer.Data;
 using ChatServer.DTOs;
-using ChatServer.Entities;
 using ChatServer.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -9,30 +8,57 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ChatServer.Hubs;
 
+/// <summary>
+/// SignalR 實時通道。
+///
+/// 職責邊界：本類只做「鑑權 → 轉發」。
+/// 消息校驗/落庫在 <see cref="IMessageService"/>，通話狀態在 <see cref="ICallCoordinator"/>，
+/// 在線狀態在 <see cref="PresenceTracker"/>。
+/// Hub 不再直接碰 DbContext 的寫操作，避免協議層與持久層耦在一起。
+/// </summary>
 [Authorize]
 public class ChatHub : Hub
 {
+    private const string ServerErrorMessage = "E_SERVER: 服務暫時不可用（網絡或數據庫異常），請稍後重試";
+
     private readonly AppDbContext _db;
     private readonly PresenceTracker _presence;
+    private readonly IMessageService _messages;
+    private readonly ICallCoordinator _calls;
+    private readonly ILogger<ChatHub> _logger;
 
-    public ChatHub(AppDbContext db, PresenceTracker presence)
+    public ChatHub(
+        AppDbContext db,
+        PresenceTracker presence,
+        IMessageService messages,
+        ICallCoordinator calls,
+        ILogger<ChatHub> logger)
     {
         _db = db;
         _presence = presence;
+        _messages = messages;
+        _calls = calls;
+        _logger = logger;
     }
+
+    private string UserId => Context.UserIdentifier!;
+
+    private static string GroupChannel(Guid groupId) => $"group_{groupId}";
 
     public override async Task OnConnectedAsync()
     {
-        var userId = Context.UserIdentifier!;
+        var userId = UserId;
         await _presence.UserConnected(userId, Context.ConnectionId);
 
-        // 把連接加入其所在的所有群頻道
+        // 把連接加入其所在的所有群頻道，群消息才能推達。
         var groupIds = await _db.GroupMembers
+            .AsNoTracking()
             .Where(m => m.UserId == Guid.Parse(userId))
             .Select(m => m.GroupId)
             .ToListAsync();
+
         foreach (var gid in groupIds)
-            await Groups.AddToGroupAsync(Context.ConnectionId, "group_" + gid);
+            await Groups.AddToGroupAsync(Context.ConnectionId, GroupChannel(gid));
 
         await Clients.Others.SendAsync("UserOnline", userId);
         await base.OnConnectedAsync();
@@ -40,10 +66,19 @@ public class ChatHub : Hub
 
     public override async Task OnDisconnectedAsync(Exception? ex)
     {
-        var userId = Context.UserIdentifier!;
+        var userId = UserId;
+
+        // 通話途中掉線：通知對端掛斷，否則對端 UI 會一直停在通話中。
+        if (_calls.CleanupUser(userId) > 0)
+            await Clients.Others.SendAsync("OnPeerDisconnected", userId);
+
         var stillOnline = await _presence.UserDisconnected(userId, Context.ConnectionId);
         if (!stillOnline)
             await Clients.Others.SendAsync("UserOffline", userId);
+
+        if (ex != null)
+            _logger.LogWarning(ex, "SignalR 連接異常斷開 userId={UserId}", userId);
+
         await base.OnDisconnectedAsync(ex);
     }
 
@@ -58,50 +93,26 @@ public class ChatHub : Hub
         MessageType type,
         string? mediaUrl)
     {
+        if (!Guid.TryParse(UserId, out var fromId))
+            throw new HubException("E_BAD_TARGET: 身份無效，請重新登錄");
+
         try
         {
-            var fromId = Guid.Parse(Context.UserIdentifier!);
-            if (!Guid.TryParse(toUserId, out var toId))
-                throw new HubException("E_BAD_TARGET: 收件人 ID 格式不正確");
-
-            // 對方必須存在
-            var targetExists = await _db.Users.AnyAsync(u => u.Id == toId);
-            if (!targetExists)
-                throw new HubException("E_TARGET_NOT_FOUND: 對方用戶不存在");
-
-            // 私聊必須為好友（前端按 E_FRIEND_REQUIRED 錯誤碼提供"加好友"操作）
-            var areFriends = await _db.Friendships.AnyAsync(f =>
-                f.Status == FriendshipStatus.Accepted &&
-                ((f.RequesterId == fromId && f.AddresseeId == toId) ||
-                 (f.RequesterId == toId && f.AddresseeId == fromId)));
-            if (!areFriends)
-                throw new HubException("E_FRIEND_REQUIRED: 你們還不是好友，無法發送消息。先添加對方為好友後再聊吧～");
-
-            if (string.IsNullOrWhiteSpace(content) && string.IsNullOrWhiteSpace(mediaUrl))
-                throw new HubException("E_EMPTY: 不能發送空消息");
-
-            var msg = new Message
-            {
-                ConversationId = ConversationKeys.Private(fromId, toId),
-                SenderId = fromId,
-                ChatType = ChatType.Private,
-                Content = content ?? string.Empty,
-                Type = type,
-                MediaUrl = mediaUrl
-            };
-            _db.Messages.Add(msg);
-            await _db.SaveChangesAsync();
-
-            var dto = await MapAsync(msg);
+            var dto = await _messages.SendPrivateAsync(fromId, toUserId, content, type, mediaUrl);
             await Clients.User(toUserId).SendAsync("ReceiveMessage", dto);
             await Clients.Caller.SendAsync("ReceiveMessage", dto);
         }
-        catch (HubException) { throw; }
-        catch (Exception)
+        catch (MessageSendException ex)
+        {
+            // 業務校驗失敗：錯誤碼前綴（E_FRIEND_REQUIRED 等）是客戶端引導用戶的依據，必須原樣透傳。
+            throw new HubException(ex.ToWireMessage());
+        }
+        catch (Exception ex)
         {
             // 數據庫/網絡等意外故障：轉為友好且客戶端可解析的 HubException，
             // 避免客戶端收到 "Failed to invoke '...' due to an error on the server." 這類通用英文。
-            throw new HubException("E_SERVER: 服務暫時不可用（網絡或數據庫異常），請稍後重試");
+            _logger.LogError(ex, "SendPrivateMessage 失敗 from={From} to={To}", fromId, toUserId);
+            throw new HubException(ServerErrorMessage);
         }
     }
 
@@ -111,44 +122,24 @@ public class ChatHub : Hub
         MessageType type,
         string? mediaUrl)
     {
+        if (!Guid.TryParse(UserId, out var fromId))
+            throw new HubException("E_BAD_TARGET: 身份無效，請重新登錄");
+        if (!Guid.TryParse(groupId, out var gid))
+            throw new HubException("E_BAD_TARGET: 群 ID 格式不正確");
+
         try
         {
-            var fromId = Guid.Parse(Context.UserIdentifier!);
-            if (!Guid.TryParse(groupId, out var gid))
-                throw new HubException("E_BAD_TARGET: 群 ID 格式不正確");
-
-            var groupExists = await _db.Groups.AnyAsync(g => g.Id == gid);
-            if (!groupExists)
-                throw new HubException("E_TARGET_NOT_FOUND: 群不存在");
-
-            var isMember = await _db.GroupMembers.AnyAsync(m => m.GroupId == gid && m.UserId == fromId);
-            if (!isMember)
-                throw new HubException("E_FRIEND_REQUIRED: 你不在該群，無法發送消息");
-
-            if (string.IsNullOrWhiteSpace(content) && string.IsNullOrWhiteSpace(mediaUrl))
-                throw new HubException("E_EMPTY: 不能發送空消息");
-
-            var msg = new Message
-            {
-                ConversationId = ConversationKeys.Group(gid),
-                SenderId = fromId,
-                ChatType = ChatType.Group,
-                Content = content ?? string.Empty,
-                Type = type,
-                MediaUrl = mediaUrl
-            };
-            _db.Messages.Add(msg);
-            await _db.SaveChangesAsync();
-
-            var dto = await MapAsync(msg);
-            await Clients.Group("group_" + gid).SendAsync("ReceiveMessage", dto);
+            var dto = await _messages.SendGroupAsync(fromId, groupId, content, type, mediaUrl);
+            await Clients.Group(GroupChannel(gid)).SendAsync("ReceiveMessage", dto);
         }
-        catch (HubException) { throw; }
-        catch (Exception)
+        catch (MessageSendException ex)
         {
-            // 數據庫/網絡等意外故障：轉為友好且客戶端可解析的 HubException，
-            // 避免客戶端收到 "Failed to invoke '...' due to an error on the server." 這類通用英文。
-            throw new HubException("E_SERVER: 服務暫時不可用（網絡或數據庫異常），請稍後重試");
+            throw new HubException(ex.ToWireMessage());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "SendGroupMessage 失敗 from={From} group={Group}", fromId, groupId);
+            throw new HubException(ServerErrorMessage);
         }
     }
 
@@ -159,26 +150,32 @@ public class ChatHub : Hub
     /// </summary>
     public async Task SendTyping(string toUserId, bool isTyping)
     {
-        var fromId = Context.UserIdentifier!;
         if (!Guid.TryParse(toUserId, out _)) return;
-        if (toUserId == fromId) return;
-        await Clients.User(toUserId).SendAsync("OnTyping", fromId, isTyping);
+        if (toUserId == UserId) return;
+        await Clients.User(toUserId).SendAsync("OnTyping", UserId, isTyping);
     }
 
     public async Task JoinGroup(string groupId)
     {
-        await Groups.AddToGroupAsync(Context.ConnectionId, "group_" + groupId);
+        if (!Guid.TryParse(groupId, out var gid)) return;
+
+        // 加入前校驗成員身份，防止任意用戶訂閱他人群組的消息流。
+        if (!Guid.TryParse(UserId, out var userId)) return;
+        var isMember = await _db.GroupMembers
+            .AsNoTracking()
+            .AnyAsync(m => m.GroupId == gid && m.UserId == userId);
+        if (!isMember) return;
+
+        await Groups.AddToGroupAsync(Context.ConnectionId, GroupChannel(gid));
     }
 
     public async Task LeaveGroup(string groupId)
     {
-        await Groups.RemoveFromGroupAsync(Context.ConnectionId, "group_" + groupId);
+        if (!Guid.TryParse(groupId, out var gid)) return;
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, GroupChannel(gid));
     }
 
     // ===================== 語音 / 視頻通話信令（WebRTC P2P 中繼） =====================
-    // 單實例內存態：開發環境足夠。多實例橫向擴展時需換成共享存儲（Redis / DB）。
-    private static readonly ConcurrentDictionary<string, CallSession> _calls = new();
-    private static readonly ConcurrentDictionary<string, string> _busy = new(); // userId -> callId
 
     /// <summary>
     /// 發起呼叫。callId 由客戶端生成（兩端共用，作為本次通話的關聯鍵）。
@@ -186,7 +183,7 @@ public class ChatHub : Hub
     /// </summary>
     public async Task InviteCall(string callId, string targetUserId, string callType)
     {
-        var fromId = Context.UserIdentifier!;
+        var fromId = UserId;
         if (fromId == targetUserId)
         {
             await Clients.Caller.SendAsync("OnCallRejected", callId, "self");
@@ -194,95 +191,59 @@ public class ChatHub : Hub
         }
         if (!Guid.TryParse(targetUserId, out _))
             throw new HubException("E_BAD_TARGET: 收件人 ID 格式不正確");
-        if (_busy.ContainsKey(targetUserId))
+
+        var session = new CallSession(callId, fromId, targetUserId, callType);
+        if (!_calls.TryInvite(session))
         {
             await Clients.Caller.SendAsync("OnCallRejected", callId, "busy");
             return;
         }
-        var caller = await _db.Users.FindAsync(Guid.Parse(fromId));
-        _calls[callId] = new CallSession
-        {
-            CallId = callId,
-            CallerId = fromId,
-            CalleeId = targetUserId,
-            CallType = callType
-        };
+
         // 把主叫暱稱一起下發給被叫，避免被叫端再查聯繫人。
+        var nick = await _db.Users
+            .AsNoTracking()
+            .Where(u => u.Id == Guid.Parse(fromId))
+            .Select(u => u.NickName)
+            .FirstOrDefaultAsync();
+
         await Clients.User(targetUserId)
-            .SendAsync("OnIncomingCall", callId, fromId, caller?.NickName ?? "", callType);
+            .SendAsync("OnIncomingCall", callId, fromId, nick ?? "", callType);
     }
 
     public async Task AcceptCall(string callId)
     {
-        if (!_calls.TryGetValue(callId, out var s)) return;
-        if (s.CalleeId != Context.UserIdentifier) return;
-        _busy[s.CallerId] = callId;
-        _busy[s.CalleeId] = callId;
-        await Clients.User(s.CallerId).SendAsync("OnCallAccepted", callId);
+        if (!_calls.TryAccept(callId, UserId, out var session) || session == null) return;
+        await Clients.User(session.CallerId).SendAsync("OnCallAccepted", callId);
     }
 
     public async Task RejectCall(string callId)
     {
-        if (_calls.TryGetValue(callId, out var s))
-        {
-            await Clients.User(s.CallerId).SendAsync("OnCallRejected", callId, "rejected");
-            _calls.TryRemove(callId, out _);
-            _busy.TryRemove(s.CallerId, out _);
-            _busy.TryRemove(s.CalleeId, out _);
-        }
+        if (!_calls.TryEnd(callId, out var session) || session == null) return;
+        await Clients.User(session.CallerId).SendAsync("OnCallRejected", callId, "rejected");
     }
 
-    public async Task SendOffer(string callId, string sdp)
-    {
-        if (!_calls.TryGetValue(callId, out var s)) return;
-        var peer = PeerOf(s, Context.UserIdentifier!);
-        if (peer != null) await Clients.User(peer).SendAsync("OnOffer", callId, sdp);
-    }
+    public Task SendOffer(string callId, string sdp) => RelayAsync(callId, "OnOffer", callId, sdp);
 
-    public async Task SendAnswer(string callId, string sdp)
-    {
-        if (!_calls.TryGetValue(callId, out var s)) return;
-        var peer = PeerOf(s, Context.UserIdentifier!);
-        if (peer != null) await Clients.User(peer).SendAsync("OnAnswer", callId, sdp);
-    }
+    public Task SendAnswer(string callId, string sdp) => RelayAsync(callId, "OnAnswer", callId, sdp);
 
-    public async Task SendIceCandidate(string callId, string candidate)
-    {
-        if (!_calls.TryGetValue(callId, out var s)) return;
-        var peer = PeerOf(s, Context.UserIdentifier!);
-        if (peer != null) await Clients.User(peer).SendAsync("OnIceCandidate", callId, candidate);
-    }
+    public Task SendIceCandidate(string callId, string candidate) =>
+        RelayAsync(callId, "OnIceCandidate", callId, candidate);
 
     public async Task HangUp(string callId)
     {
-        if (_calls.TryGetValue(callId, out var s))
-        {
-            var peer = PeerOf(s, Context.UserIdentifier!);
-            if (peer != null) await Clients.User(peer).SendAsync("OnHangUp", callId);
-            _calls.TryRemove(callId, out _);
-            _busy.TryRemove(s.CallerId, out _);
-            _busy.TryRemove(s.CalleeId, out _);
-        }
+        if (!_calls.TryEnd(callId, out var session) || session == null) return;
+        await Clients.User(session.PeerOf(UserId) ?? session.CallerId).SendAsync("OnHangUp", callId);
     }
 
-    private static string? PeerOf(CallSession s, string me) =>
-        me == s.CallerId ? s.CalleeId : (me == s.CalleeId ? s.CallerId : null);
-
-    private sealed class CallSession
+    /// <summary>把信令轉發給通話對端；呼叫者不在會話中時靜默丟棄。</summary>
+    private async Task RelayAsync(string callId, string method, params object?[] args)
     {
-        public string CallId { get; set; } = "";
-        public string CallerId { get; set; } = "";
-        public string CalleeId { get; set; } = "";
-        public string CallType { get; set; } = "";
-    }
+        var session = _calls.Get(callId);
+        if (session == null) return;
 
-    private async Task<MessageDto> MapAsync(Message m)
-    {
-        var sender = await _db.Users.FindAsync(m.SenderId);
-        return new MessageDto(
-            m.Id, m.ConversationId, m.SenderId,
-            sender?.NickName ?? "?",
-            sender?.AvatarUrl,
-            m.ChatType, m.Content, m.Type, m.MediaUrl, m.CreatedAt);
+        var peer = session.PeerOf(UserId);
+        if (peer == null) return;
+
+        await Clients.User(peer).SendAsync(method, args);
     }
 }

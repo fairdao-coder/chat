@@ -1,4 +1,4 @@
-using ChatServer.Entities;
+using Chat.Shared.Entities;
 
 namespace ChatServer.DTOs;
 

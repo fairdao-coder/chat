@@ -19,6 +19,12 @@ class _AddFriendPageState extends ConsumerState<AddFriendPage> {
   final _ctrl = TextEditingController();
   List<UserDto> _results = [];
   bool _loading = false;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
   final Set<String> _sent = {};
 
   Future<void> _search() async {

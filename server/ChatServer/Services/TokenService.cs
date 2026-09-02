@@ -1,7 +1,8 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using ChatServer.Entities;
+using Chat.Shared.Entities;
+using Chat.Shared.Security;
 using Microsoft.IdentityModel.Tokens;
 
 namespace ChatServer.Services;
@@ -13,13 +14,13 @@ public interface ITokenService
 
 public class TokenService : ITokenService
 {
-    private readonly IConfiguration _config;
+    private readonly JwtSettings _settings;
 
-    public TokenService(IConfiguration config) => _config = config;
+    public TokenService(JwtSettings settings) => _settings = settings;
 
     public string CreateToken(AppUser user)
     {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Key));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
@@ -30,10 +31,10 @@ public class TokenService : ITokenService
         };
 
         var token = new JwtSecurityToken(
-            issuer: _config["Jwt:Issuer"],
-            audience: _config["Jwt:Audience"],
+            issuer: _settings.Issuer,
+            audience: _settings.Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddDays(7),
+            expires: DateTime.UtcNow.AddDays(_settings.ExpiryDays),
             signingCredentials: creds);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

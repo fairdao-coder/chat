@@ -1,6 +1,6 @@
+using Chat.Shared.Entities;
 using ChatServer.Data;
 using ChatServer.DTOs;
-using ChatServer.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -16,17 +16,20 @@ namespace ChatServer.Controllers;
 public class FeaturesController : ControllerBase
 {
     private readonly AppDbContext _db;
+
     public FeaturesController(AppDbContext db) => _db = db;
 
     [HttpGet]
     [AllowAnonymous]
-    public async Task<IActionResult> Get()
+    public async Task<IActionResult> Get(CancellationToken ct = default)
     {
-        var s = await _db.SystemSettings.FindAsync(SystemSettings.SingletonId);
+        var s = await _db.SystemSettings
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == SystemSettings.SingletonId, ct);
+
         if (s is null)
-        {
             return Ok(new FeatureSettingsDto(true, true, true, true, true));
-        }
+
         return Ok(new FeatureSettingsDto(
             s.ShowOnlineStatus, s.EnableVoiceCall, s.EnableVideoCall,
             s.AllowFile, s.AllowVoice));
