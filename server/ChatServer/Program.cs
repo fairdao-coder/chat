@@ -111,8 +111,6 @@ app.UseExceptionHandler();
 // 探活請求量極大且無業務信息，排除在請求日誌之外，避免淹沒有效日誌。
 app.UseWhen(ctx => !ctx.Request.Path.StartsWithSegments("/health"), b => b.UseHttpLogging());
 
-app.UseRouting();
-
 string dir = Path.Combine(app.Environment.ContentRootPath, "uploads");
 if (!Directory.Exists(dir))
 {

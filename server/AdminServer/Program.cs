@@ -85,9 +85,6 @@ if (app.Environment.IsDevelopment())
 app.UseExceptionHandler();
 app.UseWhen(ctx => !ctx.Request.Path.StartsWithSegments("/health"), b => b.UseHttpLogging());
 
-// CORS 中間件必須在 UseRouting 之後、UseAuthentication/UseAuthorization 之前，
-// 這樣預檢請求能正確寫入 Access-Control-Allow-* 頭。
-app.UseRouting();
 app.UseCors(CorsExtensions.PolicyName);
 app.UseAuthentication();
 app.UseAuthorization();

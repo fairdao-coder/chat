@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 
@@ -21,26 +20,6 @@ public static class CorsExtensions
 {
     public const string PolicyName = "allow";
 
-    public static readonly string[] DevelopmentOrigins =
-    [
-        "http://localhost:5173", "http://localhost:3000",
-        "http://localhost:8080", "http://localhost:8081",
-        "http://127.0.0.1:8080", "http://127.0.0.1:8081",
-        "http://127.0.0.1:3000", "http://127.0.0.1:30003",
-        "http://localhost:30003"
-    ];
-
-    /// <summary>
-    /// 項目自有的靜態前端託管域（GitHub Pages）。即便部署時未顯式配置
-    /// Cors:Origins，也始終放行這些「自己人」站點，避免前端被 CORS 鎖死。
-    /// 不回顯任意第三方 Origin，因此不會放寬同源策略。
-    /// </summary>
-    public static readonly string[] KnownFrontendOrigins =
-    [
-        "https://servestatic.github.io",
-        "https://fairdao-coder.github.io"
-    ];
-
     public static IServiceCollection AddChatCors(this IServiceCollection services)
     {
         services.AddCors();
@@ -56,56 +35,37 @@ public static class CorsExtensions
     {
         private readonly IConfiguration _configuration;
         private readonly IHostEnvironment _environment;
-        private readonly ILogger<ChatCorsSetup> _logger;
 
-        public ChatCorsSetup(IConfiguration configuration, IHostEnvironment environment, ILogger<ChatCorsSetup> logger)
+        public ChatCorsSetup(IConfiguration configuration, IHostEnvironment environment)
         {
             _configuration = configuration;
             _environment = environment;
-            _logger = logger;
         }
 
         public void Configure(CorsOptions options)
         {
             var origins = ParseOrigins(_configuration["Cors:Origins"]);
-            var environmentName = _environment.EnvironmentName;
-            _logger.LogInformation(
-                "正在配置 CORS 策略：Environment={Environment}, ParsedOriginsCount={Count}, Origins=[{Origins}]",
-                environmentName,
-                origins.Length,
-                string.Join(", ", origins));
 
             options.AddPolicy(PolicyName, policy =>
             {
                 if (origins.Length > 0)
                 {
-                    // 顯式配置優先；同時始終放行項目自有前端域（去重）。
-                    var allowed = origins
-                        .Union(KnownFrontendOrigins, StringComparer.OrdinalIgnoreCase)
-                        .ToArray();
-                    policy.WithOrigins(allowed).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
-                    return;
-                }
-
-                if (_environment.IsDevelopment())
-                {
-                    // 開發期回顯 Origin：Flutter Web 每次 run 端口都可能變，逐個加白名單不現實。
-                    policy.SetIsOriginAllowed(_ => true)
+                    // 生產/部署：只放行顯式配置的來源白名單。
+                    policy.WithOrigins(origins)
                           .AllowAnyHeader()
                           .AllowAnyMethod()
                           .AllowCredentials();
                     return;
                 }
 
-                // 生產環境未顯式配置：放行項目自有前端域（GitHub Pages），不放行任意第三方。
-                _logger.LogWarning(
-                    "生產環境未顯式配置 Cors:Origins，已默認放行項目自有前端域 " +
-                    "({Origins})。如需額外來源請配置 Cors__Origins。",
-                    string.Join(", ", KnownFrontendOrigins));
-                policy.WithOrigins(KnownFrontendOrigins)
-                      .AllowAnyHeader()
-                      .AllowAnyMethod()
-                      .AllowCredentials();
+                if (_environment.IsDevelopment())
+                {
+                    // 開發期回顯任意 Origin：Flutter Web 每次 run 端口都可能變，逐個加白名單不現實。
+                    policy.SetIsOriginAllowed(_ => true)
+                          .AllowAnyHeader()
+                          .AllowAnyMethod()
+                          .AllowCredentials();
+                }
             });
         }
 
