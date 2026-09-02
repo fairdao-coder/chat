@@ -88,6 +88,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
 
   /// 上報正在輸入，並重置 2 秒停止定時器（避免每敲一個字都發一次）。
   void _notifyTyping() {
+    if (!mounted) return;
     if (!_typingActive) {
       _typingActive = true;
       unawaited(ref.read(hubProvider).sendTyping(widget.target.id, true));
@@ -97,6 +98,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   }
 
   void _stopTyping() {
+    if (!mounted) return;
     _typingStopTimer?.cancel();
     if (_typingActive) {
       _typingActive = false;

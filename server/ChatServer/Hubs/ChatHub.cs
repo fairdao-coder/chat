@@ -83,22 +83,23 @@ public class ChatHub : Hub
     }
 
     // 注意：參數全部顯式聲明，不帶默認值。
-    // - 寫默認值（MessageType.Text / null）會讓 SignalR 參數綁定器在按元數匹配時
-    //   派生出"1/2/3/4 元"多個重載分支，與客戶端"params object?[] args"四參數實際形態
-    //   偶發不匹配，導致 "InvalidDataException: Error binding arguments"。
-    // - 客戶端永遠傳齊 4 個參數，所以去掉默認值不會影響調用語義。
+    // - type 用 string 接收再解析，避免 SignalR 參數綁定器對 MessageType 枚舉的
+    //   依賴（signalr_netcore 客戶端按位置序列化，'Text' 並不總能被識別為枚舉，
+    //   從而觸發 "Error binding arguments"）。任何無法識別的值都回落為 Text。
     public async Task SendPrivateMessage(
         string toUserId,
         string content,
-        MessageType type,
+        string type,
         string? mediaUrl)
     {
         if (!Guid.TryParse(UserId, out var fromId))
             throw new HubException("E_BAD_TARGET: 身份無效，請重新登錄");
 
+        var msgType = ParseType(type);
+
         try
         {
-            var dto = await _messages.SendPrivateAsync(fromId, toUserId, content, type, mediaUrl);
+            var dto = await _messages.SendPrivateAsync(fromId, toUserId, content, msgType, mediaUrl);
             await Clients.User(toUserId).SendAsync("ReceiveMessage", dto);
             await Clients.Caller.SendAsync("ReceiveMessage", dto);
         }
@@ -119,7 +120,7 @@ public class ChatHub : Hub
     public async Task SendGroupMessage(
         string groupId,
         string content,
-        MessageType type,
+        string type,
         string? mediaUrl)
     {
         if (!Guid.TryParse(UserId, out var fromId))
@@ -127,9 +128,11 @@ public class ChatHub : Hub
         if (!Guid.TryParse(groupId, out var gid))
             throw new HubException("E_BAD_TARGET: 群 ID 格式不正確");
 
+        var msgType = ParseType(type);
+
         try
         {
-            var dto = await _messages.SendGroupAsync(fromId, groupId, content, type, mediaUrl);
+            var dto = await _messages.SendGroupAsync(fromId, groupId, content, msgType, mediaUrl);
             await Clients.Group(GroupChannel(gid)).SendAsync("ReceiveMessage", dto);
         }
         catch (MessageSendException ex)
@@ -173,6 +176,18 @@ public class ChatHub : Hub
     {
         if (!Guid.TryParse(groupId, out var gid)) return;
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, GroupChannel(gid));
+    }
+
+    /// <summary>
+    /// 將客戶端傳來的 type 字符串解析為 MessageType。
+    /// 無法識別（含大小寫差異、空值）時回落為 Text，避免綁定失敗。
+    /// </summary>
+    private static MessageType ParseType(string? type)
+    {
+        if (string.IsNullOrWhiteSpace(type)) return MessageType.Text;
+        return Enum.TryParse<MessageType>(type, ignoreCase: true, out var t)
+            ? t
+            : MessageType.Text;
     }
 
     // ===================== 語音 / 視頻通話信令（WebRTC P2P 中繼） =====================

@@ -31,7 +31,8 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage> {
     // 收到好友/群的實時消息時自動刷新會話列表，無需手動點刷新按鈕。
     final hub = ref.read(hubProvider);
     _msgSub = hub.onMessage.listen((_) {
-      ref.invalidate(conversationsProvider);
+      // 消息事件可能是异步到达的，若页面已 dispose 则 ref 不可用。
+      if (mounted) ref.invalidate(conversationsProvider);
     });
   }
 

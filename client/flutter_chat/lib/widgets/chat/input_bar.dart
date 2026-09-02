@@ -58,6 +58,9 @@ class _ChatInputBarState extends State<ChatInputBar>
   late AnimationController _pulse;
   var _hasText = false;
 
+  /// 表情面板是否展开（内联显示在输入栏上方，不遮挡输入栏）。
+  var _emojiOpen = false;
+
   @override
   void initState() {
     super.initState();
@@ -71,6 +74,10 @@ class _ChatInputBarState extends State<ChatInputBar>
   }
 
   void _onFocusChanged() {
+    // 输入框聚焦（弹起键盘）时收起表情面板，避免键盘与面板同时出现。
+    if (_focus.hasFocus && _emojiOpen) {
+      setState(() => _emojiOpen = false);
+    }
     if (mounted) setState(() {});
   }
 
@@ -168,62 +175,63 @@ class _ChatInputBarState extends State<ChatInputBar>
     );
   }
 
-  void _showEmojiSheet() {
-    final cs = Theme.of(context).colorScheme;
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: dark ? cs.surface : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      isScrollControlled: true,
-      builder: (c) => SafeArea(
-        child: SizedBox(
-          height: 316,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
-                child: Row(
-                  children: [
-                    Text(
-                      context.tr('常用表情'),
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w600),
-                    ),
-                    const Spacer(),
-                    // 退格：支持 emoji 代理对，点击后面板保持打开，可连续输入。
-                    IconButton(
-                      tooltip: context.tr('删除'),
-                      icon: const Icon(Icons.backspace_outlined, size: 20),
-                      onPressed: _backspace,
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              Expanded(
-                child: GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 8,
-                    mainAxisSpacing: 4,
-                    crossAxisSpacing: 4,
-                  ),
-                  itemCount: kCommonEmojis.length,
-                  itemBuilder: (c, i) => InkWell(
-                    onTap: () => _insertEmoji(kCommonEmojis[i]),
-                    borderRadius: BorderRadius.circular(10),
-                    child: Center(
-                      child: Text(kCommonEmojis[i],
-                          style: const TextStyle(fontSize: 26)),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+  /// 表情面板：内联显示在输入栏上方，展开时不影响输入栏可见性，可连续点选。
+  Widget _buildEmojiPanel(ColorScheme cs, bool dark) {
+    return Container(
+      height: 268,
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xFF1A1A1A) : const Color(0xFFF2F2F2),
+        border: Border(
+          top: BorderSide(
+            color: dark ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
+            width: 0.5,
           ),
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+              child: Row(
+                children: [
+                  Text(
+                    context.tr('常用表情'),
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                  const Spacer(),
+                  // 退格：支持 emoji 代理对，点击后面板保持打开，可连续输入。
+                  IconButton(
+                    tooltip: context.tr('删除'),
+                    icon: const Icon(Icons.backspace_outlined, size: 20),
+                    onPressed: _backspace,
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: GridView.builder(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 8,
+                  mainAxisSpacing: 4,
+                  crossAxisSpacing: 4,
+                ),
+                itemCount: kCommonEmojis.length,
+                itemBuilder: (c, i) => InkWell(
+                  onTap: () => _insertEmoji(kCommonEmojis[i]),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Center(
+                    child: Text(kCommonEmojis[i],
+                        style: const TextStyle(fontSize: 26)),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -296,7 +304,8 @@ class _ChatInputBarState extends State<ChatInputBar>
                   )
                 : const SizedBox.shrink(key: ValueKey('none')));
 
-    return SafeArea(
+    // 表情面板内联显示在输入栏上方：展开时输入栏始终可见，不被遮挡。
+    final inputBar = SafeArea(
       top: false,
       child: Container(
         // 微信风格浅灰底栏，顶部 0.5 细线分隔，无阴影。
@@ -327,7 +336,9 @@ class _ChatInputBarState extends State<ChatInputBar>
               IconAction(
                 icon: Icons.emoji_emotions_outlined,
                 tooltip: context.tr('表情'),
-                onTap: busy ? null : _showEmojiSheet,
+                onTap: busy
+                    ? null
+                    : () => setState(() => _emojiOpen = !_emojiOpen),
               ),
               // 发送 / 更多（平滑切换）
               AnimatedSwitcher(
@@ -344,6 +355,22 @@ class _ChatInputBarState extends State<ChatInputBar>
           ),
         ),
       ),
+    );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 表情面板在输入栏之上，展开期间输入栏保持可见。
+        AnimatedCrossFade(
+          duration: const Duration(milliseconds: 160),
+          crossFadeState: _emojiOpen
+              ? CrossFadeState.showFirst
+              : CrossFadeState.showSecond,
+          firstChild: _buildEmojiPanel(cs, dark),
+          secondChild: const SizedBox.shrink(),
+        ),
+        inputBar,
+      ],
     );
   }
 

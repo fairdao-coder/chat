@@ -1,16 +1,19 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:developer' as developer;
 
 import '../../config/app_colors.dart';
-import '../../l10n/app_localizations.dart';
 import '../../models/enums.dart';
 import '../../models/message_dto.dart';
+import '../../providers/auth_provider.dart';
 import '../../utils/url.dart';
 import '../../pages/image_viewer_page.dart';
 import 'voice_bubble.dart';
 
 /// 单条消息气泡：按消息类型渲染文本 / 图片 / 文件 / 语音。
-class MessageBubble extends StatelessWidget {
+class MessageBubble extends ConsumerWidget {
   final MessageDto message;
   final bool isMe;
   final void Function(String) onOpenUrl;
@@ -25,7 +28,7 @@ class MessageBubble extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final align = isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start;
     final textColor = isMe
         ? Colors.white
@@ -34,6 +37,11 @@ class MessageBubble extends StatelessWidget {
     // 图片消息：圆角缩略图（自身即气泡）
     if (message.type == MessageType.image && message.mediaUrl != null) {
       final url = resolveUrl(message.mediaUrl);
+      final token = ref.watch(authProvider).token;
+      final headers = token != null && token.isNotEmpty
+          ? {'Authorization': 'Bearer $token'}
+          : const <String, String>{};
+
       return Column(
         crossAxisAlignment: align,
         children: [
@@ -47,41 +55,7 @@ class MessageBubble extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: CachedNetworkImage(
-                  imageUrl: url,
-                  fit: BoxFit.contain,
-                  // 限制解码后的像素尺寸：原图动辄几千像素，
-                  // 直接解码进内存会在长列表里引发 OOM。
-                  memCacheWidth: 400,
-                  placeholder: (c, _) => AspectRatio(
-                    aspectRatio: 1,
-                    child: Container(
-                      color: dark
-                          ? AppColors.darkSurfaceVariant
-                          : const Color(0xFFEDF4F2),
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
-                  ),
-                  errorWidget: (c, _, __) => AspectRatio(
-                    aspectRatio: 1,
-                    child: Container(
-                      color: dark
-                          ? AppColors.darkSurfaceVariant
-                          : const Color(0xFFEDF4F2),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.broken_image_outlined),
-                            const SizedBox(height: 4),
-                            Text(context.tr('加载失败·点击打开'),
-                                style: const TextStyle(fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                child: _buildImage(url, headers),
               ),
             ),
           ),
@@ -135,6 +109,76 @@ class MessageBubble extends StatelessWidget {
     }
 
     return _wrap(context, body, align, textColor);
+  }
+
+  /// 圖片加載：
+  /// - Web 端用 [Image.network]（Flutter Web 下 CachedNetworkImage 不支持自訂 Header，
+  ///   且 CanvasKit 對圖片 CORS 敏感，瀏覽器會自動處理 <img> 的跨域）。
+  /// - 移動端用 [CachedNetworkImage]，帶上 Bearer token，並記錄真實錯誤信息。
+  /// 點擊錯誤區塊會強制重新載入。
+  Widget _buildImage(String url, Map<String, String> headers) {
+    final bgColor = dark
+        ? AppColors.darkSurfaceVariant
+        : const Color(0xFFEDF4F2);
+    final errorChild = AspectRatio(
+      aspectRatio: 1,
+      child: Container(
+        color: bgColor,
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.broken_image_outlined),
+              SizedBox(height: 4),
+              Text('加载失败·点击打开', style: TextStyle(fontSize: 12)),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (kIsWeb) {
+      return Image.network(
+        url,
+        fit: BoxFit.contain,
+        headers: headers,
+        loadingBuilder: (c, child, prog) => prog == null
+            ? child
+            : AspectRatio(
+                aspectRatio: 1,
+                child: Container(
+                  color: bgColor,
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+              ),
+        errorBuilder: (c, _, __) {
+          developer.log('Web Image.network load failed url=$url',
+              name: 'chat');
+          return errorChild;
+        },
+      );
+    }
+
+    return CachedNetworkImage(
+      imageUrl: url,
+      fit: BoxFit.contain,
+      httpHeaders: headers,
+      // 限制解码后的像素尺寸：原图动辄几千像素，
+      // 直接解码进内存会在长列表里引发 OOM。
+      memCacheWidth: 400,
+      placeholder: (c, _) => AspectRatio(
+        aspectRatio: 1,
+        child: Container(
+          color: bgColor,
+          child: const Center(child: CircularProgressIndicator()),
+        ),
+      ),
+      errorWidget: (c, url, err) {
+        developer.log('CachedNetworkImage load failed url=$url error=$err',
+            name: 'chat');
+        return errorChild;
+      },
+    );
   }
 
   Widget _wrap(BuildContext context, Widget body, CrossAxisAlignment align,

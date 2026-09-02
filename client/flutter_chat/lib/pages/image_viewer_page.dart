@@ -6,6 +6,7 @@ import 'package:gal/gal.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../l10n/app_localizations.dart';
+import '../providers/auth_provider.dart';
 import '../providers/core_providers.dart';
 
 /// 全屏图片查看器：支持像微信一样的双指捏合缩放、双击放大/还原，以及保存图片。
@@ -76,6 +77,11 @@ class _ImageViewerPageState extends ConsumerState<ImageViewerPage> {
 
   @override
   Widget build(BuildContext context) {
+    final token = ref.watch(authProvider).token;
+    final headers = token != null && token.isNotEmpty
+        ? {'Authorization': 'Bearer $token'}
+        : const <String, String>{};
+
     final img = GestureDetector(
       onDoubleTap: _onDoubleTap,
       child: InteractiveViewer(
@@ -87,6 +93,7 @@ class _ImageViewerPageState extends ConsumerState<ImageViewerPage> {
           child: Image.network(
             widget.url,
             fit: BoxFit.contain,
+            headers: headers,
             loadingBuilder: (c, child, prog) => prog == null
                 ? child
                 : const Center(child: CircularProgressIndicator()),

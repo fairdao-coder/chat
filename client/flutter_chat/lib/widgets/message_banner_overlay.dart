@@ -66,9 +66,13 @@ class _MessageBannerOverlayState extends ConsumerState<MessageBannerOverlay>
               _BannerItem(
                 key: ValueKey(items[i].id),
                 message: items[i],
-                onDismiss: () => ref
-                    .read(messageNotificationsProvider.notifier)
-                    .remove(items[i].id),
+                onDismiss: () {
+                  if (mounted) {
+                    ref
+                        .read(messageNotificationsProvider.notifier)
+                        .remove(items[i].id);
+                  }
+                },
               ),
           ],
         ),
@@ -93,8 +97,10 @@ class _BannerItemState extends ConsumerState<_BannerItem> {
   @override
   void initState() {
     super.initState();
-    // 进入动画 + 10 秒后自动消失。
-    _autoHide = Timer(const Duration(seconds: 10), widget.onDismiss);
+    // 进入动画 + 10 秒后自动消失。必须判 mounted，防止 item 已被 dispose 后 timer 回调仍触发 onDismiss。
+    _autoHide = Timer(const Duration(seconds: 10), () {
+      if (mounted) widget.onDismiss();
+    });
     // 下一帧触发滑入动画。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _shown = true);
