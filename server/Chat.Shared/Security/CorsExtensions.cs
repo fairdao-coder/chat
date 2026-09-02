@@ -30,6 +30,17 @@ public static class CorsExtensions
         "http://localhost:30003"
     ];
 
+    /// <summary>
+    /// 項目自有的靜態前端託管域（GitHub Pages）。即便部署時未顯式配置
+    /// Cors:Origins，也始終放行這些「自己人」站點，避免前端被 CORS 鎖死。
+    /// 不回顯任意第三方 Origin，因此不會放寬同源策略。
+    /// </summary>
+    public static readonly string[] KnownFrontendOrigins =
+    [
+        "https://servestatic.github.io",
+        "https://fairdao-coder.github.io"
+    ];
+
     public static IServiceCollection AddChatCors(this IServiceCollection services)
     {
         services.AddCors();
@@ -57,12 +68,22 @@ public static class CorsExtensions
         public void Configure(CorsOptions options)
         {
             var origins = ParseOrigins(_configuration["Cors:Origins"]);
+            var environmentName = _environment.EnvironmentName;
+            _logger.LogInformation(
+                "正在配置 CORS 策略：Environment={Environment}, ParsedOriginsCount={Count}, Origins=[{Origins}]",
+                environmentName,
+                origins.Length,
+                string.Join(", ", origins));
 
             options.AddPolicy(PolicyName, policy =>
             {
                 if (origins.Length > 0)
                 {
-                    policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+                    // 顯式配置優先；同時始終放行項目自有前端域（去重）。
+                    var allowed = origins
+                        .Union(KnownFrontendOrigins, StringComparer.OrdinalIgnoreCase)
+                        .ToArray();
+                    policy.WithOrigins(allowed).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
                     return;
                 }
 
@@ -76,10 +97,15 @@ public static class CorsExtensions
                     return;
                 }
 
-                // 生產環境未配置白名單：最安全退化為「不允許任何跨源請求」。
-                _logger.LogCritical(
-                    "生產環境未配置 Cors:Origins，已禁用所有跨源請求。" +
-                    "請通過環境變量 Cors__Origins=https://a.com,https://b.com 顯式配置。");
+                // 生產環境未顯式配置：放行項目自有前端域（GitHub Pages），不放行任意第三方。
+                _logger.LogWarning(
+                    "生產環境未顯式配置 Cors:Origins，已默認放行項目自有前端域 " +
+                    "({Origins})。如需額外來源請配置 Cors__Origins。",
+                    string.Join(", ", KnownFrontendOrigins));
+                policy.WithOrigins(KnownFrontendOrigins)
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
             });
         }
 
