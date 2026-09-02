@@ -3,7 +3,10 @@
 #   docker build -f AdminServer/Dockerfile -t adminserver:local server
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
+# IMPORTANT: build context must be the server/ directory, not this file's directory.
 COPY . .
+RUN test -f AdminServer/AdminServer.csproj || \
+    (echo "ERROR: build context is not server/ directory. Run from server/: docker build -f AdminServer/Dockerfile -t adminserver ." && exit 1)
 RUN dotnet restore AdminServer/AdminServer.csproj
 RUN dotnet publish AdminServer/AdminServer.csproj -c Release -o /app/out --no-restore
 

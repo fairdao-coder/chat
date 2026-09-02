@@ -704,7 +704,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: server/ChatServer
+          context: server
           file: server/ChatServer/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -746,7 +746,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: server/AdminServer
+          context: server
           file: server/AdminServer/Dockerfile
           push: true
           tags: ${{ steps.meta-admin.outputs.tags }}

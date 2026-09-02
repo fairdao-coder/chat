@@ -22,7 +22,10 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy the whole server/ context (includes Chat.Shared project reference).
+# IMPORTANT: build context must be the server/ directory, not this file's directory.
 COPY . .
+RUN test -f ChatServer/ChatServer.csproj || \
+    (echo "ERROR: build context is not server/ directory. Run from server/: docker build -f ChatServer/Dockerfile -t chatserver ." && exit 1)
 RUN dotnet restore ChatServer/ChatServer.csproj
 RUN dotnet publish ChatServer/ChatServer.csproj -c Release -o /app/publish --no-restore
 
