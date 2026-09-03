@@ -29,6 +29,8 @@ class ChatHubClient {
   final _friendRequestCtl = StreamController<FriendRequestDto>.broadcast();
   // 正在輸入狀態：(對方用戶 ID, 是否正在輸入)
   final _typingCtl = StreamController<(String, bool)>.broadcast();
+  // 消息撤回：推送已撤回的完整 MessageDto（含 conversationId）。
+  final _recalledCtl = StreamController<MessageDto>.broadcast();
 
   // 通話信令事件
   final _incomingCallCtl = StreamController<CallInvite>.broadcast();
@@ -45,6 +47,7 @@ class ChatHubClient {
   Stream<bool> get onConnectionState => _stateController.stream;
   Stream<FriendRequestDto> get onFriendRequest => _friendRequestCtl.stream;
   Stream<(String, bool)> get onTyping => _typingCtl.stream;
+  Stream<MessageDto> get onMessageRecalled => _recalledCtl.stream;
 
   Stream<CallInvite> get onIncomingCall => _incomingCallCtl.stream;
   Stream<String> get onCallAccepted => _callAcceptedCtl.stream;
@@ -115,6 +118,16 @@ class ChatHubClient {
       }
     });
 
+    _connection!.on(HubEvents.messageRecalled, (args) {
+      if (args != null && args.isNotEmpty) {
+        try {
+          _recalledCtl.add(MessageDto.fromJson(args[0] as Map<String, dynamic>));
+        } catch (_) {
+          // ignore malformed payloads
+        }
+      }
+    });
+
     // 通話信令
     _connection!.on(HubEvents.incomingCall, (args) {
       if (args != null && args.length >= 4) {
@@ -172,17 +185,26 @@ class ChatHubClient {
   // ---- Client -> Server invokes (method names/order per ChatHub.cs) ----
 
   Future<void> sendPrivateMessage(
-      String toUserId, String content, String type, String? mediaUrl) async {
+      String toUserId, String content, String type, String? mediaUrl,
+      {String? replyToId}) async {
     await _ensureConnected();
     await _connection!.invoke(HubMethods.sendPrivateMessage,
-        args: [toUserId, content, type, mediaUrl ?? '']);
+        args: [toUserId, content, type, mediaUrl ?? '', replyToId ?? '']);
   }
 
   Future<void> sendGroupMessage(
-      String groupId, String content, String type, String? mediaUrl) async {
+      String groupId, String content, String type, String? mediaUrl,
+      {String? replyToId}) async {
     await _ensureConnected();
     await _connection!.invoke(HubMethods.sendGroupMessage,
-        args: [groupId, content, type, mediaUrl ?? '']);
+        args: [groupId, content, type, mediaUrl ?? '', replyToId ?? '']);
+  }
+
+  /// 撤回自己發出的消息（服務端限時 2 分鐘）。
+  /// 撤回結果通過 [onMessageRecalled] 事件回流，本地無需自行改狀態。
+  Future<void> recallMessage(String messageId) async {
+    await _ensureConnected();
+    await _connection!.invoke(HubMethods.recallMessage, args: [messageId]);
   }
 
   Future<void> joinGroup(String groupId) async {

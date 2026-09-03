@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:developer' as developer;
 
 import '../../config/app_colors.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/enums.dart';
 import '../../models/message_dto.dart';
 import '../../providers/auth_provider.dart';
@@ -12,12 +13,14 @@ import '../../utils/url.dart';
 import '../../pages/image_viewer_page.dart';
 import 'voice_bubble.dart';
 
-/// 单条消息气泡：按消息类型渲染文本 / 图片 / 文件 / 语音。
+/// 单条消息气泡：按消息类型渲染文本 / 图片 / 文件 / 语音，
+/// 支持撤回态渲染与引用（回复）摘要，长按触发操作菜单（由父级处理）。
 class MessageBubble extends ConsumerWidget {
   final MessageDto message;
   final bool isMe;
   final void Function(String) onOpenUrl;
   final bool dark;
+  final VoidCallback? onLongPress;
 
   const MessageBubble({
     super.key,
@@ -25,10 +28,39 @@ class MessageBubble extends ConsumerWidget {
     required this.isMe,
     required this.onOpenUrl,
     required this.dark,
+    this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 已撤回：居中灰色系統提示，不渲染原氣泡。
+    if (message.recalled) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurfaceVariant
+                  .withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              isMe
+                  ? context.tr('你撤回了一条消息')
+                  : '${message.senderName} ${context.tr('撤回了一条消息')}',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     final align = isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start;
     final textColor = isMe
         ? Colors.white
@@ -48,6 +80,7 @@ class MessageBubble extends ConsumerWidget {
           if (!isMe && message.senderName.isNotEmpty) _senderName(context),
           GestureDetector(
             onTap: () => openImageViewer(context, url),
+            onLongPress: onLongPress,
             child: ConstrainedBox(
               constraints: const BoxConstraints(
                 maxWidth: 200,
@@ -201,31 +234,76 @@ class MessageBubble extends ConsumerWidget {
       crossAxisAlignment: align,
       children: [
         if (!isMe && message.senderName.isNotEmpty) _senderName(context),
-        Container(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.72),
-          decoration: BoxDecoration(
-            gradient: isMe ? AppColors.bubbleMine : null,
-            color: isMe
-                ? null
-                : (dark ? AppColors.bubblePeerDark : AppColors.bubblePeerLight),
-            borderRadius: radius,
-            boxShadow: [
-              BoxShadow(
-                color: isMe
-                    ? AppColors.brand.withValues(alpha: 0.28)
-                    : Colors.black.withValues(alpha: dark ? 0.25 : 0.06),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
+        GestureDetector(
+          onLongPress: onLongPress,
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.72),
+            decoration: BoxDecoration(
+              gradient: isMe ? AppColors.bubbleMine : null,
+              color: isMe
+                  ? null
+                  : (dark ? AppColors.bubblePeerDark : AppColors.bubblePeerLight),
+              borderRadius: radius,
+              boxShadow: [
+                BoxShadow(
+                  color: isMe
+                      ? AppColors.brand.withValues(alpha: 0.28)
+                      : Colors.black.withValues(alpha: dark ? 0.25 : 0.06),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (message.replyToId != null)
+                  _replyPreview(context, textColor),
+                body,
+              ],
+            ),
           ),
-          child: body,
         ),
         const SizedBox(height: 4),
       ],
+    );
+  }
+
+  /// 引用（回覆）摘要塊：左側豎線 + 原發送者 + 摘要。
+  /// 原消息已撤回時摘要為 null，顯示「原消息已撤回」。
+  Widget _replyPreview(BuildContext context, Color textColor) {
+    final cs = Theme.of(context).colorScheme;
+    final previewText = message.replyPreview ?? context.tr('原消息已撤回');
+    final label = message.replySenderName == null
+        ? previewText
+        : '${message.replySenderName}: $previewText';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.fromLTRB(8, 5, 8, 5),
+      decoration: BoxDecoration(
+        color: cs.onSurfaceVariant.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(6),
+        border: Border(
+          left: BorderSide(
+            width: 3,
+            color: isMe ? Colors.white.withValues(alpha: 0.7) : cs.primary,
+          ),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12.5,
+          color: isMe ? Colors.white.withValues(alpha: 0.9) : cs.onSurfaceVariant,
+        ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 

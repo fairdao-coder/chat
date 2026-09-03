@@ -26,6 +26,8 @@ class HubMethods {
   static const String leaveGroup = 'LeaveGroup';
   // 正在輸入狀態
   static const String sendTyping = 'SendTyping';
+  // 消息撤回
+  static const String recallMessage = 'RecallMessage';
   // 通話信令
   static const String inviteCall = 'InviteCall';
   static const String acceptCall = 'AcceptCall';
@@ -43,6 +45,8 @@ class HubEvents {
   static const String receiveFriendRequest = 'ReceiveFriendRequest';
   // 正在輸入狀態
   static const String typing = 'OnTyping';
+  // 消息撤回（推送已撤回的完整 MessageDto）
+  static const String messageRecalled = 'MessageRecalled';
   // 通話信令
   static const String incomingCall = 'OnIncomingCall';
   static const String callAccepted = 'OnCallAccepted';

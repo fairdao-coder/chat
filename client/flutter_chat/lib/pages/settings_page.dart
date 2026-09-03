@@ -6,6 +6,7 @@ import '../config/app_config.dart';
 import '../data/api_client.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/auth_provider.dart';
+import '../providers/conversations_provider.dart';
 import '../providers/core_providers.dart';
 import '../providers/locale_provider.dart';
 import '../providers/theme_mode_provider.dart';
@@ -230,6 +231,32 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const SizedBox(height: 14),
 
+          // 我的二維碼 & 聊天記錄
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.qr_code_2_outlined),
+                    title: Text(context.tr('我的二维码')),
+                    subtitle: Text(context.tr('扫码添加我为好友')),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/my-qr'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.delete_sweep_outlined),
+                    title: Text(context.tr('清除所有聊天记录')),
+                    subtitle: Text(context.tr('将隐藏全部会话的历史消息')),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _clearAllMessages,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+
           // 賬戶操作
           Card(
             child: Padding(
@@ -255,6 +282,40 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ],
       ),
     );
+  }
+
+  /// 清除所有聊天記錄：調用後端 clear-all，隱藏全部會話歷史消息。
+  Future<void> _clearAllMessages() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(context.tr('清除所有聊天记录')),
+        content: Text(context.tr('确定要清除所有会话的历史消息吗？此操作不可恢复。')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(context.tr('取消')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(context.tr('清除')),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    final api = ref.read(apiProvider);
+    try {
+      await api.clearAllMessages();
+      // 刷新会话列表（預覽將變為空），當前打開的聊天頁在返回時會重新拉取歷史。
+      ref.invalidate(conversationsProvider);
+      if (mounted) _toast(context.tr('已清除所有聊天记录'));
+    } on ApiException catch (e) {
+      if (mounted) _toast(e.message);
+    } catch (_) {
+      if (mounted) _toast(context.tr('网络错误，请重试'));
+    }
   }
 
   /// 彈出修改密碼對話框：舊密碼 + 新密碼 + 確認，提交到後端校驗舊密碼。

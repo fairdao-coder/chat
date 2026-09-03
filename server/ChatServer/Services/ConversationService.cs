@@ -84,8 +84,10 @@ public class ConversationService : IConversationService
             string conv, LastMessage? last, string recalledPlaceholder)
         {
             if (last == null) return (null, null, null);
-            var wm = convWatermarks.GetValueOrDefault(conv);
-            var effective = wm.HasValue && (allWatermark == null || wm > allWatermark) ? wm : allWatermark;
+            // 生效水位 = max(單會話水位, 全部水位)。
+            DateTime? effective = convWatermarks.TryGetValue(conv, out var wm) ? wm : null;
+            if (allWatermark.HasValue && (!effective.HasValue || allWatermark > effective))
+                effective = allWatermark;
             if (effective.HasValue && last.CreatedAt <= effective.Value) return (null, null, null);
             if (last.Recalled) return (recalledPlaceholder, last.CreatedAt, MessageType.Text);
             return (last.Content, last.CreatedAt, last.Type);
@@ -156,5 +158,6 @@ public class ConversationService : IConversationService
         string ConversationId,
         string Content,
         DateTime CreatedAt,
-        MessageType Type);
+        MessageType Type,
+        bool Recalled);
 }

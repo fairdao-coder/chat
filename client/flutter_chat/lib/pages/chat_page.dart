@@ -25,8 +25,10 @@ import '../providers/core_providers.dart';
 import '../providers/notification_provider.dart';
 import '../providers/presence_provider.dart';
 import '../providers/typing_provider.dart';
+import '../providers/conversations_provider.dart';
 import '../utils/record_bytes.dart';
 import '../l10n/app_localizations.dart';
+import '../widgets/app_avatar.dart';
 import '../widgets/chat/input_bar.dart';
 import '../widgets/chat/message_bubble.dart';
 import '../widgets/chat/peer_status.dart';
@@ -59,6 +61,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   // ---- 正在輸入狀態上報 ----
   Timer? _typingStopTimer;
   bool _typingActive = false;
+
+  // ---- 引用（回覆）目標：非空時輸入框上方顯示回覆條，發送後清空 ----
+  MessageDto? _replyTo;
 
   @override
   void initState() {
@@ -150,11 +155,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   Future<void> _sendText() async {
     final text = _ctrl.text;
     if (text.trim().isEmpty) return;
-    final err =
-        await ref.read(chatProvider(widget.target).notifier).sendText(text);
+    final err = await ref
+        .read(chatProvider(widget.target).notifier)
+        .sendText(text, replyTo: _replyTo);
     if (err == null) {
       _stopTyping(); // 消息已發出，對方不應再看到「正在輸入」
       _ctrl.clear();
+      if (mounted) setState(() => _replyTo = null);
     } else {
       _handleHubError(err);
     }
@@ -400,6 +407,183 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     return cur.createdAt.difference(prev.createdAt).inMinutes > 5;
   }
 
+  // ===================== 消息操作（撤回 / 刪除 / 引用 / 轉發） =====================
+
+  /// 是否可撤回：自己發的、非樂觀消息、未撤回、且在 2 分鐘時限內。
+  bool _canRecall(MessageDto m, String? myId) =>
+      myId != null &&
+      m.senderId == myId &&
+      !m.recalled &&
+      !m.id.startsWith('optimistic_') &&
+      DateTime.now().difference(m.createdAt) <= const Duration(minutes: 2);
+
+  /// 消息摘要：媒體消息按類型顯示佔位文案（回覆條 / 轉發確認用）。
+  String _msgPreview(MessageDto m) {
+    if (m.recalled) return _lt('原消息已撤回');
+    switch (m.type) {
+      case MessageType.image:
+        return '[${_lt('图片')}]';
+      case MessageType.file:
+        return '[${_lt('文件')}]';
+      case MessageType.voice:
+        return '[${_lt('语音消息')}]';
+      case MessageType.text:
+        return m.content;
+    }
+  }
+
+  void _showMsgMenu(MessageDto m) {
+    final myId = ref.read(authProvider).user?.id;
+    final notifier = ref.read(chatProvider(widget.target).notifier);
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_canRecall(m, myId))
+              ListTile(
+                leading: const Icon(Icons.undo_rounded),
+                title: Text(_lt('撤回')),
+                onTap: () async {
+                  Navigator.pop(sheetCtx);
+                  final err = await notifier.recall(m);
+                  if (err != null && mounted) _toast('${_lt('撤回失败')}: $err');
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.reply_rounded),
+              title: Text(_lt('引用')),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                if (mounted) setState(() => _replyTo = m);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.shortcut_rounded),
+              title: Text(_lt('转发')),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                _showForwardPicker(m);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: Text(_lt('删除')),
+              onTap: () async {
+                Navigator.pop(sheetCtx);
+                final err = await notifier.hide(m);
+                if (err != null && mounted) _toast('${_lt('删除失败')}: $err');
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 轉發：從會話列表選一個目標，以自己身份重發相同內容。
+  void _showForwardPicker(MessageDto m) {
+    final listAsync = ref.read(conversationsProvider);
+    final contacts = listAsync.asData?.value ?? const [];
+
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Text(_lt('转发到'),
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+            ),
+            if (contacts.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(_lt('还没有可转发的会话'),
+                    style: TextStyle(color: csSub(sheetCtx))),
+              )
+            else
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: contacts.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (c, i) {
+                    final ct = contacts[i];
+                    return ListTile(
+                      leading: AppAvatar(
+                        imageUrl: ct.avatarUrl,
+                        name: ct.name,
+                        size: 40,
+                        isGroup: ct.isGroup,
+                      ),
+                      title: Text(ct.name),
+                      onTap: () async {
+                        Navigator.pop(sheetCtx);
+                        final target = ChatTarget(
+                            id: ct.id, isGroup: ct.isGroup);
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (c) => AlertDialog(
+                            title: Text(_lt('转发')),
+                            content: Text(
+                                '${_lt('确定转发给')}「${ct.name}」？\n${_msgPreview(m)}'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(c, false),
+                                child: Text(_lt('取消')),
+                              ),
+                              FilledButton(
+                                onPressed: () => Navigator.pop(c, true),
+                                child: Text(_lt('转发')),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm != true) return;
+                        final err = await ref
+                            .read(chatProvider(target).notifier)
+                            .forwardTo(target, m);
+                        if (!mounted) return;
+                        _toast(err == null ? _lt('已转发') : '${_lt('转发失败')}: $err');
+                      },
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color csSub(BuildContext c) => Theme.of(c).colorScheme.onSurfaceVariant;
+
+  /// 清空當前會話聊天記錄（僅自己的視角，需二次確認）。
+  Future<void> _clearHistory() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(_lt('清空聊天记录')),
+        content: Text(_lt('清空后将删除本会话的全部聊天记录（仅影响自己），确定继续？')),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: Text(_lt('取消'))),
+          FilledButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: Text(_lt('确定'))),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final err = await ref.read(chatProvider(widget.target).notifier).clearHistory();
+    if (!mounted) return;
+    _toast(err == null ? _lt('已清空') : '${_lt('清空失败')}: $err');
+  }
+
   @override
   Widget build(BuildContext context) {
     final chat = ref.watch(chatProvider(widget.target));
@@ -442,27 +626,43 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               ),
           ],
         ),
-        actions: widget.target.isGroup
-            ? null
-            : [
-                // 通話入口受後臺功能開關控制。
-                if (features.enableVoiceCall)
-                  IconButton(
-                    onPressed: () => ref
-                        .read(callProvider.notifier)
-                        .startCall(widget.target.id, _peerName(), 'voice'),
-                    icon: const Icon(Icons.call_rounded),
-                    tooltip: context.tr('语音通话'),
-                  ),
-                if (features.enableVideoCall)
-                  IconButton(
-                    onPressed: () => ref
-                        .read(callProvider.notifier)
-                        .startCall(widget.target.id, _peerName(), 'video'),
-                    icon: const Icon(Icons.videocam_rounded),
-                    tooltip: context.tr('视频通话'),
-                  ),
-              ],
+        actions: [
+          // 通話入口受後臺功能開關控制。
+          if (!widget.target.isGroup && features.enableVoiceCall)
+            IconButton(
+              onPressed: () => ref
+                  .read(callProvider.notifier)
+                  .startCall(widget.target.id, _peerName(), 'voice'),
+              icon: const Icon(Icons.call_rounded),
+              tooltip: context.tr('语音通话'),
+            ),
+          if (!widget.target.isGroup && features.enableVideoCall)
+            IconButton(
+              onPressed: () => ref
+                  .read(callProvider.notifier)
+                  .startCall(widget.target.id, _peerName(), 'video'),
+              icon: const Icon(Icons.videocam_rounded),
+              tooltip: context.tr('视频通话'),
+            ),
+          // 會話操作：清空聊天記錄。
+          PopupMenuButton<String>(
+            onSelected: (v) {
+              if (v == 'clear') _clearHistory();
+            },
+            itemBuilder: (c) => [
+              PopupMenuItem(
+                value: 'clear',
+                child: Row(
+                  children: [
+                    const Icon(Icons.delete_sweep_outlined, size: 20),
+                    const SizedBox(width: 10),
+                    Text(c.tr('清空聊天记录')),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -494,6 +694,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                           isMe: m.senderId == myId,
                           onOpenUrl: _openUrl,
                           dark: dark,
+                          onLongPress: () => _showMsgMenu(m),
                         ),
                       ));
                       return Column(

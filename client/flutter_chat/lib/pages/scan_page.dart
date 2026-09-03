@@ -5,8 +5,11 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../data/api_client.dart';
 import '../l10n/app_localizations.dart';
+import '../providers/auth_provider.dart';
 import '../providers/config_link_provider.dart';
+import '../providers/core_providers.dart';
 import '../utils/platform_check.dart';
 
 /// 相机扫码仅支持 Android / iOS。桌面与 Web 平台不支持，直接提示。
@@ -154,6 +157,17 @@ class _ScanPageState extends ConsumerState<ScanPage> {
       return;
     }
 
+    if (uri != null && uri.scheme == 'fairchat' && uri.host == 'user') {
+      // 1.5) 好友名片：fairchat://user/<id> -> 發起好友請求。
+      final userId = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : '';
+      if (userId.isEmpty) {
+        if (mounted) _resetScan();
+        return;
+      }
+      await _handleUserCard(userId);
+      return;
+    }
+
     if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
       // 2) 網頁鏈接：外部瀏覽器打開。
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -169,6 +183,102 @@ class _ScanPageState extends ConsumerState<ScanPage> {
 
     // 3) 純文本：展示內容。
     if (mounted) _showText(context.tr('扫码结果'), value);
+  }
+
+  /// 掃到好友名片（fairchat://user/<id>）後：先校驗是否為自己/已是好友，
+  /// 再彈出「發送好友請求」確認框（可填寫驗證消息）。
+  Future<void> _handleUserCard(String userId) async {
+    final myId = ref.read(authProvider).user?.id;
+    if (myId == userId) {
+      if (mounted) {
+        _toast(context.tr('无法添加自己为好友'));
+        _resetScan();
+      }
+      return;
+    }
+
+    // 先拉好友列表，判斷是否已經是好友。
+    final api = ref.read(apiProvider);
+    try {
+      final friends = await api.getFriends();
+      if (friends.any((f) => f.id == userId)) {
+        if (mounted) {
+          _toast(context.tr('已是好友'));
+          context.pop();
+        }
+        return;
+      }
+    } catch (_) {
+      // 取得好友列表失敗不阻擋後續發送請求。
+    }
+
+    if (!mounted) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) {
+        final msgCtrl = TextEditingController();
+        return AlertDialog(
+          title: Text(context.tr('添加到通讯录')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(context.tr('识别为好友二维码')),
+              const SizedBox(height: 12),
+              TextField(
+                controller: msgCtrl,
+                decoration: InputDecoration(
+                  labelText: context.tr('请输入验证消息'),
+                  border: const OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(c, false),
+              child: Text(context.tr('取消')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(c, true),
+              child: Text(context.tr('发送')),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (ok != true) {
+      if (mounted) _resetScan();
+      return;
+    }
+
+    try {
+      await api.sendFriendRequest(userId);
+      if (mounted) {
+        _toast(context.tr('已发送好友请求'));
+        context.pop();
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        _toast(e.message);
+        _resetScan();
+      }
+    } catch (_) {
+      if (mounted) {
+        _toast(context.tr('网络错误，请重试'));
+        _resetScan();
+      }
+    }
+  }
+
+  void _resetScan() {
+    if (mounted) setState(() => _handled = false);
+  }
+
+  void _toast(String m) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
   }
 
   void _showText(String title, String content) {

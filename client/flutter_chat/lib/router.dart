@@ -14,6 +14,7 @@ import 'pages/login_page.dart';
 import 'pages/main_shell.dart';
 import 'pages/scan_page.dart';
 import 'pages/settings_page.dart';
+import 'pages/my_qr_page.dart';
 import 'pages/webview_page.dart';
 import 'pages/mini_app_page.dart';
 import 'providers/auth_provider.dart';
@@ -203,6 +204,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/scan',
         builder: (context, state) => const ScanPage(),
+      ),
+      GoRoute(
+        path: '/my-qr',
+        builder: (context, state) => const MyQrPage(),
       ),
       GoRoute(
         path: '/webview',

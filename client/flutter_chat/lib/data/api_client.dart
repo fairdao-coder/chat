@@ -224,6 +224,13 @@ class ApiClient {
 
   // ---------- Friends ----------
 
+  /// 取得當前用戶的個人名片（用於「我的二維碼」）。
+  /// 返回的 card 形如 fairchat://user/<id>，可編碼為二維碼供他人掃描添加好友。
+  Future<Map<String, dynamic>> getMyCard() async {
+    final data = await _req(() => _dio.get('/api/users/me/card'));
+    return data as Map<String, dynamic>;
+  }
+
   /// POST /api/friends/request  body = raw JSON string "<friendId>"
   Future<void> sendFriendRequest(String friendId) async {
     await _req(() => _dio.post('/api/friends/request',
@@ -296,6 +303,22 @@ class ApiClient {
     final data = await _req(
         () => _dio.get('/api/messages/group/$groupId', queryParameters: qp));
     return (data as List).map((e) => MessageDto.fromJson(e)).toList();
+  }
+
+  /// 刪除一條消息（僅自己不再顯示，對方不受影響）。
+  Future<void> hideMessage(String messageId) async {
+    await _req(() => _dio.post('/api/messages/hide/$messageId'));
+  }
+
+  /// 清空單個會話的聊天記錄（僅自己的視角，水位線之前的不再顯示）。
+  Future<void> clearConversation(String conversationId) async {
+    await _req(() => _dio.post(
+        '/api/messages/clear/${Uri.encodeComponent(conversationId)}'));
+  }
+
+  /// 清除所有會話的聊天記錄（僅自己的視角）。
+  Future<void> clearAllMessages() async {
+    await _req(() => _dio.post('/api/messages/clear-all'));
   }
 
   // ---------- Files ----------

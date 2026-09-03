@@ -181,6 +181,20 @@ class L10n {
     '保存失败': '保存失败',
     '请在手机端打开小应用': '请在手机端打开小应用',
     '小应用加载失败': '小应用加载失败',
+    '我的二维码': '我的二维码',
+    '扫码添加我为好友': '扫码添加我为好友',
+    '清除所有聊天记录': '清除所有聊天记录',
+    '将隐藏全部会话的历史消息': '将隐藏全部会话的历史消息',
+    '确定要清除所有会话的历史消息吗？此操作不可恢复。': '确定要清除所有会话的历史消息吗？此操作不可恢复。',
+    '清除': '清除',
+    '已清除所有聊天记录': '已清除所有聊天记录',
+    '识别为好友二维码': '识别为好友二维码',
+    '已发送好友请求': '已发送好友请求',
+    '已是好友': '已是好友',
+    '无法添加自己为好友': '无法添加自己为好友',
+    '对方已发送好友请求': '对方已发送好友请求',
+    '添加到通讯录': '添加到通讯录',
+    '请输入验证消息': '请输入验证消息',
   };
 
   static const Map<String, String> _zhHant = {
@@ -346,6 +360,20 @@ class L10n {
     '保存失败': '保存失敗',
     '请在手机端打开小应用': '請在手機端打開小應用',
     '小应用加载失败': '小應用加載失敗',
+    '我的二维码': '我的二維碼',
+    '扫码添加我为好友': '掃碼添加我為好友',
+    '清除所有聊天记录': '清除所有聊天記錄',
+    '将隐藏全部会话的历史消息': '將隱藏全部會話的歷史訊息',
+    '确定要清除所有会话的历史消息吗？此操作不可恢复。': '確定要清除所有會話的歷史訊息嗎？此操作不可恢復。',
+    '清除': '清除',
+    '已清除所有聊天记录': '已清除所有聊天記錄',
+    '识别为好友二维码': '識別為好友二維碼',
+    '已发送好友请求': '已傳送好友邀請',
+    '已是好友': '已是好友',
+    '无法添加自己为好友': '無法將自己新增為好友',
+    '对方已发送好友请求': '對方已傳送好友邀請',
+    '添加到通讯录': '新增到通訊錄',
+    '请输入验证消息': '請輸入驗證訊息',
   };
 
   static const Map<String, String> _en = {
@@ -511,6 +539,20 @@ class L10n {
     '保存失败': 'Save failed',
     '请在手机端打开小应用': 'Open the mini app on your phone',
     '小应用加载失败': 'Mini app failed to load',
+    '我的二维码': 'My QR Code',
+    '扫码添加我为好友': 'Scan to add me as a friend',
+    '清除所有聊天记录': 'Clear All Chat History',
+    '将隐藏全部会话的历史消息': 'Hides history of all conversations',
+    '确定要清除所有会话的历史消息吗？此操作不可恢复。': 'Clear all conversation history? This cannot be undone.',
+    '清除': 'Clear',
+    '已清除所有聊天记录': 'All chat history cleared',
+    '识别为好友二维码': 'Recognized as a friend QR code',
+    '已发送好友请求': 'Friend request sent',
+    '已是好友': 'Already friends',
+    '无法添加自己为好友': 'Cannot add yourself as a friend',
+    '对方已发送好友请求': 'Friend request already sent',
+    '添加到通讯录': 'Add to Contacts',
+    '请输入验证消息': 'Enter a verification message',
   };
 
   static const Map<String, String> _es = {
@@ -676,6 +718,20 @@ class L10n {
     '保存失败': 'Error al guardar',
     '请在手机端打开小应用': 'Abre la mini app en tu teléfono',
     '小应用加载失败': 'Error al cargar la mini app',
+    '我的二维码': 'Mi código QR',
+    '扫码添加我为好友': 'Escanea para agregarme',
+    '清除所有聊天记录': 'Borrar todo el historial',
+    '将隐藏全部会话的历史消息': 'Oculta el historial de todas las conversaciones',
+    '确定要清除所有会话的历史消息吗？此操作不可恢复。': '¿Borrar el historial de todas las conversaciones? No se puede deshacer.',
+    '清除': 'Borrar',
+    '已清除所有聊天记录': 'Historial borrado',
+    '识别为好友二维码': 'Reconocido como código QR de amigo',
+    '已发送好友请求': 'Solicitud enviada',
+    '已是好友': 'Ya son amigos',
+    '无法添加自己为好友': 'No puedes agregarte a ti mismo',
+    '对方已发送好友请求': 'Solicitud ya enviada',
+    '添加到通讯录': 'Añadir a contactos',
+    '请输入验证消息': 'Escribe un mensaje de verificación',
   };
 
   static AppLocalizations _resolve(Locale locale) {

@@ -102,7 +102,7 @@ public class MessagesController : ApiControllerBase
         try
         {
             var dto = await _messages.SendPrivateAsync(
-                UserId, req.To, req.Content, Chat.Shared.Entities.MessageType.Text, null, ct);
+                UserId, req.To, req.Content, Chat.Shared.Entities.MessageType.Text, null, replyToId: null, ct: ct);
 
             // 與 SignalR 通道保持一致的推送負載：這裡是單條 DTO，Hub 推送的也是單條。
             await _hub.Clients.User(req.To).SendAsync("ReceiveMessage", dto, ct);

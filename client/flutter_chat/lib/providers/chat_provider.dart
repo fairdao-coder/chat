@@ -52,6 +52,7 @@ class ChatController extends StateNotifier<ChatState> {
   final Ref _ref;
   final ChatTarget _target;
   StreamSubscription<MessageDto>? _sub;
+  StreamSubscription<MessageDto>? _recallSub;
   late final String _convId;
 
   ChatController(this._api, this._hub, this._ref, this._target)
@@ -108,12 +109,75 @@ class ChatController extends StateNotifier<ChatState> {
       final exists = state.messages.any((x) => x.id == m.id);
       if (!exists) state = state.copyWith(messages: [...state.messages, m]);
     });
+
+    // 撤回事件：把對應氣泡替換為「已撤回」佔位（保留位置，供引用它的消息顯示原摘要狀態）。
+    _recallSub = _hub.onMessageRecalled.listen((m) {
+      if (m.conversationId != _convId) return;
+      final idx = state.messages.indexWhere((x) => x.id == m.id);
+      if (idx < 0) return;
+      final list = [...state.messages];
+      // 服務端下發的已撤回 DTO 已不含正文；保險起見本地也清空。
+      list[idx] = m.copyWith(recalled: true, replyPreview: () => null);
+      state = state.copyWith(messages: list);
+    });
   }
 
-  Future<String?> sendText(String text) async {
+  Future<String?> sendText(String text, {MessageDto? replyTo}) async {
     final content = text.trim();
     if (content.isEmpty) return null;
-    return _send(content, 'Text', null);
+    return _send(content, 'Text', null, replyToId: replyTo?.id);
+  }
+
+  /// 撤回一條自己發出的消息（服務端限時 2 分鐘）。
+  /// 返回錯誤碼消息；成功後等服務端 MessageRecalled 事件刷新本地狀態。
+  Future<String?> recall(MessageDto m) async {
+    try {
+      await _hub.recallMessage(m.id);
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// 刪除一條消息（僅自己不再顯示）：先落庫再本地移除。
+  Future<String?> hide(MessageDto m) async {
+    if (m.id.startsWith('optimistic_')) return '該消息尚未發送成功';
+    try {
+      await _api.hideMessage(m.id);
+      state = state.copyWith(
+        messages: state.messages.where((x) => x.id != m.id).toList(),
+      );
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// 清空當前會話的聊天記錄（僅自己的視角）。
+  Future<String?> clearHistory() async {
+    try {
+      await _api.clearConversation(_convId);
+      state = state.copyWith(messages: []);
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// 轉發消息到目標會話：以自己身份重新發送相同內容（不含引用關係）。
+  Future<String?> forwardTo(ChatTarget target, MessageDto m) async {
+    try {
+      if (target.isGroup) {
+        await _hub.sendGroupMessage(
+            target.id, m.content, messageTypeToJson(m.type), m.mediaUrl);
+      } else {
+        await _hub.sendPrivateMessage(
+            target.id, m.content, messageTypeToJson(m.type), m.mediaUrl);
+      }
+      return null;
+    } catch (e) {
+      return e.toString();
+    }
   }
 
   Future<String?> sendMedia(String mediaUrl, String kind) async {
@@ -180,12 +244,15 @@ class ChatController extends StateNotifier<ChatState> {
   }
 
   /// Returns an error message if the send failed, otherwise null.
-  Future<String?> _send(String content, String kind, String? mediaUrl) async {
+  Future<String?> _send(String content, String kind, String? mediaUrl,
+      {String? replyToId}) async {
     try {
       if (_target.isGroup) {
-        await _hub.sendGroupMessage(_target.id, content, kind, mediaUrl);
+        await _hub.sendGroupMessage(_target.id, content, kind, mediaUrl,
+            replyToId: replyToId);
       } else {
-        await _hub.sendPrivateMessage(_target.id, content, kind, mediaUrl);
+        await _hub.sendPrivateMessage(_target.id, content, kind, mediaUrl,
+            replyToId: replyToId);
       }
       return null;
     } catch (e, st) {
@@ -200,6 +267,7 @@ class ChatController extends StateNotifier<ChatState> {
   @override
   void dispose() {
     _sub?.cancel();
+    _recallSub?.cancel();
     if (_target.isGroup) {
       _hub.leaveGroup(_target.id).catchError((_) {});
     }

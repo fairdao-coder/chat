@@ -52,6 +52,26 @@ public class UsersController : ApiControllerBase
     }
 
     /// <summary>
+    /// 當前用戶的「個人名片」：用於「我的二維碼」與「掃碼添加好友」。
+    /// 客戶端將 <see cref="Card"/> 編碼為二維碼；他人掃描後解析出 Id 再發起好友請求。
+    /// </summary>
+    [HttpGet("me/card")]
+    public async Task<IActionResult> MyCard(CancellationToken ct = default)
+    {
+        var u = await _db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == UserId, ct);
+        if (u == null) return NotFound();
+        // 協議格式：fairchat://user/<Id>；掃碼端以此前綴識別「添加好友」類型碼。
+        var card = $"fairchat://user/{u.Id}";
+        return Ok(new
+        {
+            card,
+            user = new UserDto(u.Id, u.UserName, u.NickName, u.AvatarUrl, true, u.LastSeenAt),
+        });
+    }
+
+    /// <summary>
     /// 當前在線好友 ID 列表。
     /// SignalR 的 UserOnline / UserOffline 是"盡力而為"的推送（重連窗口期可能丟失），
     /// 客戶端用一個輕量輪詢兜底，保證在線狀態最終一致。
