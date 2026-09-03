@@ -28,10 +28,8 @@ public class FeaturesController : ControllerBase
             .FirstOrDefaultAsync(x => x.Id == SystemSettings.SingletonId, ct);
 
         if (s is null)
-            return Ok(new FeatureSettingsDto(true, true, true, true, true));
+            return Ok(new FeatureSettingsDto(new ChatFeatureConfig().ToJson()));
 
-        return Ok(new FeatureSettingsDto(
-            s.ShowOnlineStatus, s.EnableVoiceCall, s.EnableVideoCall,
-            s.AllowFile, s.AllowVoice));
+        return Ok(new FeatureSettingsDto(s.ChatConfig, s.OtherConfig));
     }
 }

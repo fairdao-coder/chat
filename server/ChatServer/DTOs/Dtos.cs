@@ -73,14 +73,13 @@ public record DiscoverColumnDto(
     string Kind,
     string? Content,
     int Sort,
-    bool Pinned);
+    bool Pinned,
+    /// 多語言標題 JSON：{"zh-TW":"遊戲中心","en":"Games"}；null 表示無譯文。
+    string? TitleI18n = null);
 
 /// <summary>
-/// 客戶端功能開關。字段與 AdminServer 的 SystemSettings 一一對應。
+/// 客戶端功能開關。ChatConfig / OtherConfig 為分類存儲的 JSON 字符串。
 /// </summary>
 public record FeatureSettingsDto(
-    bool ShowOnlineStatus,
-    bool EnableVoiceCall,
-    bool EnableVideoCall,
-    bool AllowFile,
-    bool AllowVoice);
+    string ChatConfig,
+    string? OtherConfig = null);

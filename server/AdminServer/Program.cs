@@ -98,6 +98,11 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AdminDbContext>();
     db.Database.EnsureCreated();
+    // 舊庫結構遷移（分類 JSON 存儲），冪等；新庫自動跳過。
+    await DatabaseMigrator.MigrateSystemSettingsAsync(
+        db, scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("AdminServer.Migrate"));
+    await DatabaseMigrator.MigrateDiscoverColumnsAsync(
+        db, scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("AdminServer.Migrate"));
     await SeedAsync(db, builder.Configuration, scope.ServiceProvider.GetRequiredService<ILoggerFactory>());
 }
 
@@ -167,59 +172,8 @@ static async Task SeedAsync(AdminDbContext db, IConfiguration config, ILoggerFac
         });
     }
 
-    // 底部固定導航欄目（信息/通訊錄/發現/我）：首次部署時自動插入並固定到底部，已存在同名則跳過（冪等）。
-    // Kind = "tab" 表示客戶端底部 Tab，Content 標識跳轉目標（chat / contacts / discover / me）。
-    // 排序：信息/通訊錄置頂（大負值），發現/我置底（大正值），與微信習慣一致。
-    var pinnedTabs = new[]
-    {
-        ("信息", "💬", "tab", "chat", -9999),
-        ("通訊錄", "👤", "tab", "contacts", -8888),
-        ("發現", "🧭", "tab", "discover", 8888),
-        ("我", "🙂", "tab", "me", 9999),
-    };
-    // 發現頁默認欄目：首次部署時自動插入，已存在同名欄目則跳過（冪等）。
-    var defaultColumns = new[]
-    {
-        ("新增好友", "🤝", "action", "addFriend", 0),
-        ("好友邀請", "📩", "action", "friendRequests", 1),
-        ("建立群組", "👥", "action", "createGroup", 2),
-        ("掃一掃", "📷", "action", "scan", 3),
-    };
-
-    var existingTitles = await db.DiscoverColumns.Select(c => c.Title).ToListAsync();
-
-    foreach (var (title, icon, kind, content, sort) in pinnedTabs)
-    {
-        if (existingTitles.Contains(title)) continue;
-
-        db.DiscoverColumns.Add(new Chat.Shared.Entities.DiscoverColumn
-        {
-            Title = title,
-            Icon = icon,
-            Kind = kind,
-            Content = content,
-            Sort = sort,
-            Enabled = true,
-            Pinned = true,
-            CreatedAt = DateTime.UtcNow,
-        });
-    }
-
-    foreach (var (title, icon, kind, content, sort) in defaultColumns)
-    {
-        if (existingTitles.Contains(title)) continue;
-
-        db.DiscoverColumns.Add(new Chat.Shared.Entities.DiscoverColumn
-        {
-            Title = title,
-            Icon = icon,
-            Kind = kind,
-            Content = content,
-            Sort = sort,
-            Enabled = true,
-            CreatedAt = DateTime.UtcNow,
-        });
-    }
+    // 系統自帶欄目（內置導航 + 發現頁默認入口）連同四語譯文一併寫入（冪等）。
+    await DiscoverColumnSeeder.SeedAsync(db, logger);
 
     await db.SaveChangesAsync();
 }

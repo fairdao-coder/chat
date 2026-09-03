@@ -72,16 +72,22 @@ Widget _actionPage(String content) {
   }
 }
 
-/// 根據欄目類型構建底部 branch 根頁面。
-Widget _buildColumnPage(DiscoverColumn col) {
+/// 根據欄目構建底部 branch 根頁面。
+///
+/// 固定（pinned）欄目若 content 為內置標識（chat/contacts/discover/me），
+/// 直接對應內置頁；否則按 [DiscoverKind] 決定打開方式。
+/// 需傳入 context：標題依賴當前界面語言做本地化解析。
+Widget _buildColumnPage(BuildContext context, DiscoverColumn col) {
   final content = col.content ?? '';
+  if (isBuiltinTab(content)) {
+    return _builtTabPage(content);
+  }
+  final title = resolvedColumnTitle(context, col);
   switch (col.kind) {
-    case DiscoverKind.tab:
-      return _builtTabPage(content);
     case DiscoverKind.link:
-      return WebViewPage(url: content, title: col.title);
+      return WebViewPage(url: content, title: title);
     case DiscoverKind.mini:
-      return MiniAppPage(name: content, title: col.title);
+      return MiniAppPage(name: content, title: title);
     case DiscoverKind.route:
     case DiscoverKind.action:
       return _actionPage(content);
@@ -106,47 +112,51 @@ final routerProvider = Provider<GoRouter>((ref) {
   // 底部固定欄目：任何類型都可固定。destinations 與 branches 一一對應。
   final tabs = ref.watch(effectiveTabsProvider);
 
-  final seenBuiltins = <String>{};
   final branches = <StatefulShellBranch>[];
   for (final col in tabs) {
-    final isTab = col.kind == DiscoverKind.tab;
-    if (isTab) seenBuiltins.add(col.content ?? 'chat');
+    final isBuiltin = isBuiltinTab(col.content);
     branches.add(StatefulShellBranch(routes: [
       GoRoute(
-        // tab 類型沿用內置路徑（保證 '/' 等始終可達），
-        // 其它類型用唯一路徑 /pinned-<id> 承載對應頁面。
-        path: isTab ? _builtinPath(col.content) : '/pinned-${col.id}',
-        builder: (context, state) => _buildColumnPage(col),
+        // 內置標識（chat/contacts/discover/me）沿用內置路徑（保證 '/' 等始終可達），
+        // 其它固定欄目用唯一路徑 /pinned-<id> 承載對應頁面。
+        path: isBuiltin ? _builtinPath(col.content) : '/pinned-${col.id}',
+        builder: (context, state) => _buildColumnPage(context, col),
       ),
     ]));
   }
-  // 保底：未固定的內置目標仍註冊路由（不出現在底部導航，但路徑可達、避免 404）。
-  const builtinPaths = {
-    'chat': '/',
-    'contacts': '/contacts',
-    'discover': '/discover',
-    'me': '/me',
-  };
-  for (final e in builtinPaths.entries) {
-    if (!seenBuiltins.contains(e.key)) {
-      branches.add(StatefulShellBranch(routes: [
-        GoRoute(
-          path: e.value,
-          builder: (context, state) => _builtTabPage(e.key),
-        ),
-      ]));
+  // 註：底部導航僅包含後臺 Pinned 的固定欄目，不再保底註冊內置 tab；
+  // 固定欄目若 content 為內置標識（chat/contacts/discover/me）走內置路徑，
+  // 僅當它們確實被固定時才會出現。
+
+  // 默認打開的欄目：管理後臺配置（DefaultColumnId），必須是已固定欄目。
+  // 未配置或配置的欄目不存在時，回落到按 sort 排在最前的固定欄目。
+  String initial = '/';
+  if (tabs.isNotEmpty) {
+    final defaultId = ref.watch(defaultColumnIdProvider);
+    DiscoverColumn? def;
+    if (defaultId != null) {
+      for (final c in tabs) {
+        if (c.id == defaultId) {
+          def = c;
+          break;
+        }
+      }
     }
+    final target = def ?? tabs.first;
+    initial = isBuiltinTab(target.content)
+        ? _builtinPath(target.content)
+        : '/pinned-${target.id}';
   }
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: loggedIn ? '/' : '/login',
+    initialLocation: loggedIn ? initial : '/login',
     redirect: (context, state) {
       // 掃一掃（導入配置 / 掃碼）無需登錄，放行。
       if (state.matchedLocation == '/scan') return null;
       final goingToLogin = state.matchedLocation == '/login';
       if (!loggedIn && !goingToLogin) return '/login';
-      if (loggedIn && goingToLogin) return '/';
+      if (loggedIn && goingToLogin) return initial;
       return null;
     },
     routes: [

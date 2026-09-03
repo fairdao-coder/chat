@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -21,6 +22,51 @@ class ApiException implements Exception {
   ApiException(this.statusCode, this.message);
   @override
   String toString() => message;
+}
+
+Map<String, dynamic> _jsonDecode(String s) =>
+    jsonDecode(s) as Map<String, dynamic>;
+String _jsonEncode(Object o) => jsonEncode(o);
+
+/// 固定欄目變更信號：客戶端據此判斷是否需要重新拉取整個固定欄目列表。
+class PinnedMeta {
+  /// 默認打開的欄目 Id（可為 null）。
+  final String? defaultColumnId;
+  /// 固定欄目 Id 按 sort 排序後以 '|' 拼接的簽名。
+  final String signature;
+
+  const PinnedMeta({this.defaultColumnId, required this.signature});
+
+  factory PinnedMeta.fromJson(Map<String, dynamic> j) => PinnedMeta(
+        defaultColumnId: j['defaultColumnId'] as String?,
+        signature: (j['signature'] as String?) ?? '',
+      );
+
+  Map<String, dynamic> toJson() => {
+        'defaultColumnId': defaultColumnId,
+        'signature': signature,
+      };
+
+  /// 默認欄目或固定欄目是否發生變化。
+  bool changedFrom(PinnedMeta? other) =>
+      other == null ||
+      other.defaultColumnId != defaultColumnId ||
+      other.signature != signature;
+}
+
+/// 底部導航本地緩存：變更信號 + 固定欄目列表。
+class BottomNavCache {
+  final PinnedMeta meta;
+  final List<DiscoverColumn> columns;
+
+  const BottomNavCache({required this.meta, required this.columns});
+
+  factory BottomNavCache.fromJson(Map<String, dynamic> j) => BottomNavCache(
+        meta: PinnedMeta.fromJson(j['meta'] as Map<String, dynamic>),
+        columns: (j['columns'] as List)
+            .map((e) => DiscoverColumn.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
 }
 
 class ApiClient {
@@ -109,6 +155,45 @@ class ApiClient {
   Future<FeatureSettings> getFeatures() async {
     final data = await _req(() => _dio.get('/api/features'));
     return FeatureSettings.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// 輕量變更信號：默認欄目 Id + 固定欄目簽名（公開接口，無需登錄）。
+  /// 客戶端緩存上次結果，對比是否變化；僅變化時才重新拉取固定欄目列表。
+  Future<PinnedMeta> getPinnedMeta() async {
+    final data = await _req(() => _dio.get('/api/discover/pinned-meta'));
+    return PinnedMeta.fromJson(data as Map<String, dynamic>);
+  }
+
+  // ---------- 底部導航緩存 ----------
+  // 緩存固定欄目列表與變更信號到本地，避免每次啟動都重新拉取整個列表；
+  // 只有「默認欄目」或「固定欄目」發生變化（由 getPinnedMeta 判斷）才更新。
+
+  static const String _navCacheKey = 'bottom_nav_cache_v1';
+
+  /// 讀取本地緩存（含變更信號與固定欄目列表）。
+  Future<BottomNavCache?> readNavCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_navCacheKey);
+      if (raw == null || raw.isEmpty) return null;
+      return BottomNavCache.fromJson(_jsonDecode(raw));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 寫入本地緩存（含變更信號與固定欄目列表）。
+  Future<void> writeNavCache(PinnedMeta meta, List<DiscoverColumn> columns) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = _jsonEncode({
+        'meta': meta.toJson(),
+        'columns': columns.map((c) => c.toJson()).toList(),
+      });
+      await prefs.setString(_navCacheKey, jsonStr);
+    } catch (_) {
+      // 緩存寫入失敗不影響主流程。
+    }
   }
 
   // ---------- Conversations / Contacts ----------

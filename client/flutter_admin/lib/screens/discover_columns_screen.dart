@@ -24,6 +24,20 @@ class _DiscoverColumnsScreenState extends State<DiscoverColumnsScreen> {
 
   bool get _canWrite => context.read<AuthProvider>().hasPerm('discover.write');
 
+  /// 當前已固定的欄目數量。
+  int get _pinnedCount => _items.where((e) => e.pinned).length;
+
+  static const int _maxPinned = 5;
+
+  /// 是否允許把 [col] 固定：新增（col 為 null）或本身是已固定欄目時不受限；
+  /// 把「未固定 -> 固定」時，已固定數必須 < 上限。
+  bool _canPin(DiscoverColumnDto? col) =>
+      col?.pinned == true || _pinnedCount < _maxPinned;
+
+  /// 固定欄目已達上限時的提示。
+  void _pinLimitToast() =>
+      _toast('固定欄目最多 $_maxPinned 個，請先取消其它欄目的固定');
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +65,13 @@ class _DiscoverColumnsScreenState extends State<DiscoverColumnsScreen> {
       builder: (_) => ColumnDialog(initial: col),
     );
     if (result == null) return;
+
+    // 新增且要固定、或編輯改為固定且達上限：提前攔截，避免無效請求。
+    final wantPin = result['pinned'] == true;
+    if (wantPin && !_canPin(col)) {
+      _pinLimitToast();
+      return;
+    }
 
     try {
       if (col == null) {
@@ -126,6 +147,11 @@ class _DiscoverColumnsScreenState extends State<DiscoverColumnsScreen> {
     bool? pinned,
   }) async {
     if (!_canWrite) return;
+    // 切到「固定」且已達上限：直接攔截。
+    if (pinned == true && !_canPin(col)) {
+      _pinLimitToast();
+      return;
+    }
     final api = context.read<AuthProvider>().api;
     final idx = _items.indexWhere((e) => e.id == col.id);
 

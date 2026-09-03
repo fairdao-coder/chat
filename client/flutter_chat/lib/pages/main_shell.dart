@@ -25,8 +25,7 @@ class MainShell extends ConsumerWidget {
       orElse: () => 0,
     );
 
-    // 分支數可能大於 destinations 數（存在未固定的內置保底分支），
-    // 這裡 clamp 防止 NavigationBar 越界。
+    // tabs 可能為空（後臺未固定任何欄目），clamp 防止 NavigationBar 越界。
     final index = navigationShell.currentIndex;
     final maxIndex = tabs.length - 1;
 
@@ -41,20 +40,20 @@ class MainShell extends ConsumerWidget {
             NavigationDestination(
               icon: _tabIcon(c, selected: false, pending: pending),
               selectedIcon: _tabIcon(c, selected: true, pending: pending),
-              label: c.title,
+              label: resolvedColumnTitle(context, c),
             ),
         ],
       ),
     );
   }
 
-  /// 構建 tab 圖標：tab 類型用固定映射；其它類型優先顯示 emoji 圖標，
-  /// 無圖標時按類型回退。
+  /// 構建 tab 圖標：內置標識（chat/contacts/discover/me）用固定映射；
+  /// 其它固定欄目優先顯示 emoji 圖標，無圖標時按類型回退。
   Widget _tabIcon(DiscoverColumn c,
       {required bool selected, required int pending}) {
     Widget base;
-    if (c.kind == DiscoverKind.tab) {
-      final content = c.content ?? 'chat';
+    final content = c.content ?? 'chat';
+    if (isBuiltinTab(content)) {
       base = Icon(_tabIconData(content, selected: selected));
     } else if ((c.icon ?? '').isNotEmpty) {
       base = Text(c.icon!, style: const TextStyle(fontSize: 22));
@@ -62,7 +61,7 @@ class MainShell extends ConsumerWidget {
       base = Icon(_kindIconData(c.kind));
     }
     // 通訊錄 tab 的未讀好友請求紅點
-    if (c.content == 'contacts' && pending > 0) {
+    if (content == 'contacts' && pending > 0) {
       base = Badge(label: Text(pending.toString()), child: base);
     }
     return base;
@@ -91,8 +90,6 @@ class MainShell extends ConsumerWidget {
         return Icons.flash_on_outlined;
       case DiscoverKind.mini:
         return Icons.apps_outlined;
-      case DiscoverKind.tab:
-        return Icons.circle_outlined;
     }
   }
 }

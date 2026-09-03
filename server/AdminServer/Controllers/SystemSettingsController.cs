@@ -45,19 +45,15 @@ public class SystemSettingsController : ControllerBase
         if (f is not null) return f;
 
         var s = await GetOrCreateAsync();
-        s.ShowOnlineStatus = req.ShowOnlineStatus;
-        s.EnableVoiceCall = req.EnableVoiceCall;
-        s.EnableVideoCall = req.EnableVideoCall;
-        s.AllowFile = req.AllowFile;
-        s.AllowVoice = req.AllowVoice;
+        s.ChatConfig = req.ChatConfig;
+        s.OtherConfig = req.OtherConfig;
         s.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(
             "settings.update",
             target: "system",
-            detail: $"online={s.ShowOnlineStatus},voiceCall={s.EnableVoiceCall}," +
-                    $"videoCall={s.EnableVideoCall},file={s.AllowFile},voice={s.AllowVoice}");
+            detail: $"chatConfig={s.ChatConfig},otherConfig={s.OtherConfig}");
 
         return Ok(ToDto(s));
     }
@@ -78,6 +74,5 @@ public class SystemSettingsController : ControllerBase
     }
 
     private static SystemSettingsDto ToDto(SystemSettings s) =>
-        new(s.ShowOnlineStatus, s.EnableVoiceCall, s.EnableVideoCall,
-            s.AllowFile, s.AllowVoice, s.UpdatedAt);
+        new(s.ChatConfig, s.OtherConfig, s.UpdatedAt);
 }

@@ -16,6 +16,8 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   SystemSettingsDto? _settings;
+  /// 固定欄目列表（用於「默認打開欄目」下拉）。
+  List<DiscoverColumnDto> _pinnedColumns = [];
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -34,8 +36,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _error = null;
     });
     try {
-      final data = await context.read<AuthProvider>().api.getSettings();
-      if (mounted) setState(() => _settings = data);
+      final api = context.read<AuthProvider>().api;
+      final data = await api.getSettings();
+      final all = await api.listDiscover();
+      final pinned = all.where((c) => c.pinned).toList()
+        ..sort((a, b) => a.sort.compareTo(b.sort));
+      if (mounted) {
+        setState(() {
+          _settings = data;
+          _pinnedColumns = pinned;
+        });
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (e) {
@@ -133,6 +144,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
 
+    // 默認打開欄目：從已固定欄目中選擇；保存時寫入 SystemSettings.DefaultColumnId。
+    final defaultColumnCard = Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.home_outlined, color: AppTheme.primary),
+                const SizedBox(width: 8),
+                const Text('默認打開欄目',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text('客戶端啟動後自動進入該固定欄目；未配置則進入排序最靠前的固定欄目。',
+                style: TextStyle(color: AppTheme.textSub, fontSize: 12)),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String?>(
+              value: _settings!.defaultColumnId,
+              decoration: const InputDecoration(
+                prefixIcon: Icon(Icons.push_pin_outlined),
+              ),
+              hint: const Text('未配置（使用默認順序）'),
+              items: [
+                const DropdownMenuItem<String?>(
+                    value: null, child: Text('未配置')),
+                for (final c in _pinnedColumns)
+                  DropdownMenuItem<String?>(
+                      value: c.id, child: Text(c.title)),
+              ],
+              onChanged: _canWrite
+                  ? (v) => setState(() {
+                        _settings!.defaultColumnId = v;
+                      })
+                  : null,
+            ),
+          ],
+        ),
+      ),
+    );
+
     final items = <_SettingItem>[
       _SettingItem(
         icon: Icons.visibility,
@@ -210,6 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               skinCard,
+              defaultColumnCard,
               Card(
                     child: Column(
                       children: [

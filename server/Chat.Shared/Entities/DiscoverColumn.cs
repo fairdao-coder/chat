@@ -12,7 +12,19 @@ namespace Chat.Shared.Entities;
 public class DiscoverColumn
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>
+    /// 欄目名稱（默認/回退標題）。管理後臺填寫，客戶端在找不到對應語言譯文時使用它。
+    /// </summary>
     public string Title { get; set; } = default!;
+
+    /// <summary>
+    /// 欄目名稱的多語言譯文，存為 JSON：{"zh-TW":"遊戲中心","en":"Games"}。
+    /// null 或未包含當前語言時，客戶端回退到 [Title]。
+    /// 鍵為 BCP47 風格：zh-TW（繁中）/ zh-CN（簡中）/ en / es。
+    /// </summary>
+    public string? TitleI18n { get; set; }
+
     public string? Icon { get; set; }
     public string Kind { get; set; } = "link";
     public string? Content { get; set; }

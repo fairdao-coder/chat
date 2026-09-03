@@ -35,7 +35,7 @@ public class DiscoverColumnsController : ControllerBase
             .AsNoTracking()
             .OrderBy(c => c.Sort)
             .ThenBy(c => c.CreatedAt)
-            .Select(c => new DiscoverColumnDto(c.Id, c.Title, c.Icon, c.Kind, c.Content, c.Sort, c.Enabled, c.Pinned, c.CreatedAt))
+            .Select(c => new DiscoverColumnDto(c.Id, c.Title, c.Icon, c.Kind, c.Content, c.Sort, c.Enabled, c.Pinned, c.CreatedAt, c.TitleI18n))
             .ToListAsync();
         return Ok(items);
     }
@@ -49,6 +49,10 @@ public class DiscoverColumnsController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.Title))
             return BadRequest("欄目標題不能為空");
 
+        // 固定欄目總數上限：底部導航位有限，超出則拒絕。
+        if (req.Pinned && await _db.DiscoverColumns.CountAsync(c => c.Pinned) >= 5)
+            return BadRequest("固定欄目最多 5 個，請先取消其它欄目的固定");
+
         var col = new DiscoverColumn
         {
             Id = Guid.NewGuid(),
@@ -60,11 +64,12 @@ public class DiscoverColumnsController : ControllerBase
             Enabled = req.Enabled,
             Pinned = req.Pinned,
             CreatedAt = DateTime.UtcNow,
+            TitleI18n = req.TitleI18n,
         };
         _db.DiscoverColumns.Add(col);
         await _db.SaveChangesAsync();
         await _audit.LogAsync("discover.create", target: col.Title, detail: col.Content);
-        return Ok(new DiscoverColumnDto(col.Id, col.Title, col.Icon, col.Kind, col.Content, col.Sort, col.Enabled, col.Pinned, col.CreatedAt));
+        return Ok(new DiscoverColumnDto(col.Id, col.Title, col.Icon, col.Kind, col.Content, col.Sort, col.Enabled, col.Pinned, col.CreatedAt, col.TitleI18n));
     }
 
     [HttpPut("{id:guid}")]
@@ -86,9 +91,18 @@ public class DiscoverColumnsController : ControllerBase
         col.Sort = req.Sort;
         col.Enabled = req.Enabled;
         col.Pinned = req.Pinned;
+        col.TitleI18n = req.TitleI18n;
+
+        // 固定欄目總數上限：若本次把「未固定 -> 固定」且已達上限則拒絕。
+        if (req.Pinned && !col.Pinned &&
+            await _db.DiscoverColumns.CountAsync(c => c.Pinned) >= 5)
+        {
+            return BadRequest("固定欄目最多 5 個，請先取消其它欄目的固定");
+        }
+
         await _db.SaveChangesAsync();
         await _audit.LogAsync("discover.update", target: col.Title, detail: col.Content);
-        return Ok(new DiscoverColumnDto(col.Id, col.Title, col.Icon, col.Kind, col.Content, col.Sort, col.Enabled, col.Pinned, col.CreatedAt));
+        return Ok(new DiscoverColumnDto(col.Id, col.Title, col.Icon, col.Kind, col.Content, col.Sort, col.Enabled, col.Pinned, col.CreatedAt, col.TitleI18n));
     }
 
     [HttpDelete("{id:guid}")]

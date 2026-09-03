@@ -32,10 +32,10 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
     setState(() => _loadingColumns = true);
     try {
       final list = await ApiClient().getDiscoverColumns();
-      // tab 類型欄目屬於底部固定導航，不重複展示在發現頁列表。
+      // 已固定在底部的欄目（Pinned）已經在底部 Tab 出現，不在發現頁重複展示。
+      // 發現頁只展示「未固定」的欄目（其打開方式由 kind 決定）。
       if (mounted) {
-        setState(() => _columns =
-            list.where((c) => c.kind != DiscoverKind.tab).toList());
+        setState(() => _columns = list.where((c) => !c.pinned).toList());
       }
     } catch (_) {
       // 欄目加載失敗不影響內置入口，靜默忽略。
@@ -50,7 +50,7 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
       case DiscoverKind.link:
         if (content.isNotEmpty) {
           context.push('/webview?url=${Uri.encodeComponent(content)}'
-              '&title=${Uri.encodeComponent(col.title)}');
+              '&title=${Uri.encodeComponent(resolvedColumnTitle(context, col))}');
         }
         break;
       case DiscoverKind.route:
@@ -64,11 +64,8 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
       case DiscoverKind.mini:
         if (content.isNotEmpty) {
           context.push('/mini?name=${Uri.encodeComponent(content)}'
-              '&title=${Uri.encodeComponent(col.title)}');
+              '&title=${Uri.encodeComponent(resolvedColumnTitle(context, col))}');
         }
-        break;
-      case DiscoverKind.tab:
-        // 底部 Tab 欄目不在發現頁打開（已過濾），此處僅為窮盡枚舉。
         break;
     }
   }
@@ -130,7 +127,7 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
               icon: _columnIcon(col.kind),
               color: _kindColor(col.kind),
               leadingText: col.icon ?? _kindChar(col.kind),
-              title: col.title,
+              title: resolvedColumnTitle(context, col),
               // 好友邀請欄目顯示未處理請求數角標
               badge:
                   col.kind == DiscoverKind.action && col.content == 'friendRequests'
@@ -160,8 +157,6 @@ Color _kindColor(DiscoverKind kind) {
       return Colors.purple;
     case DiscoverKind.link:
       return Colors.teal;
-    case DiscoverKind.tab:
-      return Colors.orange;
   }
 }
 
@@ -175,8 +170,6 @@ IconData _columnIcon(DiscoverKind kind) {
       return Icons.apps_outlined;
     case DiscoverKind.link:
       return Icons.link;
-    case DiscoverKind.tab:
-      return Icons.push_pin_outlined;
   }
 }
 
@@ -190,8 +183,6 @@ String _kindChar(DiscoverKind kind) {
       return '▦';
     case DiscoverKind.link:
       return '🔗';
-    case DiscoverKind.tab:
-      return '📌';
   }
 }
 

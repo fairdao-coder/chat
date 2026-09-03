@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 ///
 /// 集中於此，讓列表項、編輯對話框與後續可能的預覽共用同一份定義，
 /// 避免新增類型時漏改一處導致 UI 顯示原始 key。
+///
+/// 註：底部固定 Tab 不再由獨立的 `tab` 類型表示，而是由欄目的
+/// `pinned`（固定到底部導航）決定。此處的類型只描述「打開方式」。
 const Map<String, String> kColumnKinds = {
-  'tab': '底部固定 Tab',
   'link': '外部鏈接（WebView）',
   'route': '內部路由',
   'action': '內置動作',
@@ -20,7 +22,8 @@ const Map<String, String> kColumnActions = {
   'friendRequests': '好友請求',
 };
 
-/// 底部 Tab 跳轉目標選項。
+/// 固定到底部導航時的「內置目標」選項。
+/// 選中後其標識會寫入 content，客戶端會據此對應到內置頁。
 const Map<String, String> kTabTargets = {
   'chat': '信息（會話列表）',
   'contacts': '通訊錄',
@@ -38,14 +41,12 @@ IconData columnKindIcon(String k) {
       return Icons.flash_on_outlined;
     case 'mini':
       return Icons.apps_outlined;
-    case 'tab':
-      return Icons.push_pin_outlined;
     default:
       return Icons.link;
   }
 }
 
-/// 不同類型下 Content 欄位的輸入提示（action / tab 用下拉選擇，故返回 null）。
+/// 不同類型下 Content 欄位的輸入提示（action 用下拉選擇，故返回 null）。
 String? columnContentHint(String kind) {
   switch (kind) {
     case 'route':
@@ -65,8 +66,6 @@ String columnContentLabel(String kind) {
       return '內部路由';
     case 'action':
       return '內置動作';
-    case 'tab':
-      return 'Tab 目標';
     case 'mini':
       return '小應用 / 包名';
     default:

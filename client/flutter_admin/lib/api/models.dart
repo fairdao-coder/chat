@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class AdminUserDto {
   final String id;
   final String userName;
@@ -122,40 +124,82 @@ class PagedResult<T> {
 }
 
 /// 系統功能開關（單例配置）。
+///
+/// 採分類存儲：聊天相關開關放進 [chatConfig]（JSON 字符串），
+/// 其他雜項（如默認打開欄目）放進 [otherConfig]（JSON 字符串）。
+/// 為兼容界面層，提供強類型的讀寫便捷方法，自動在 JSON 與對象間轉換。
 class SystemSettingsDto {
-  final bool showOnlineStatus;
-  final bool enableVoiceCall;
-  final bool enableVideoCall;
-  final bool allowFile;
-  final bool allowVoice;
+  /// 聊天功能開關 JSON：
+  /// {"ShowOnlineStatus":true,"EnableVoiceCall":true,"EnableVideoCall":true,"AllowFile":true,"AllowVoice":true}
+  String chatConfig;
+
+  /// 其他配置 JSON：{"DefaultColumnId":"xxx"}；null 表示無。
+  String? otherConfig;
+
   final DateTime? updatedAt;
 
   SystemSettingsDto({
-    required this.showOnlineStatus,
-    required this.enableVoiceCall,
-    required this.enableVideoCall,
-    required this.allowFile,
-    required this.allowVoice,
+    required this.chatConfig,
+    this.otherConfig,
     this.updatedAt,
   });
 
+  /// 從聊天配置 JSON 解析出強類型開關。
+  Map<String, dynamic> get _chat => Map<String, dynamic>.from(
+      (jsonDecode(chatConfig) as Map<dynamic, dynamic>?) ?? {});
+
+  bool _chatBool(String key) => _chat[key] as bool? ?? true;
+
+  set _showOnlineStatus(bool v) => _setChat('ShowOnlineStatus', v);
+  set _enableVoiceCall(bool v) => _setChat('EnableVoiceCall', v);
+  set _enableVideoCall(bool v) => _setChat('EnableVideoCall', v);
+  set _allowFile(bool v) => _setChat('AllowFile', v);
+  set _allowVoice(bool v) => _setChat('AllowVoice', v);
+
+  void _setChat(String key, bool v) {
+    final m = _chat;
+    m[key] = v;
+    chatConfig = jsonEncode(m);
+  }
+
+  bool get showOnlineStatus => _chatBool('ShowOnlineStatus');
+  bool get enableVoiceCall => _chatBool('EnableVoiceCall');
+  bool get enableVideoCall => _chatBool('EnableVideoCall');
+  bool get allowFile => _chatBool('AllowFile');
+  bool get allowVoice => _chatBool('AllowVoice');
+
+  /// 默認打開的欄目（底部固定 Tab）Id；null 表示未配置。
+  String? get defaultColumnId {
+    if (otherConfig == null) return null;
+    final m = jsonDecode(otherConfig!) as Map<dynamic, dynamic>?;
+    return m?['DefaultColumnId'] as String?;
+  }
+
+  set defaultColumnId(String? v) {
+    final m = <String, dynamic>{};
+    if (otherConfig != null) {
+      final existing = jsonDecode(otherConfig!) as Map<dynamic, dynamic>?;
+      if (existing != null) m.addAll(existing.map((k, val) => MapEntry(k, val)));
+    }
+    if (v == null) {
+      m.remove('DefaultColumnId');
+    } else {
+      m['DefaultColumnId'] = v;
+    }
+    otherConfig = m.isEmpty ? null : jsonEncode(m);
+  }
+
   factory SystemSettingsDto.fromJson(Map<String, dynamic> j) =>
       SystemSettingsDto(
-        showOnlineStatus: j['showOnlineStatus'] ?? true,
-        enableVoiceCall: j['enableVoiceCall'] ?? true,
-        enableVideoCall: j['enableVideoCall'] ?? true,
-        allowFile: j['allowFile'] ?? true,
-        allowVoice: j['allowVoice'] ?? true,
+        chatConfig: j['chatConfig'] as String? ?? '{}',
+        otherConfig: j['otherConfig'] as String?,
         updatedAt:
             j['updatedAt'] == null ? null : DateTime.tryParse(j['updatedAt']),
       );
 
   Map<String, dynamic> toJson() => {
-        'showOnlineStatus': showOnlineStatus,
-        'enableVoiceCall': enableVoiceCall,
-        'enableVideoCall': enableVideoCall,
-        'allowFile': allowFile,
-        'allowVoice': allowVoice,
+        'chatConfig': chatConfig,
+        'otherConfig': otherConfig,
       };
 
   SystemSettingsDto copyWith({
@@ -164,21 +208,31 @@ class SystemSettingsDto {
     bool? enableVideoCall,
     bool? allowFile,
     bool? allowVoice,
+    String? chatConfig,
+    String? otherConfig,
     DateTime? updatedAt,
-  }) =>
-      SystemSettingsDto(
-        showOnlineStatus: showOnlineStatus ?? this.showOnlineStatus,
-        enableVoiceCall: enableVoiceCall ?? this.enableVoiceCall,
-        enableVideoCall: enableVideoCall ?? this.enableVideoCall,
-        allowFile: allowFile ?? this.allowFile,
-        allowVoice: allowVoice ?? this.allowVoice,
-        updatedAt: updatedAt ?? this.updatedAt,
-      );
+  }) {
+    final s = SystemSettingsDto(
+      chatConfig: chatConfig ?? this.chatConfig,
+      otherConfig: otherConfig ?? this.otherConfig,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+    if (showOnlineStatus != null) s._showOnlineStatus = showOnlineStatus;
+    if (enableVoiceCall != null) s._enableVoiceCall = enableVoiceCall;
+    if (enableVideoCall != null) s._enableVideoCall = enableVideoCall;
+    if (allowFile != null) s._allowFile = allowFile;
+    if (allowVoice != null) s._allowVoice = allowVoice;
+    return s;
+  }
 }
 
 class DiscoverColumnDto {
   final String id;
+  /// 默認 / 回退標題。
   final String title;
+  /// 多語言譯文 JSON 字符串：{"zh-TW":"遊戲中心","en":"Games"}；null 表示未配置。
+  /// 後端字段為 string，故這裡保持原始 JSON 字符串（而非已解碼的 Map）。
+  final String? titleI18n;
   final String? icon;
   final String kind;
   final String? content;
@@ -190,6 +244,7 @@ class DiscoverColumnDto {
   DiscoverColumnDto({
     required this.id,
     required this.title,
+    this.titleI18n,
     this.icon,
     required this.kind,
     this.content,
@@ -199,9 +254,22 @@ class DiscoverColumnDto {
     required this.createdAt,
   });
 
+  /// 譯文 Map（解析失敗返回空 Map，界面回退到 [title]）。
+  Map<String, String> get i18nMap {
+    if (titleI18n == null || titleI18n!.trim().isEmpty) return {};
+    try {
+      final decoded = jsonDecode(titleI18n!) as Map<dynamic, dynamic>?;
+      if (decoded == null) return {};
+      return decoded.map((k, v) => MapEntry(k.toString(), v?.toString() ?? ''));
+    } catch (_) {
+      return {};
+    }
+  }
+
   DiscoverColumnDto.fromJson(Map<String, dynamic> j)
       : id = j['id'],
         title = j['title'],
+        titleI18n = j['titleI18n'] as String?,
         icon = j['icon'],
         kind = j['kind'] ?? 'link',
         content = j['content'],
@@ -213,6 +281,7 @@ class DiscoverColumnDto {
   DiscoverColumnDto copyWith({
     String? id,
     String? title,
+    String? titleI18n,
     String? icon,
     String? kind,
     String? content,
@@ -224,6 +293,7 @@ class DiscoverColumnDto {
       DiscoverColumnDto(
         id: id ?? this.id,
         title: title ?? this.title,
+        titleI18n: titleI18n ?? this.titleI18n,
         icon: icon ?? this.icon,
         kind: kind ?? this.kind,
         content: content ?? this.content,

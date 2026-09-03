@@ -14,20 +14,85 @@ public class SystemSettings
 
     public Guid Id { get; set; } = SingletonId;
 
-    /// 是否顯示好友在線狀態（關閉後聊天頁不再展示在線/離線）。
-    public bool ShowOnlineStatus { get; set; } = true;
+    /// 聊天相關功能開關，存為 JSON：
+    /// {"ShowOnlineStatus":true,"EnableVoiceCall":true,"EnableVideoCall":true,"AllowFile":true,"AllowVoice":true}
+    /// 採用分類存儲，避免每新增一項配置就加一個字段。
+    public string ChatConfig { get; set; } = "{}";
 
-    /// 是否啟用語音通話。
-    public bool EnableVoiceCall { get; set; } = true;
-
-    /// 是否啟用視頻通話。
-    public bool EnableVideoCall { get; set; } = true;
-
-    /// 是否允許發送文件（含圖片）。
-    public bool AllowFile { get; set; } = true;
-
-    /// 是否允許發送語音消息。
-    public bool AllowVoice { get; set; } = true;
+    /// 其他配置，存為 JSON，例如：{"DefaultColumnId":"xxx"}。
+    /// 默認打開的欄目（底部固定 Tab）的 Id。
+    /// 未配置（缺省/缺失）時客戶端回落到按 sort 排在最前的固定欄目；
+    /// 默認欄目必須是已固定的欄目。
+    public string? OtherConfig { get; set; }
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    /// 聊天功能開關的強類型視圖（從 [ChatConfig] 解析，缺失項回退默認值）。
+    public ChatFeatureConfig Chat => ChatFeatureConfig.FromJson(ChatConfig);
+
+    /// 其他配置的強類型視圖（從 [OtherConfig] 解析）。
+    public OtherConfigView Other => OtherConfigView.FromJson(OtherConfig);
+}
+
+/// <summary>
+/// 聊天功能開關的強類型視圖，對應 <see cref="SystemSettings.ChatConfig"/> 的 JSON。
+/// 缺失字段時回退默認值（全開），避免歷史數據缺項導致功能被誤關。
+/// </summary>
+public sealed class ChatFeatureConfig
+{
+    public bool ShowOnlineStatus { get; set; } = true;
+    public bool EnableVoiceCall { get; set; } = true;
+    public bool EnableVideoCall { get; set; } = true;
+    public bool AllowFile { get; set; } = true;
+    public bool AllowVoice { get; set; } = true;
+
+    public static ChatFeatureConfig FromJson(string? json)
+    {
+        var cfg = new ChatFeatureConfig();
+        if (string.IsNullOrWhiteSpace(json) || json == "{}")
+            return cfg;
+
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var r = doc.RootElement;
+        if (r.TryGetProperty(nameof(ShowOnlineStatus), out var v1) && (v1.ValueKind == System.Text.Json.JsonValueKind.True || v1.ValueKind == System.Text.Json.JsonValueKind.False))
+            cfg.ShowOnlineStatus = v1.GetBoolean();
+        if (r.TryGetProperty(nameof(EnableVoiceCall), out var v2) && (v2.ValueKind == System.Text.Json.JsonValueKind.True || v2.ValueKind == System.Text.Json.JsonValueKind.False))
+            cfg.EnableVoiceCall = v2.GetBoolean();
+        if (r.TryGetProperty(nameof(EnableVideoCall), out var v3) && (v3.ValueKind == System.Text.Json.JsonValueKind.True || v3.ValueKind == System.Text.Json.JsonValueKind.False))
+            cfg.EnableVideoCall = v3.GetBoolean();
+        if (r.TryGetProperty(nameof(AllowFile), out var v4) && (v4.ValueKind == System.Text.Json.JsonValueKind.True || v4.ValueKind == System.Text.Json.JsonValueKind.False))
+            cfg.AllowFile = v4.GetBoolean();
+        if (r.TryGetProperty(nameof(AllowVoice), out var v5) && (v5.ValueKind == System.Text.Json.JsonValueKind.True || v5.ValueKind == System.Text.Json.JsonValueKind.False))
+            cfg.AllowVoice = v5.GetBoolean();
+        return cfg;
+    }
+
+    public string ToJson() =>
+        System.Text.Json.JsonSerializer.Serialize(this);
+}
+
+/// <summary>
+/// 其他配置的強類型視圖，對應 <see cref="SystemSettings.OtherConfig"/> 的 JSON。
+/// 當前承載「默認打開欄目」等雜項。
+/// </summary>
+public sealed class OtherConfigView
+{
+    /// 默認打開的欄目（底部固定 Tab）Id；null 表示未配置。
+    public string? DefaultColumnId { get; set; }
+
+    public static OtherConfigView FromJson(string? json)
+    {
+        var cfg = new OtherConfigView();
+        if (string.IsNullOrWhiteSpace(json))
+            return cfg;
+
+        using var doc = System.Text.Json.JsonDocument.Parse(json);
+        var r = doc.RootElement;
+        if (r.TryGetProperty(nameof(DefaultColumnId), out var v) && v.ValueKind == System.Text.Json.JsonValueKind.String)
+            cfg.DefaultColumnId = v.GetString();
+        return cfg;
+    }
+
+    public string ToJson() =>
+        System.Text.Json.JsonSerializer.Serialize(this);
 }

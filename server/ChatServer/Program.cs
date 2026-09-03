@@ -6,8 +6,10 @@ using ChatServer.Data;
 using ChatServer.Hubs;
 using ChatServer.Services;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -106,7 +108,26 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseExceptionHandler();
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var exFeature = context.Features.Get<IExceptionHandlerFeature>();
+        var ex = exFeature?.Error;
+        if (ex is not null)
+        {
+            var logger = context.RequestServices.GetService<ILogger<Program>>();
+            logger?.LogError(ex,
+                "Unhandled exception on {Method} {Path}: {Message}",
+                context.Request.Method,
+                context.Request.Path,
+                ex.Message);
+        }
+        // 其它邏輯交給內建 ProblemDetails 中間件統一返回 RFC7807。
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        await Task.CompletedTask;
+    });
+});
 
 // 探活請求量極大且無業務信息，排除在請求日誌之外，避免淹沒有效日誌。
 app.UseWhen(ctx => !ctx.Request.Path.StartsWithSegments("/health"), b => b.UseHttpLogging());

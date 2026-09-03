@@ -42,28 +42,23 @@ public record CreateAdminRequest(string UserName, string DisplayName, string Pas
 
 public record DiscoverColumnDto(
     Guid Id, string Title, string? Icon, string Kind, string? Content,
-    int Sort, bool Enabled, bool Pinned, DateTime CreatedAt);
+    int Sort, bool Enabled, bool Pinned, DateTime CreatedAt, string? TitleI18n = null);
 
 public record UpsertDiscoverColumnRequest(
     string Title, string? Icon = null, string Kind = "link", string? Content = null,
-    int Sort = 0, bool Enabled = true, bool Pinned = false);
+    int Sort = 0, bool Enabled = true, bool Pinned = false, string? TitleI18n = null);
 
 // ---- 系統功能開關 ----
 
 /// <summary>
 /// 全系統功能開關（單例）。客戶端據此控制功能可用性。
+/// ChatConfig / OtherConfig 為分類存儲的 JSON 字符串。
 /// </summary>
 public record SystemSettingsDto(
-    bool ShowOnlineStatus,
-    bool EnableVoiceCall,
-    bool EnableVideoCall,
-    bool AllowFile,
-    bool AllowVoice,
+    string ChatConfig,
+    string? OtherConfig,
     DateTime UpdatedAt);
 
 public record UpdateSystemSettingsRequest(
-    bool ShowOnlineStatus,
-    bool EnableVoiceCall,
-    bool EnableVideoCall,
-    bool AllowFile,
-    bool AllowVoice);
+    string ChatConfig,
+    string? OtherConfig);
