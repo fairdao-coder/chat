@@ -90,16 +90,18 @@ public class ChatHub : Hub
         string toUserId,
         string content,
         string type,
-        string? mediaUrl)
+        string? mediaUrl,
+        string? replyToId)
     {
         if (!Guid.TryParse(UserId, out var fromId))
             throw new HubException("E_BAD_TARGET: 身份無效，請重新登錄");
 
         var msgType = ParseType(type);
+        var reply = ParseGuidOrNull(replyToId);
 
         try
         {
-            var dto = await _messages.SendPrivateAsync(fromId, toUserId, content, msgType, mediaUrl);
+            var dto = await _messages.SendPrivateAsync(fromId, toUserId, content, msgType, mediaUrl, reply);
             await Clients.User(toUserId).SendAsync("ReceiveMessage", dto);
             await Clients.Caller.SendAsync("ReceiveMessage", dto);
         }
@@ -121,7 +123,8 @@ public class ChatHub : Hub
         string groupId,
         string content,
         string type,
-        string? mediaUrl)
+        string? mediaUrl,
+        string? replyToId)
     {
         if (!Guid.TryParse(UserId, out var fromId))
             throw new HubException("E_BAD_TARGET: 身份無效，請重新登錄");
@@ -129,10 +132,11 @@ public class ChatHub : Hub
             throw new HubException("E_BAD_TARGET: 群 ID 格式不正確");
 
         var msgType = ParseType(type);
+        var reply = ParseGuidOrNull(replyToId);
 
         try
         {
-            var dto = await _messages.SendGroupAsync(fromId, groupId, content, msgType, mediaUrl);
+            var dto = await _messages.SendGroupAsync(fromId, groupId, content, msgType, mediaUrl, reply);
             await Clients.Group(GroupChannel(gid)).SendAsync("ReceiveMessage", dto);
         }
         catch (MessageSendException ex)
@@ -145,6 +149,52 @@ public class ChatHub : Hub
             throw new HubException(ServerErrorMessage);
         }
     }
+
+    // ===================== 消息撤回 =====================
+    /// <summary>
+    /// 撤回自己發出的消息（限時 2 分鐘）。成功後服務端廣播 MessageRecalled：
+    /// 私聊推送給對端與自己，群聊推送給整個群頻道，各端據此把對應氣泡替換為「已撤回」。
+    /// </summary>
+    public async Task RecallMessage(string messageId)
+    {
+        if (!Guid.TryParse(UserId, out var fromId))
+            throw new HubException("E_BAD_TARGET: 身份無效，請重新登錄");
+        var mid = ParseGuidOrNull(messageId)
+            ?? throw new HubException("E_BAD_TARGET: 消息 ID 格式不正確");
+
+        try
+        {
+            var result = await _messages.RecallAsync(fromId, mid);
+
+            if (result.IsGroup && Guid.TryParse(result.Dto.ConversationId[2..], out var gid))
+            {
+                await Clients.Group(GroupChannel(gid))
+                    .SendAsync("MessageRecalled", result.Dto);
+            }
+            else if (result.PeerUserId != null)
+            {
+                await Clients.User(result.PeerUserId).SendAsync("MessageRecalled", result.Dto);
+                await Clients.Caller.SendAsync("MessageRecalled", result.Dto);
+            }
+            else
+            {
+                await Clients.Caller.SendAsync("MessageRecalled", result.Dto);
+            }
+        }
+        catch (MessageSendException ex)
+        {
+            throw new HubException(ex.ToWireMessage());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "RecallMessage 失敗 from={From} message={MessageId}", fromId, messageId);
+            throw new HubException(ServerErrorMessage);
+        }
+    }
+
+    /// <summary>空串 / null / 非 GUID 一律返回 null，保持 Hub 參數綁定寬容。</summary>
+    private static Guid? ParseGuidOrNull(string? raw) =>
+        Guid.TryParse(raw, out var g) && g != Guid.Empty ? g : null;
 
     // ===================== 正在輸入狀態（實時中繼，不持久化） =====================
     /// <summary>

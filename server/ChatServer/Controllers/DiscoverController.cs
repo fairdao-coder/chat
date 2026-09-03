@@ -68,7 +68,8 @@ public class DiscoverController : ControllerBase
     /// 輕量變更信號：僅返回「默認欄目 Id」與「固定欄目簽名」。
     /// 客戶端緩存上次結果，對比兩者是否變化；僅當默認欄目或固定欄目
     /// 發生變化時才重新拉取整個固定欄目列表，以提高性能。
-    /// signature = 固定欄目 Id 按 sort 排序後以 '|' 拼接。
+    /// signature = 固定欄目「Id + 多語言譯文」按 sort 排序後以 '|' 拼接，
+    /// 譯文納入簽名以保證後台修改譯文後客戶端緩存能自動失效刷新。
     /// </summary>
     [HttpGet("pinned-meta")]
     [AllowAnonymous]
@@ -77,14 +78,15 @@ public class DiscoverController : ControllerBase
         try
         {
             var settings = await _db.SystemSettings.FirstOrDefaultAsync(ct);
-            var pinnedIds = await _db.DiscoverColumns
+            var pinned = await _db.DiscoverColumns
                 .AsNoTracking()
                 .Where(c => c.Enabled && c.Pinned)
                 .OrderBy(c => c.Sort)
                 .ThenBy(c => c.CreatedAt)
-                .Select(c => c.Id)
+                .Select(c => new { c.Id, c.TitleI18n })
                 .ToListAsync(ct);
-            var signature = string.Join("|", pinnedIds);
+            var signature = string.Join("|",
+                pinned.Select(c => $"{c.Id}:{c.TitleI18n ?? string.Empty}"));
             return Ok(new PinnedMetaDto(
                 DefaultColumnId: settings?.Other.DefaultColumnId, Signature: signature));
         }

@@ -15,6 +15,9 @@ public class AppDbContext : DbContext
     public DbSet<DiscoverColumn> DiscoverColumns => Set<DiscoverColumn>();
     // 只讀：表由 AdminServer 建立，ChatServer 僅查詢功能開關。
     public DbSet<SystemSettings> SystemSettings => Set<SystemSettings>();
+    // 按用戶隱藏的消息（「刪除」）與會話清空水位線（「清空聊天記錄」）。
+    public DbSet<MessageHide> MessageHides => Set<MessageHide>();
+    public DbSet<ConversationState> ConversationStates => Set<ConversationState>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -65,6 +68,8 @@ public class AppDbContext : DbContext
             // 統計與「某用戶發過的消息」類查詢。
             e.HasIndex(m => m.SenderId);
             e.HasIndex(m => m.CreatedAt);
+            // 引用回覆：按原消息 Id 找「引用了它們的消息」。
+            e.HasIndex(m => m.ReplyToId);
 
             e.HasOne(m => m.Sender).WithMany().HasForeignKey(m => m.SenderId)
                 .OnDelete(DeleteBehavior.NoAction);
@@ -80,6 +85,18 @@ public class AppDbContext : DbContext
         b.Entity<SystemSettings>(e =>
         {
             e.HasKey(s => s.Id);
+        });
+
+        b.Entity<MessageHide>(e =>
+        {
+            // 同一用戶對同一條消息只允許一條隱藏記錄。
+            e.HasIndex(h => new { h.UserId, h.MessageId }).IsUnique();
+        });
+
+        b.Entity<ConversationState>(e =>
+        {
+            // 同一用戶的同一會話（或 "*" 全部鍵）只允許一條水位線，重複清空走更新。
+            e.HasIndex(s => new { s.UserId, s.ConversationId }).IsUnique();
         });
     }
 }

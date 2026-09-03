@@ -20,6 +20,9 @@ public interface IMessageMapper
 /// </summary>
 public class MessageMapper : IMessageMapper
 {
+    /// <summary>引用摘要的最大字符數，超長截斷，避免氣泡被超長原文撐爆。</summary>
+    private const int ReplyPreviewMaxChars = 60;
+
     private readonly AppDbContext _db;
 
     public MessageMapper(AppDbContext db) => _db = db;
@@ -29,15 +32,23 @@ public class MessageMapper : IMessageMapper
         if (messages.Count == 0) return Array.Empty<MessageDto>();
 
         var senderIds = messages.Select(m => m.SenderId).Distinct().ToList();
-        var senders = await LoadSendersAsync(senderIds, ct);
+        // 引用原消息的發送者也要查名稱，併入同一批查詢。
+        senderIds.AddRange(messages
+            .Where(m => m.ReplyToId != null)
+            .Select(m => m.ReplyToId!.Value));
+        var senders = await LoadSendersAsync(senderIds.Distinct().ToList(), ct);
+        var replies = await LoadRepliesAsync(messages, ct);
 
-        return messages.Select(m => ToDto(m, senders)).ToList();
+        return messages.Select(m => ToDto(m, senders, replies)).ToList();
     }
 
     public async Task<MessageDto> MapAsync(Message message, CancellationToken ct = default)
     {
-        var senders = await LoadSendersAsync([message.SenderId], ct);
-        return ToDto(message, senders);
+        var senderIds = new List<Guid> { message.SenderId };
+        if (message.ReplyToId != null) senderIds.Add(message.ReplyToId.Value);
+        var senders = await LoadSendersAsync(senderIds, ct);
+        var replies = await LoadRepliesAsync([message], ct);
+        return ToDto(message, senders, replies);
     }
 
     private async Task<Dictionary<Guid, (string NickName, string? AvatarUrl)>> LoadSendersAsync(
@@ -52,15 +63,61 @@ public class MessageMapper : IMessageMapper
             .ToDictionaryAsync(u => u.Id, u => (u.NickName, u.AvatarUrl), ct);
     }
 
+    /// <summary>
+    /// 批量加載引用原消息：收集 ReplyToId → 一次查詢。
+    /// 原消息已被撤回時摘要為 null，客戶端據此顯示「原消息已撤回」。
+    /// </summary>
+    private async Task<Dictionary<Guid, ReplyInfo>> LoadRepliesAsync(
+        IReadOnlyList<Message> messages, CancellationToken ct)
+    {
+        var replyIds = messages
+            .Where(m => m.ReplyToId != null)
+            .Select(m => m.ReplyToId!.Value)
+            .Distinct()
+            .ToList();
+        if (replyIds.Count == 0) return new Dictionary<Guid, ReplyInfo>();
+
+        var rows = await _db.Messages
+            .AsNoTracking()
+            .Where(m => replyIds.Contains(m.Id))
+            .Select(m => new { m.Id, m.Content, m.Type, m.Recalled, m.SenderId })
+            .ToListAsync(ct);
+
+        return rows.ToDictionary(
+            r => r.Id,
+            r => new ReplyInfo(
+                r.Recalled ? null : BuildPreview(r.Content, r.Type),
+                r.Type,
+                r.SenderId));
+    }
+
+    private static string? BuildPreview(string content, MessageType type) =>
+        type switch
+        {
+            MessageType.Image => "[圖片]",
+            MessageType.File => "[文件]",
+            MessageType.Voice => "[語音]",
+            _ => content.Length <= ReplyPreviewMaxChars ? content : content[..ReplyPreviewMaxChars] + "…",
+        };
+
     private static MessageDto ToDto(
         Message m,
-        IReadOnlyDictionary<Guid, (string NickName, string? AvatarUrl)> senders)
+        IReadOnlyDictionary<Guid, (string NickName, string? AvatarUrl)> senders,
+        IReadOnlyDictionary<Guid, ReplyInfo> replies)
     {
         var sender = senders.GetValueOrDefault(m.SenderId);
+        var reply = m.ReplyToId == null ? null : replies.GetValueOrDefault(m.ReplyToId.Value);
         return new MessageDto(
             m.Id, m.ConversationId, m.SenderId,
             sender.NickName ?? "?",
             sender.AvatarUrl,
-            m.ChatType, m.Content, m.Type, m.MediaUrl, m.CreatedAt);
+            m.ChatType, m.Content, m.Type, m.MediaUrl, m.CreatedAt,
+            m.Recalled,
+            m.ReplyToId,
+            reply?.Preview,
+            reply?.Type,
+            reply == null ? null : senders.GetValueOrDefault(reply.SenderId).NickName ?? "?");
     }
+
+    private sealed record ReplyInfo(string? Preview, MessageType Type, Guid SenderId);
 }

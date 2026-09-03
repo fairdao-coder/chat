@@ -70,108 +70,65 @@ public static class DiscoverColumnSeeder
     };
 
     /// <summary>
-    /// 小應用欄目（Kind = "mini"，Content 為 `script:` 前綴的內聯 HTML）。
+    /// 小應用欄目（Kind = "mini"）。
     ///
-    /// 默認**不啟用**（Enabled = false）：僅入庫待用，管理員在後台確認內容後
-    /// 再逐個啟用，避免佔位內容暴露給終端用戶。
+    /// Content **默認為空**：客戶端檢測到空內容時展示內置默認模板
+    /// （含當前登錄用戶、Token、欄目名與 Bridge 調用示例），
+    /// 管理員在後台填入 `script:` / `html:` / `https://` 內容即可切換為真實業務。
+    ///
+    /// 默認**不啟用**（Enabled = false）：僅入庫待用，避免佔位內容暴露給終端用戶。
     /// 排序接續發現頁默認欄目（0-3）之後。
     /// </summary>
     private static readonly SeedColumn[] MiniApps =
     {
-        new("遊戲", "🎮", "mini", Placeholder("遊戲", "🎮"), 4, Pinned: false, Enabled: false,
+        new("遊戲", "🎮", "mini", "", 4, Pinned: false, Enabled: false,
             I18n("遊戲", "游戏", "Games", "Juegos")),
-        new("直播", "📺", "mini", Placeholder("直播", "📺"), 5, Pinned: false, Enabled: false,
+        new("直播", "📺", "mini", "", 5, Pinned: false, Enabled: false,
             I18n("直播", "直播", "Live", "En vivo")),
-        new("商城", "🛍️", "mini", Placeholder("商城", "🛍️"), 6, Pinned: false, Enabled: false,
+        new("商城", "🛍️", "mini", "", 6, Pinned: false, Enabled: false,
             I18n("商城", "商城", "Mall", "Tienda")),
-        new("劇場", "🎭", "mini", Placeholder("劇場", "🎭"), 7, Pinned: false, Enabled: false,
+        new("劇場", "🎭", "mini", "", 7, Pinned: false, Enabled: false,
             I18n("劇場", "剧场", "Theater", "Teatro")),
-        new("賺錢", "💰", "mini", Placeholder("賺錢", "💰"), 8, Pinned: false, Enabled: false,
+        new("賺錢", "💰", "mini", "", 8, Pinned: false, Enabled: false,
             I18n("賺錢", "赚钱", "Earn", "Ganar")),
-        new("首頁", "🏠", "mini", Placeholder("首頁", "🏠"), 9, Pinned: false, Enabled: false,
+        new("首頁", "🏠", "mini", "", 9, Pinned: false, Enabled: false,
             I18n("首頁", "首页", "Home", "Inicio")),
-        new("視頻", "🎬", "mini", Placeholder("視頻", "🎬"), 10, Pinned: false, Enabled: false,
+        new("視頻", "🎬", "mini", "", 10, Pinned: false, Enabled: false,
             I18n("視頻", "视频", "Videos", "Videos")),
-        new("理財", "📈", "mini", Placeholder("理財", "📈"), 11, Pinned: false, Enabled: false,
+        new("理財", "📈", "mini", "", 11, Pinned: false, Enabled: false,
             I18n("理財", "理财", "Finance", "Finanzas")),
-        new("交易", "💱", "mini", Placeholder("交易", "💱"), 12, Pinned: false, Enabled: false,
+        new("交易", "💱", "mini", "", 12, Pinned: false, Enabled: false,
             I18n("交易", "交易", "Trade", "Operar")),
-        new("資產", "🏦", "mini", Placeholder("資產", "🏦"), 13, Pinned: false, Enabled: false,
+        new("資產", "🏦", "mini", "", 13, Pinned: false, Enabled: false,
             I18n("資產", "资产", "Assets", "Activos")),
-        new("行情", "📊", "mini", Placeholder("行情", "📊"), 14, Pinned: false, Enabled: false,
+        new("行情", "📊", "mini", "", 14, Pinned: false, Enabled: false,
             I18n("行情", "行情", "Market", "Mercado")),
     };
-
-    /// <summary>
-    /// 生成小程式佔位內容：`script:` 前綴 + 內聯 HTML（允許執行腳本）。
-    ///
-    /// 客戶端渲染約束（務必遵守，否則內容會被靜默剔除）：
-    /// 1. 內聯 HTML 是**片段**（注入到既有 div），不可寫 &lt;html&gt;/&lt;head&gt;/&lt;body&gt;；
-    /// 2. Web 端校驗器**不允許 &lt;style&gt; 元素**，故一律用 `style="..."` 行內樣式；
-    /// 3. Web 端僅表單類元素放行 onclick 等事件屬性，故用 script 內 addEventListener 綁定；
-    /// 4. 深色模式因此改用腳本監聽 prefers-color-scheme 並設置行內樣式。
-    ///
-    /// 演示 `window.ChatBridge.call()` 調用宿主能力（Promise）。
-    /// </summary>
-    private static string Placeholder(string title, string icon) => "script:" + $$"""
-<div id="mini-app" style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;padding:28px 16px;text-align:center;box-sizing:border-box;min-height:100%;background:#f7f8fa;color:#1b1c1e">
-  <div style="font-size:52px;line-height:1">{{icon}}</div>
-  <div style="margin:14px 0 6px;font-size:20px;font-weight:600">{{title}}</div>
-  <div style="font-size:13px;line-height:1.8;color:#8a8f98">
-    小程式佔位內容（內聯 HTML，支援 script）。<br />
-    在後台修改本欄目的「欄目內容」即可接入真實業務。
-  </div>
-  <button id="mini-cta" style="margin-top:20px;padding:10px 22px;font-size:14px;border:0;border-radius:999px;cursor:pointer;color:#fff;background:#1aad19">
-    呼叫宿主 Toast
-  </button>
-  <div id="mini-out" style="margin-top:14px;font-size:12px;color:#8a8f98;min-height:18px"></div>
-</div>
-<script>
-(function () {
-  var root = document.getElementById('mini-app');
-  var out = document.getElementById('mini-out');
-  var cta = document.getElementById('mini-cta');
-
-  // 深色模式：不能用 <style> 元素，改由腳本設置行內樣式。
-  function applyTheme() {
-    var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    root.style.background = dark ? '#17181a' : '#f7f8fa';
-    root.style.color = dark ? '#eceef1' : '#1b1c1e';
-  }
-  applyTheme();
-  if (window.matchMedia) {
-    var mq = window.matchMedia('(prefers-color-scheme: dark)');
-    if (mq.addEventListener) { mq.addEventListener('change', applyTheme); }
-  }
-
-  cta.addEventListener('click', function () {
-    var bridge = window.ChatBridge;
-    if (!bridge || !bridge.call) {
-      out.textContent = 'Bridge 不可用（非小程式容器）';
-      return;
-    }
-    out.textContent = '呼叫中...';
-    bridge.call('ui.toast', { message: '{{title}} 小程式已就緒' })
-      .then(function () { out.textContent = 'Bridge 呼叫成功（ui.toast）'; })
-      .catch(function (e) { out.textContent = 'Bridge 呼叫失敗：' + (e && e.message ? e.message : e); });
-  });
-})();
-</script>
-""";
 
     public static async Task SeedAsync(AdminDbContext db, ILogger logger)
     {
         var existing = await db.DiscoverColumns.ToListAsync();
+        // 匹配策略：優先按 Content（功能標識最穩定，管理員改標題也能命中）；
+        // Content 為空（小程式默認不帶內容）時退回按 Title 匹配。
         var byContent = existing
             .Where(c => !string.IsNullOrEmpty(c.Content))
             .GroupBy(c => c.Content!)
+            .ToDictionary(g => g.Key, g => g.First());
+        var byTitle = existing
+            .GroupBy(c => c.Title)
             .ToDictionary(g => g.Key, g => g.First());
 
         var changed = 0;
 
         foreach (var seed in PinnedTabs.Concat(DefaultColumns).Concat(MiniApps))
         {
-            if (byContent.TryGetValue(seed.Content, out var found))
+            // 空 Content 不進 byContent（無法區分多條），按 Title 匹配。
+            var found = (seed.Content.Length > 0 &&
+                         byContent.TryGetValue(seed.Content, out var byC))
+                ? byC
+                : byTitle.GetValueOrDefault(seed.Title);
+
+            if (found is not null)
             {
                 // 已存在：僅在從未配置譯文時補上內置譯文，不覆蓋管理員的定制。
                 if (string.IsNullOrWhiteSpace(found.TitleI18n))
@@ -179,6 +136,19 @@ public static class DiscoverColumnSeeder
                     found.TitleI18n = ToJson(seed.I18n);
                     changed++;
                 }
+
+                // 舊版種子曾為小程式寫入佔位內聯 HTML；改用「空內容 + 客戶端默認模板」
+                // 後，若內容仍是我們種下的佔位頁（標記 id="mini-app"），自動清空。
+                // 管理員自定義的其他內容一律不動。
+                if (seed.Content.Length == 0 &&
+                    found.Content is not null &&
+                    found.Content.StartsWith("script:", StringComparison.Ordinal) &&
+                    found.Content.Contains("id=\"mini-app\"", StringComparison.Ordinal))
+                {
+                    found.Content = null;
+                    changed++;
+                }
+
                 continue;
             }
 

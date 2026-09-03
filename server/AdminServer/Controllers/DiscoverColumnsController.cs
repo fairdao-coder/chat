@@ -64,7 +64,8 @@ public class DiscoverColumnsController : ControllerBase
             Enabled = req.Enabled,
             Pinned = req.Pinned,
             CreatedAt = DateTime.UtcNow,
-            TitleI18n = req.TitleI18n,
+            // 新建時空串與 null 視同「未配置譯文」，統一規範化為 null。
+            TitleI18n = string.IsNullOrWhiteSpace(req.TitleI18n) ? null : req.TitleI18n,
         };
         _db.DiscoverColumns.Add(col);
         await _db.SaveChangesAsync();
@@ -91,7 +92,9 @@ public class DiscoverColumnsController : ControllerBase
         col.Sort = req.Sort;
         col.Enabled = req.Enabled;
         col.Pinned = req.Pinned;
-        col.TitleI18n = req.TitleI18n;
+        // 譯文更新約定：null = 字段缺失（舊版前端全量提交）→ 保持原值，避免誤清空；
+        // ''（空串）= 管理員在後台顯式清空 → 置 null 回退默認名稱。
+        col.TitleI18n = req.TitleI18n ?? col.TitleI18n;
 
         // 固定欄目總數上限：若本次把「未固定 -> 固定」且已達上限則拒絕。
         if (req.Pinned && !col.Pinned &&

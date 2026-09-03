@@ -19,6 +19,11 @@ public record UserDto(
     bool IsOnline,
     DateTime LastSeenAt);
 
+/// <summary>
+/// 消息 DTO。
+/// Recalled：已被發送者撤回，正文不再展示（客戶端渲染「撤回了一條消息」）。
+/// Reply*：引用（回覆）的原消息摘要，由服務端組裝，避免客戶端二次查詢。
+/// </summary>
 public record MessageDto(
     Guid Id,
     string ConversationId,
@@ -29,7 +34,12 @@ public record MessageDto(
     string Content,
     MessageType Type,
     string? MediaUrl,
-    DateTime CreatedAt);
+    DateTime CreatedAt,
+    bool Recalled = false,
+    Guid? ReplyToId = null,
+    string? ReplyPreview = null,
+    MessageType? ReplyType = null,
+    string? ReplySenderName = null);
 
 public record CreateGroupRequest(string Name, List<Guid> MemberIds);
 

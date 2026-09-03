@@ -29,7 +29,7 @@ public class MessagesController : ApiControllerBase
         CancellationToken ct = default)
     {
         var conversationId = ConversationIdForFriend(friendId);
-        var msgs = await _messages.GetHistoryAsync(conversationId, before, count, ct);
+        var msgs = await _messages.GetHistoryAsync(conversationId, before, count, UserId, ct);
         return Ok(msgs);
     }
 
@@ -40,8 +40,49 @@ public class MessagesController : ApiControllerBase
         [FromQuery] int count = 30,
         CancellationToken ct = default)
     {
-        var msgs = await _messages.GetHistoryAsync(Chat.Shared.ConversationKeys.Group(groupId), before, count, ct);
+        var msgs = await _messages.GetHistoryAsync(
+            Chat.Shared.ConversationKeys.Group(groupId), before, count, UserId, ct);
         return Ok(msgs);
+    }
+
+    /// <summary>
+    /// 刪除一條消息（僅自己不再顯示，對方不受影響）。冪等。
+    /// </summary>
+    [HttpPost("hide/{messageId}")]
+    public async Task<IActionResult> Hide(Guid messageId, CancellationToken ct = default)
+    {
+        try
+        {
+            await _messages.HideAsync(UserId, messageId, ct);
+            return Ok();
+        }
+        catch (MessageSendException ex)
+        {
+            return BadRequest(ex.ToWireMessage());
+        }
+    }
+
+    /// <summary>清空單個會話的聊天記錄（僅自己的視角）。</summary>
+    [HttpPost("clear/{conversationId}")]
+    public async Task<IActionResult> Clear(string conversationId, CancellationToken ct = default)
+    {
+        try
+        {
+            await _messages.ClearConversationAsync(UserId, Uri.UnescapeDataString(conversationId), ct);
+            return Ok();
+        }
+        catch (MessageSendException ex)
+        {
+            return BadRequest(ex.ToWireMessage());
+        }
+    }
+
+    /// <summary>清除所有會話的聊天記錄（僅自己的視角）。</summary>
+    [HttpPost("clear-all")]
+    public async Task<IActionResult> ClearAll(CancellationToken ct = default)
+    {
+        await _messages.ClearAllAsync(UserId, ct);
+        return Ok();
     }
 
     /// <summary>

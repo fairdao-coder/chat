@@ -181,50 +181,83 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_index >= visible.length) _index = 0;
     final current = visible.isEmpty ? null : visible[_index];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            if (current != null) Icon(current.icon, size: 20, color: AppTheme.primary),
-            const SizedBox(width: 8),
-            Text(current?.title ?? '後臺管理'),
-          ],
-        ),
-        elevation: 0,
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppTheme.primarySoft,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.account_circle, size: 18, color: AppTheme.primary),
-                const SizedBox(width: 6),
-                Text(
-                  '${auth.admin?.displayName ?? ''} · ${auth.admin?.roleName ?? ''}',
-                  style: const TextStyle(fontSize: 13, color: AppTheme.textMain),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-              onPressed: _changePassword,
-              icon: const Icon(Icons.lock_outline),
-              tooltip: '修改密碼'),
-          IconButton(onPressed: _logout, icon: const Icon(Icons.logout), tooltip: '退出登錄'),
+    // 頂部工具欄（寬屏嵌在右側區域頂部，窄屏為 Scaffold.appBar）。
+    final appBar = AppBar(
+      title: Row(
+        children: [
+          if (current != null) Icon(current.icon, size: 20, color: AppTheme.primary),
           const SizedBox(width: 8),
+          Text(current?.title ?? '後臺管理'),
         ],
       ),
+      elevation: 0,
+      actions: [
+        Container(
+          margin: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppTheme.primarySoft,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.account_circle, size: 18, color: AppTheme.primary),
+              const SizedBox(width: 6),
+              Text(
+                '${auth.admin?.displayName ?? ''} · ${auth.admin?.roleName ?? ''}',
+                style: const TextStyle(fontSize: 13, color: AppTheme.textMain),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+            onPressed: _changePassword,
+            icon: const Icon(Icons.lock_outline),
+            tooltip: '修改密碼'),
+        IconButton(onPressed: _logout, icon: const Icon(Icons.logout), tooltip: '退出登錄'),
+        const SizedBox(width: 8),
+      ],
+    );
+
+    final content = current?.screen ?? const Center(child: Text('無可用模塊'));
+    final onSelect = (i) => setState(() => _index = i);
+
+    // 寬屏（≥900）：側欄常駐左側佔位，不再懸浮遮擋內容；
+    // 窄屏：保留懸浮抽屜（小屏空間有限，需要時再拉出）。
+    if (MediaQuery.of(context).size.width >= 900) {
+      return Scaffold(
+        body: Row(
+          children: [
+            SizedBox(
+              width: 240,
+              child: AppSideNav(
+                dests: visible,
+                currentIndex: _index,
+                onSelect: onSelect,
+              ),
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  appBar,
+                  Expanded(child: content),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: appBar,
       drawer: AppDrawer(
         dests: visible,
         currentIndex: _index,
-        onSelect: (i) => setState(() => _index = i),
+        onSelect: onSelect,
       ),
-      body: current?.screen ?? const Center(child: Text('無可用模塊')),
+      body: content,
     );
   }
 }

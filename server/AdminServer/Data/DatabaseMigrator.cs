@@ -122,6 +122,25 @@ public static class DatabaseMigrator
     }
 
     /// <summary>
+    /// 為 Messages 補上撤回與引用欄位。冪等，新庫自動跳過。
+    /// 新表（MessageHides / ConversationStates）由 EnsureCreated 自動建立，無需處理。
+    /// </summary>
+    public static async Task MigrateMessagesAsync(AdminDbContext db, ILogger logger)
+    {
+        var conn = db.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open)
+            await conn.OpenAsync();
+
+        await ExecuteAsync(conn, """
+            ALTER TABLE "Messages" ADD COLUMN IF NOT EXISTS "Recalled" boolean NOT NULL DEFAULT false;
+            ALTER TABLE "Messages" ADD COLUMN IF NOT EXISTS "RecalledAt" timestamp with time zone;
+            ALTER TABLE "Messages" ADD COLUMN IF NOT EXISTS "ReplyToId" uuid;
+            """);
+
+        logger.LogInformation("Messages 撤回/引用欄位已就緒。");
+    }
+
+    /// <summary>
     /// 為 DiscoverColumns 補上多語言標題欄位 TitleI18n。冪等，新庫自動跳過。
     /// Title 保持為「默認/回退標題」，舊數據無需改動即可正常工作。
     /// </summary>

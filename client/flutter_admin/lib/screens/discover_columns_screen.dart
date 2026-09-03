@@ -129,6 +129,8 @@ class _DiscoverColumnsScreenState extends State<DiscoverColumnsScreen> {
   }) =>
       {
         'title': col.title,
+        // 快速開關是全量 PUT，必須原樣帶回譯文，否則後端會把多語言名稱清空。
+        'titleI18n': col.titleI18n,
         'icon': col.icon,
         'kind': col.kind,
         'content': col.content,

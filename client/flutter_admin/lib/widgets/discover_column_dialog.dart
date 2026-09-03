@@ -45,14 +45,80 @@ class _ColumnDialogState extends State<ColumnDialog> {
   /// 小應用 / 包名類型可能填寫較長的內聯 HTML，需要用多行輸入框。
   bool get _isMultilineContent => _kind == 'mini';
 
-  /// 收集多語言輸入，生成 JSON 字符串；全部留空時返回 null（客戶端回退到默認名稱）。
+  /// 收集多語言輸入，生成 JSON 字符串。
+  /// 全部留空時返回**空串**（顯式清空）：後端約定 `null` = 字段缺失保持原值
+  /// （兼容舊版前端），`''` = 管理員主動清空譯文。
   String? _buildTitleI18n() {
     final map = <String, String>{};
     for (final e in kTitleI18nLanguages.entries) {
       final v = (_i18n[e.key]?.text ?? '').trim();
       if (v.isNotEmpty) map[e.key] = v;
     }
-    return map.isEmpty ? null : jsonEncode(map);
+    return map.isEmpty ? '' : jsonEncode(map);
+  }
+
+  /// 按欄目類型構建內容編輯器：action 為內置動作下拉，其餘為內容輸入框。
+  Widget _buildContentEditor() {
+    if (_kind == 'action') {
+      return DropdownButtonFormField<String>(
+        initialValue: _action,
+        decoration: const InputDecoration(
+          labelText: '內置動作',
+          prefixIcon: Icon(Icons.flash_on_outlined),
+        ),
+        items: kColumnActions.entries
+            .map((e) => DropdownMenuItem(
+                  value: e.key,
+                  child: Row(
+                    children: [
+                      Icon(Icons.radio_button_unchecked,
+                          size: 16, color: AppTheme.activePrimary),
+                      const SizedBox(width: 10),
+                      Text(e.value),
+                    ],
+                  ),
+                ))
+            .toList(),
+        onChanged: (v) => setState(() => _action = v),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          controller: _content,
+          decoration: InputDecoration(
+            labelText: columnContentLabel(_kind),
+            hintText: columnContentHint(_kind),
+            hintMaxLines: 3,
+            alignLabelWithHint: _isMultilineContent,
+            prefixIcon: _isMultilineContent
+                ? const Icon(Icons.code)
+                : const Icon(Icons.link_outlined),
+          ),
+          // 小應用 / 包名可能填寫較長的內聯 HTML，改為多行輸入。
+          minLines: _isMultilineContent ? 5 : 1,
+          maxLines: _isMultilineContent ? 12 : 1,
+          keyboardType: _isMultilineContent
+              ? TextInputType.multiline
+              : TextInputType.url,
+          textInputAction: _isMultilineContent
+              ? TextInputAction.newline
+              : TextInputAction.next,
+          textAlignVertical: TextAlignVertical.top,
+        ),
+        if (_isMultilineContent) ...[
+          const SizedBox(height: 10),
+          TipCard(children: [
+            TipRow(Icons.info_outline,
+                'html: 開頭 = 內聯 HTML（禁止腳本，表單 target=_blank）'),
+            const SizedBox(height: 6),
+            TipRow(Icons.warning_amber_outlined,
+                'script: 開頭 = 允許 JS 腳本，請謹慎使用'),
+          ]),
+        ],
+      ],
+    );
   }
 
   @override
@@ -70,9 +136,10 @@ class _ColumnDialogState extends State<ColumnDialog> {
     };
     _kind = c?.kind ?? 'link';
     _action = c?.content ?? 'scan';
-    // 若已固定且 content 為內置標識，回顯到「固定目標」下拉。
+    // 固定且 content 為內置標識時回顯「固定目標」；否則視為自定義內容（null），
+    // 內容編輯器按欄目類型展示（如小程式的內聯 HTML）。
     _tabTarget =
-        (c != null && (c.content?.isNotEmpty ?? false)) ? c.content : 'chat';
+        (c != null && kTabTargets.containsKey(c.content)) ? c.content : null;
     _enabled = c?.enabled ?? true;
     _pinned = c?.pinned ?? false;
   }
@@ -193,89 +260,46 @@ class _ColumnDialogState extends State<ColumnDialog> {
                       onChanged: (v) => setState(() => _kind = v ?? 'link'),
                     ),
                     const SizedBox(height: 18),
-                    if (_pinned)
-                      // 固定到底部導航：選擇內置目標（其標識寫入 content）。
-                      DropdownButtonFormField<String>(
+                    if (_pinned) ...[
+                      // 固定到底部導航：可指向內置頁，也可固定自定義內容的欄目
+                      //（如小程式 / 外部鏈接固定為底部 Tab）。
+                      DropdownButtonFormField<String?>(
                         initialValue: _tabTarget,
                         decoration: const InputDecoration(
-                          labelText: '固定目標（內置頁）',
+                          labelText: '固定目標',
                           prefixIcon: Icon(Icons.push_pin_outlined),
                         ),
-                        items: kTabTargets.entries
-                            .map((e) => DropdownMenuItem(
-                                  value: e.key,
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.tab_outlined,
-                                          size: 16, color: AppTheme.activePrimary),
-                                      const SizedBox(width: 10),
-                                      Text(e.value),
-                                    ],
-                                  ),
-                                ))
-                            .toList(),
-                        onChanged: (v) => setState(() => _tabTarget = v),
-                      )
-                    else if (_kind == 'action')
-                      DropdownButtonFormField<String>(
-                        initialValue: _action,
-                        decoration: const InputDecoration(
-                          labelText: '內置動作',
-                          prefixIcon: Icon(Icons.flash_on_outlined),
-                        ),
-                        items: kColumnActions.entries
-                            .map((e) => DropdownMenuItem(
-                                  value: e.key,
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.radio_button_unchecked,
-                                          size: 16, color: AppTheme.activePrimary),
-                                      const SizedBox(width: 10),
-                                      Text(e.value),
-                                    ],
-                                  ),
-                                ))
-                            .toList(),
-                        onChanged: (v) => setState(() => _action = v),
-                      )
-                    else
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          TextFormField(
-                            controller: _content,
-                            decoration: InputDecoration(
-                              labelText: columnContentLabel(_kind),
-                              hintText: columnContentHint(_kind),
-                              hintMaxLines: 3,
-                              alignLabelWithHint: _isMultilineContent,
-                              prefixIcon: _isMultilineContent
-                                  ? const Icon(Icons.code)
-                                  : const Icon(Icons.link_outlined),
+                        items: [
+                          DropdownMenuItem<String?>(
+                            value: null,
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit_outlined,
+                                    size: 16, color: AppTheme.activePrimary),
+                                const SizedBox(width: 10),
+                                const Text('自定義內容（按欄目類型）'),
+                              ],
                             ),
-                            // 小應用 / 包名可能填寫較長的內聯 HTML，改為多行輸入。
-                            minLines: _isMultilineContent ? 5 : 1,
-                            maxLines: _isMultilineContent ? 12 : 1,
-                            keyboardType: _isMultilineContent
-                                ? TextInputType.multiline
-                                : TextInputType.url,
-                            textInputAction: _isMultilineContent
-                                ? TextInputAction.newline
-                                : TextInputAction.next,
-                            textAlignVertical: TextAlignVertical.top,
                           ),
-                          if (_isMultilineContent) ...[
-                            const SizedBox(height: 10),
-                            TipCard(children: [
-                              TipRow(Icons.info_outline,
-                                  'html: 開頭 = 內聯 HTML（禁止腳本，表單 target=_blank）'),
-                              const SizedBox(height: 6),
-                              TipRow(Icons.warning_amber_outlined,
-                                  'script: 開頭 = 允許 JS 腳本，請謹慎使用'),
-                            ]),
-                          ],
+                          for (final e in kTabTargets.entries)
+                            DropdownMenuItem<String?>(
+                              value: e.key,
+                              child: Row(
+                                children: [
+                                  Icon(Icons.tab_outlined,
+                                      size: 16, color: AppTheme.activePrimary),
+                                  const SizedBox(width: 10),
+                                  Text(e.value),
+                                ],
+                              ),
+                            ),
                         ],
+                        onChanged: (v) => setState(() => _tabTarget = v),
                       ),
+                    ],
+                    // 固定到內置頁時 content 由「固定目標」決定，無需內容編輯器；
+                    // 其餘情況一律按欄目類型展示內容編輯器。
+                    if (!_pinned || _tabTarget == null) _buildContentEditor(),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -364,7 +388,7 @@ class _ColumnDialogState extends State<ColumnDialog> {
               'titleI18n': _buildTitleI18n(),
               'icon': _icon.text.trim(),
               'kind': _kind,
-              'content': _pinned
+              'content': (_pinned && _tabTarget != null)
                   ? _tabTarget
                   : (_kind == 'action' ? _action : _content.text.trim()),
               'sort': int.parse(_sort.text.trim()),

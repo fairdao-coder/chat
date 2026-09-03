@@ -6,6 +6,8 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../bridges/chat_bridge.dart';
 import '../l10n/app_localizations.dart';
+import '../providers/auth_provider.dart';
+import 'mini_default_template.dart';
 import 'web_html.dart';
 
 /// 小應用 / H5 本地包容器。
@@ -48,7 +50,22 @@ class _MiniAppPageState extends ConsumerState<MiniAppPage> {
   void initState() {
     super.initState();
 
-    if (widget.name.startsWith('html:')) {
+    if (widget.name.isEmpty) {
+      // 欄目未配置內容：展示默認模板（當前用戶 / Token / Bridge 調用示例）。
+      // 需要讀取登錄態，故放在最前面單獨處理。
+      final auth = ref.read(authProvider);
+      final u = auth.user;
+      _isInlineHtml = true;
+      _allowScript = true;
+      _inlineHtml = buildDefaultMiniAppHtml(
+        columnTitle: widget.title,
+        userId: u?.id,
+        nickName: u?.nickName,
+        userName: u?.userName,
+        token: auth.token,
+      );
+      _resolvedUrl = '';
+    } else if (widget.name.startsWith('html:')) {
       // 內聯 HTML 文本，禁止執行腳本。
       _isInlineHtml = true;
       _allowScript = false;

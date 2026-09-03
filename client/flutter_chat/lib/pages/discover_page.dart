@@ -62,10 +62,9 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
         _runAction(content.isEmpty ? 'scan' : content);
         break;
       case DiscoverKind.mini:
-        if (content.isNotEmpty) {
-          context.push('/mini?name=${Uri.encodeComponent(content)}'
-              '&title=${Uri.encodeComponent(resolvedColumnTitle(context, col))}');
-        }
+        // content 可為空：交由 MiniAppPage 展示默認模板（未配置內容時）。
+        context.push('/mini?name=${Uri.encodeComponent(content)}'
+            '&title=${Uri.encodeComponent(resolvedColumnTitle(context, col))}');
         break;
     }
   }

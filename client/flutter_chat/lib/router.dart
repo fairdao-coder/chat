@@ -220,9 +220,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final name = state.uri.queryParameters['name'] ?? '';
           final title = state.uri.queryParameters['title'];
-          if (name.isEmpty) {
-            return const SizedBox.shrink();
-          }
+          // name 為空表示欄目未配置內容，由 MiniAppPage 展示默認模板。
           return MiniAppPage(name: name, title: title);
         },
       ),
