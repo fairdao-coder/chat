@@ -516,6 +516,22 @@ jobs:
 
           echo "Team ID: $TEAM   Profile UUID: $PROFILE_UUID"
 
+          # 取得 App Bundle ID（Runner target）
+          BUNDLE_ID=$(grep -m1 'PRODUCT_BUNDLE_IDENTIFIER = com.servestatic.chat;' ios/Runner.xcodeproj/project.pbxproj | sed -E 's/.*= *([a-zA-Z0-9.]+);.*/\1/')
+          if [ -z "$BUNDLE_ID" ]; then
+            echo "::error::無法取得 PRODUCT_BUNDLE_IDENTIFIER"; exit 1
+          fi
+
+          # 手動簽名匯出必須在 ExportOptions 指定 provisioningProfiles，
+          # 否則 exportArchive 會報 "requires a provisioning profile"。
+          # method 同時改用 app-store-connect（app-store 已被棄用）。
+          plutil -replace method -string app-store-connect ios/ExportOptions.plist
+          if plutil -extract provisioningProfiles xml1 ios/ExportOptions.plist >/dev/null 2>&1; then
+            plutil -remove provisioningProfiles ios/ExportOptions.plist
+          fi
+          plutil -insert provisioningProfiles -xml "<dict><key>$BUNDLE_ID</key><string>$PROFILE_UUID</string></dict>" ios/ExportOptions.plist
+          echo "Bundle ID: $BUNDLE_ID"
+
           # 切換 Xcode 工程為手動簽名 + 發佈身份
           PBX="ios/Runner.xcodeproj/project.pbxproj"
           sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PBX"

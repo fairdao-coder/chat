@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -26,8 +27,11 @@ import 'theme.dart';
 /// snack bar even from outside a build context.
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
-void _reportError(Object error) {
+void _reportError(Object error, [StackTrace? stackTrace]) {
   final msg = error.toString();
+  // 先把堆疊列印到控制台 / logcat，方便開發者定位真正的拋出位置；
+  // SnackBar 只顯示簡短訊息，調試時請查看完整日誌。
+  developer.log('Uncaught error: $msg', name: 'main', error: error, stackTrace: stackTrace);
   // ScaffoldMessenger.showSnackBar cannot be called during build; schedule it
   // for the next frame so the message is safe to display.
   SchedulerBinding.instance.addPostFrameCallback((_) {
@@ -47,16 +51,19 @@ void main() async {
 
       // Surface uncaught errors (e.g. from platform callbacks / async gaps) instead
       // of letting them become a silent "Uncaught Error" in the console.
-      FlutterError.onError = (details) => _reportError(details.exceptionAsString());
+      FlutterError.onError = (details) => _reportError(
+            details.exception,
+            details.stack,
+          );
       // ignore: deprecated_member_use
-      WidgetsBinding.instance.platformDispatcher.onError = (error, _) {
-        _reportError(error);
+      WidgetsBinding.instance.platformDispatcher.onError = (error, stack) {
+        _reportError(error, stack);
         return true;
       };
 
       runApp(const ProviderScope(child: MyApp()));
     },
-    (error, _) => _reportError(error),
+    (error, stack) => _reportError(error, stack),
   );
 }
 

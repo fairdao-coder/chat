@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -66,15 +67,21 @@ class _MessageBannerOverlayState extends ConsumerState<MessageBannerOverlay>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             for (var i = 0; i < items.length; i++)
-              _BannerItem(
-                key: ValueKey(items[i].id),
-                message: items[i],
-                onDismiss: () {
-                  if (mounted) {
-                    ref
-                        .read(messageNotificationsProvider.notifier)
-                        .remove(items[i].id);
-                  }
+              Builder(
+                builder: (_) {
+                  // 在迴圈體內用 final 固定當前 item，避免閉包捕獲循環變量 i，
+                  // 否則 rebuild 後 onDismiss 可能拿到錯誤索引或越界。
+                  final message = items[i];
+                  return _BannerItem(
+                    key: ValueKey(message.id),
+                    message: message,
+                    onDismiss: () {
+                      if (!mounted) return;
+                      ref
+                          .read(messageNotificationsProvider.notifier)
+                          .remove(message.id);
+                    },
+                  );
                 },
               ),
           ],
@@ -119,10 +126,20 @@ class _BannerItemState extends ConsumerState<_BannerItem> {
   void _open() {
     if (!mounted) return;
     final m = widget.message;
+    final targetId = m.targetId;
+    if (targetId.isEmpty) {
+      developer.log('Banner message has empty targetId, skip navigation', name: 'banner');
+      widget.onDismiss();
+      return;
+    }
+    // 先觸發 dismiss，再於下一幀導航，避免在 provider 狀態變化引發的 rebuild 過程中
+    // 同步調用 context.go，降低 context / Riverpod 生命週期競態風險。
     widget.onDismiss();
-    if (!mounted) return;
-    final query = m.isGroup ? 'groupId=${m.targetId}' : 'friendId=${m.targetId}';
-    context.go('/chat?$query');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final query = m.isGroup ? 'groupId=$targetId' : 'friendId=$targetId';
+      context.go('/chat?$query');
+    });
   }
 
   @override
