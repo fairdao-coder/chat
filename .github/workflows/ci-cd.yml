@@ -611,11 +611,15 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ios-out
-          ipa="build/ios/ipa/Runner.ipa"
-          if [ -f "$ipa" ]; then
-            cp "$ipa" ios-out/Runner.ipa
+          # flutter build ipa 輸出的檔名為 product name（此專案為 Chat.ipa，非 Runner.ipa）
+          ipa=$(ls build/ios/ipa/*.ipa 2>/dev/null | head -n 1)
+          if [ -n "$ipa" ] && [ -f "$ipa" ]; then
+            cp "$ipa" ios-out/Chat.ipa
+            echo "::notice title=iOS IPA::已打包 $(basename "$ipa") -> ios-out/Chat.ipa"
           else
-            echo "::error::Signed build did not produce Runner.ipa"
+            echo "::error::Signed build did not produce any IPA under build/ios/ipa/"
+            echo "::error::目前 build/ios/ipa/ 內容："
+            ls -lh build/ios/ipa || true
             exit 1
           fi
           ls -lh ios-out
@@ -645,7 +649,7 @@ jobs:
           echo "$ASC_KEY_B64" | base64 --decode > "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
           chmod 600 "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
           xcrun altool --upload-app \
-            -f ios-out/Runner.ipa \
+            -f ios-out/Chat.ipa \
             -t ios \
             --apiKey "$ASC_KEY_ID" \
             --apiIssuer "$ASC_ISSUER_ID" \

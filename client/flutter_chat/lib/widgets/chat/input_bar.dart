@@ -205,7 +205,7 @@ class _ChatInputBarState extends State<ChatInputBar>
                   // 退格：支持 emoji 代理对，点击后面板保持打开，可连续输入。
                   IconButton(
                     tooltip: context.tr('删除'),
-                    icon: const Icon(Icons.backspace_outlined, size: 20),
+                    icon: const Icon(Icons.backspace, size: 20),
                     onPressed: _backspace,
                   ),
                   // 關閉表情面板：提供明確關閉入口，避免彈層「關不掉」。
@@ -255,10 +255,12 @@ class _ChatInputBarState extends State<ChatInputBar>
     if (start == end) {
       if (start == 0) return;
       start--;
-      // 高位代理项（emoji 占两个 code unit），再退一格整体删除。
+      // emoji 佔兩個 code unit（高代理 0xD800–0xDBFF + 低代理 0xDC00–0xDFFF）。
+      // 游標此時停在低代理之後，start-- 後指向低代理；若為低代理則需再退一格
+      // 包含高代理，才能整組刪除，否則會留下孤立代理項導致 UTF-16 錯誤。
       if (start > 0 &&
-          text.codeUnitAt(start) >= 0xD800 &&
-          text.codeUnitAt(start) <= 0xDBFF) {
+          text.codeUnitAt(start) >= 0xDC00 &&
+          text.codeUnitAt(start) <= 0xDFFF) {
         start--;
       }
     }
