@@ -122,8 +122,8 @@ public static class DatabaseMigrator
     }
 
     /// <summary>
-    /// 為 Messages 補上撤回與引用欄位。冪等，新庫自動跳過。
-    /// 新表（MessageHides / ConversationStates）由 EnsureCreated 自動建立，無需處理。
+    /// 為 Messages 補上撤回與引用欄位，並建立「消息隱藏」與「會話狀態」表。冪等，新庫自動跳過。
+    /// 舊庫在添加新實體後不會自動建新表，因此必須手動補上，否則 ChatServer 運行時會拋 42P01。
     /// </summary>
     public static async Task MigrateMessagesAsync(AdminDbContext db, ILogger logger)
     {
@@ -137,7 +137,34 @@ public static class DatabaseMigrator
             ALTER TABLE "Messages" ADD COLUMN IF NOT EXISTS "ReplyToId" uuid;
             """);
 
-        logger.LogInformation("Messages 撤回/引用欄位已就緒。");
+        await ExecuteAsync(conn, """
+            CREATE TABLE IF NOT EXISTS "MessageHides" (
+                "Id" uuid NOT NULL PRIMARY KEY,
+                "UserId" uuid NOT NULL,
+                "MessageId" uuid NOT NULL,
+                "CreatedAt" timestamp with time zone NOT NULL
+            );
+            """);
+
+        await ExecuteAsync(conn, """
+            CREATE INDEX IF NOT EXISTS "IX_MessageHides_UserId_MessageId" ON "MessageHides" ("UserId", "MessageId");
+            """);
+
+        await ExecuteAsync(conn, """
+            CREATE TABLE IF NOT EXISTS "ConversationStates" (
+                "Id" uuid NOT NULL PRIMARY KEY,
+                "UserId" uuid NOT NULL,
+                "ConversationId" text NOT NULL,
+                "ClearedBeforeAt" timestamp with time zone NOT NULL
+            );
+            """);
+
+        await ExecuteAsync(conn, """
+            CREATE INDEX IF NOT EXISTS "IX_ConversationStates_UserId_ConversationId" ON "ConversationStates" ("UserId", "ConversationId");
+            CREATE INDEX IF NOT EXISTS "IX_ConversationStates_UserId" ON "ConversationStates" ("UserId");
+            """);
+
+        logger.LogInformation("Messages 撤回/引用欄位與 MessageHides、ConversationStates 表已就緒。");
     }
 
     /// <summary>
