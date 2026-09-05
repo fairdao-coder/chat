@@ -166,20 +166,44 @@ release 版使用 Flutter 模板默认的 debug key 签名，因此 CI 无需 ke
 正式发布前建议在 `build.gradle.kts` 定义 `signingConfigs.release`，把 keystore 用 base64
 存入 secret（如 `ANDROID_KEYSTORE_BASE64`、`ANDROID_KEY_*`），在 `build-android` job 解码后构建。
 
-#### iOS 构建（可选签名）
+#### iOS 构建与 TestFlight 上传
 
 `build-ios` 在 `macos-latest` runner 上运行（Xcode 仅 macOS 提供）。默认产出**未签名**的
-`Runner.app`（仅编译检查）。当配置了以下 secrets 时自动产出**已签名** `Runner.ipa`：
+`Runner.app`（仅编译检查）。
+
+##### 已签名 IPA（可安装到设备）
+
+当配置以下 secrets 时自动产出**已签名** `Runner.ipa`：
 
 | Secret | 说明 |
 | --- | --- |
 | `IOS_DIST_CERT_BASE64` | 分发证书 p12，base64 编码 |
 | `IOS_DIST_CERT_PASSWORD` | p12 密码 |
-| `IOS_PROVISIONING_PROFILE_BASE64` | `.mobileprovision`，base64 编码 |
+| `IOS_PROVISIONING_PROFILE_BASE64` | `.mobileprovision`，base64 编码（**TestFlight 须为 App Store Connect 类型**，非 Ad Hoc） |
 | `IOS_TEAM_ID`（可选） | Apple Team ID |
 
-未配置 secrets 时自动回退未签名构建，CI 不失败。`ExportOptions.plist` 位于
-`client/flutter_chat/ios/ExportOptions.plist`。
+未配置时自动回退未签名构建，CI 不失败。`ExportOptions.plist` 位于
+`client/flutter_chat/ios/ExportOptions.plist`，其 `method` 已设为 `app-store`。
+
+##### 上传到 TestFlight
+
+在已签名基础上，再配置以下三项 App Store Connect API 密钥，CI 会自动把 IPA 上传到
+App Store Connect（上传后在 TestFlight 建群即可）：
+
+| Secret | 说明 |
+| --- | --- |
+| `IOS_APP_STORE_CONNECT_API_KEY_BASE64` | `AuthKey_XXXX.p8`，base64 编码 |
+| `IOS_APP_STORE_CONNECT_KEY_ID` | API Key ID（10 位，如 `ABCD123456`） |
+| `IOS_APP_STORE_CONNECT_ISSUER_ID` | Issuer ID（UUID） |
+
+**如何获取 App Store Connect API 密钥：**
+1. 登录 [App Store Connect](https://appstoreconnect.apple.com) → 用户和访问 → **集成** → App Store Connect API → 「+」新建（注意：密钥在「集成」标签下，不在「用户」标签）。
+2. 选 **团队密钥**（非个人密钥）。
+3. 权限选 **App 管理**（App Manager）；仅「开发者」权限无法上传 IPA。
+4. 页面顶部 **Issuer ID**（UUID）即 `IOS_APP_STORE_CONNECT_ISSUER_ID`；新建后显示的 **Key ID** 即 `IOS_APP_STORE_CONNECT_KEY_ID`。
+5. 点「下载 API 密钥」得到 `AuthKey_XXXX.p8`（**仅可下载一次**，请本地备份），base64 编码后填入 `IOS_APP_STORE_CONNECT_API_KEY_BASE64`：
+   - macOS/Linux：`base64 -w0 AuthKey_XXXX.p8`
+   - Windows PowerShell：`[Convert]::ToBase64String([IO.File]::ReadAllBytes("AuthKey_XXXX.p8"))`
 
 ### 一次性配置
 

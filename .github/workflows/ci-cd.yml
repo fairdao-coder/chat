@@ -394,20 +394,24 @@ jobs:
   # cannot be produced on a Linux or Windows runner (nor on a dev's Windows
   # machine) -- Apple's toolchain restriction.
   #
-  # OPTIONAL SIGNING (recommended for shipping to the client / App Store):
-  #   Provide these repository secrets and the job will produce a fully signed
-  #   IPA that can be installed on a device / uploaded to App Store Connect:
-  #     IOS_DIST_CERT_BASE64            p12 distribution cert, base64-encoded
-  #     IOS_DIST_CERT_PASSWORD          password for the p12 above
-  #     IOS_PROVISIONING_PROFILE_BASE64 .mobileprovision, base64-encoded
-  #     IOS_TEAM_ID                     Apple Team ID (10-char, e.g. AB12CD34EF)
-  #   Encode locally with:
+  # OPTIONAL SIGNING + TESTFLIGHT UPLOAD (recommended for shipping):
+  #   提供下列 repository secrets 時，job 會產出以 App Store 方式簽章的 IPA，
+  #   並自動上傳到 App Store Connect 進入 TestFlight：
+  #     IOS_DIST_CERT_BASE64            p12 發佈憑證 (distribution cert)，base64 編碼
+  #     IOS_DIST_CERT_PASSWORD          p12 的密碼
+  #     IOS_PROVISIONING_PROFILE_BASE64 .mobileprovision，base64 編碼
+  #                                      （必須是「App Store Connect」類型，非 Ad Hoc）
+  #     IOS_TEAM_ID                     Apple Team ID (10 碼，如 AB12CD34EF)
+  #     IOS_APP_STORE_CONNECT_API_KEY_BASE64  AuthKey_XXXX.p8，base64 編碼
+  #     IOS_APP_STORE_CONNECT_KEY_ID            API Key ID (如 ABCD123456)
+  #     IOS_APP_STORE_CONNECT_ISSUER_ID        Issuer ID (UUID)
+  #   本地編碼：
   #     base64 -w0 dist.p12 > cert.b64
   #     base64 -w0 app.mobileprovision > profile.b64
-  #   If any of the three base64 secrets is missing, the job falls back to an
-  #   UNSIGNED build (Runner.app in a zip). That cannot be installed on a real
-  #   iPhone, but still serves as an iOS compile check and lets a Mac user sign
-  #   it locally afterwards. The job never fails just because signing is off.
+  #     base64 -w0 AuthKey_XXXX.p8 > asc_key.b64
+  #   若三個簽章 base64 secret 任一缺失，job 退回 UNSIGNED 建置（Runner.app 壓縮檔），
+  #   僅作 iOS 編譯檢查用，無法安裝到實機，也不會上傳。
+  #   若僅缺 App Store Connect API 三項，則仍會產出已簽章 IPA 供手動上傳。
   #
   # Gated to main because macOS minutes are billed at 10x Linux on private repos.
   # ---------------------------------------------------------------------------
@@ -523,6 +527,35 @@ jobs:
             exit 1
           fi
           ls -lh ios-out
+
+      # --- Upload to App Store Connect (TestFlight) -------------------------
+      # 僅在具備 App Store Connect API Key 三項 secret 時執行。將已簽章的
+      # app-store IPA 上傳，進入 App Store Connect 後即可建立 TestFlight 群組。
+      # altool 需要 AuthKey_<KEY_ID>.p8 置於 ~/private_keys/ 下。
+      - name: Upload to App Store Connect (TestFlight)
+        if: >-
+          ${{ secrets.IOS_DIST_CERT_BASE64 != '' &&
+              secrets.IOS_DIST_CERT_PASSWORD != '' &&
+              secrets.IOS_PROVISIONING_PROFILE_BASE64 != '' &&
+              secrets.IOS_APP_STORE_CONNECT_API_KEY_BASE64 != '' &&
+              secrets.IOS_APP_STORE_CONNECT_KEY_ID != '' &&
+              secrets.IOS_APP_STORE_CONNECT_ISSUER_ID != '' }}
+        env:
+          ASC_KEY_B64: ${{ secrets.IOS_APP_STORE_CONNECT_API_KEY_BASE64 }}
+          ASC_KEY_ID: ${{ secrets.IOS_APP_STORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.IOS_APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/private_keys"
+          echo "$ASC_KEY_B64" | base64 --decode > "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          chmod 600 "$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          xcrun altool --upload-app \
+            -f ios-out/Runner.ipa \
+            -t ios \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID" \
+            --output-format normal
+          echo "::notice title=TestFlight::IPA 已上傳，請至 App Store Connect 建立 TestFlight 群組。"
 
       - name: Package unsigned app
         if: >-

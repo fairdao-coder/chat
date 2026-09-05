@@ -157,20 +157,44 @@ release 版使用 Flutter 範本預設的 debug key 簽名，因此 CI 無需 ke
 正式發佈前建議在 `build.gradle.kts` 定義 `signingConfigs.release`，把 keystore 用 base64
 存入 secret（如 `ANDROID_KEYSTORE_BASE64`、`ANDROID_KEY_*`），在 `build-android` job 解碼後建置。
 
-#### iOS 建置（可選簽名）
+#### iOS 建置與 TestFlight 上傳
 
 `build-ios` 在 `macos-latest` runner 上執行（Xcode 僅 macOS 提供）。預設產出**未簽名**的
-`Runner.app`（僅編譯檢查）。當配置了以下 secrets 時自動產出**已簽名** `Runner.ipa`：
+`Runner.app`（僅編譯檢查）。
+
+##### 已簽名 IPA（可安裝到裝置）
+
+當配置以下 secrets 時自動產出**已簽名** `Runner.ipa`：
 
 | Secret | 說明 |
 | --- | --- |
 | `IOS_DIST_CERT_BASE64` | 分發憑證 p12，base64 編碼 |
 | `IOS_DIST_CERT_PASSWORD` | p12 密碼 |
-| `IOS_PROVISIONING_PROFILE_BASE64` | `.mobileprovision`，base64 編碼 |
+| `IOS_PROVISIONING_PROFILE_BASE64` | `.mobileprovision`，base64 編碼（**TestFlight 須為 App Store Connect 類型**，非 Ad Hoc） |
 | `IOS_TEAM_ID`（可選） | Apple Team ID |
 
-未配置 secrets 時自動回退未簽名建置，CI 不失敗。`ExportOptions.plist` 位於
-`client/flutter_chat/ios/ExportOptions.plist`。
+未配置時自動回退未簽名建置，CI 不失敗。`ExportOptions.plist` 位於
+`client/flutter_chat/ios/ExportOptions.plist`，其 `method` 已設為 `app-store`。
+
+##### 上傳到 TestFlight
+
+在已簽名下，再配置以下三項 App Store Connect API 金鑰，CI 會自動把 IPA 上傳到
+App Store Connect（上傳後於 TestFlight 建群即可）：
+
+| Secret | 說明 |
+| --- | --- |
+| `IOS_APP_STORE_CONNECT_API_KEY_BASE64` | `AuthKey_XXXX.p8`，base64 編碼 |
+| `IOS_APP_STORE_CONNECT_KEY_ID` | API Key ID（10 碼，如 `ABCD123456`） |
+| `IOS_APP_STORE_CONNECT_ISSUER_ID` | Issuer ID（UUID） |
+
+**如何取得 App Store Connect API 金鑰：**
+1. 登入 [App Store Connect](https://appstoreconnect.apple.com) → 使用者與存取 → **整合** → App Store Connect API → 「+」新建（金鑰在「整合」標籤下，不在「使用者」標籤）。
+2. 選 **團隊金鑰**（非個人金鑰）。
+3. 權限選 **App 管理**（App Manager）；僅「開發者」權限無法上傳 IPA。
+4. 頁面頂部 **Issuer ID**（UUID）即 `IOS_APP_STORE_CONNECT_ISSUER_ID`；新建後顯示的 **Key ID** 即 `IOS_APP_STORE_CONNECT_KEY_ID`。
+5. 點「下載 API 金鑰」取得 `AuthKey_XXXX.p8`（**僅可下載一次**，請本地備份），base64 編碼後填入 `IOS_APP_STORE_CONNECT_API_KEY_BASE64`：
+   - macOS/Linux：`base64 -w0 AuthKey_XXXX.p8`
+   - Windows PowerShell：`[Convert]::ToBase64String([IO.File]::ReadAllBytes("AuthKey_XXXX.p8"))`
 
 ### 一次性配置
 

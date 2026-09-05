@@ -157,20 +157,43 @@ La compilación de release se firma con la clave debug predeterminada de la plan
 Antes de la publicación oficial, defina `signingConfigs.release` en `build.gradle.kts`, guarde el keystore en base64
 en secrets (p. ej. `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_*`), y descódelo en el job `build-android` antes de compilar.
 
-#### Compilación de iOS (firma opcional)
+#### Compilación de iOS y subida a TestFlight
 
 `build-ios` se ejecuta en un runner `macos-latest` (Xcode solo está en macOS). Por defecto produce un
-`Runner.app` **sin firmar** (solo comprobación de compilación). Cuando se configuran los siguientes secrets produce automáticamente un `Runner.ipa` **firmado**:
+`Runner.app` **sin firmar** (solo comprobación de compilación).
+
+##### IPA firmado (instalable en dispositivos)
+
+Cuando se configuran los siguientes secrets produce automáticamente un `Runner.ipa` **firmado**:
 
 | Secret | Descripción |
 | --- | --- |
 | `IOS_DIST_CERT_BASE64` | Certificado de distribución p12, en base64 |
 | `IOS_DIST_CERT_PASSWORD` | Contraseña p12 |
-| `IOS_PROVISIONING_PROFILE_BASE64` | `.mobileprovision`, en base64 |
+| `IOS_PROVISIONING_PROFILE_BASE64` | `.mobileprovision`, en base64 (**debe ser tipo App Store Connect para TestFlight**, no Ad Hoc) |
 | `IOS_TEAM_ID` (opcional) | Apple Team ID |
 
 Si no se configuran los secrets, retrocede a una compilación sin firmar y la CI no falla. `ExportOptions.plist` está en
-`client/flutter_chat/ios/ExportOptions.plist`.
+`client/flutter_chat/ios/ExportOptions.plist`, con `method` ya en `app-store`.
+
+##### Subir a TestFlight
+
+Además de la firma, configure estos tres secrets de la API Key de App Store Connect y la CI subirá automáticamente el IPA a App Store Connect (luego cree un grupo en TestFlight):
+
+| Secret | Descripción |
+| --- | --- |
+| `IOS_APP_STORE_CONNECT_API_KEY_BASE64` | `AuthKey_XXXX.p8`, en base64 |
+| `IOS_APP_STORE_CONNECT_KEY_ID` | API Key ID (10 caracteres, p. ej. `ABCD123456`) |
+| `IOS_APP_STORE_CONNECT_ISSUER_ID` | Issuer ID (UUID) |
+
+**Cómo obtener la API Key de App Store Connect:**
+1. Inicie sesión en [App Store Connect](https://appstoreconnect.apple.com) → Usuarios y acceso → **Integraciones** → App Store Connect API → "+" para crear (la clave está en la pestaña **Integraciones**, no en **Usuarios**).
+2. Elija una **Clave de equipo** (no una clave personal).
+3. El acceso debe ser **App Manager**; una clave "Developer" no puede subir IPAs.
+4. El **Issuer ID** (UUID) que aparece arriba de la página es `IOS_APP_STORE_CONNECT_ISSUER_ID`; el **Key ID** que aparece al crear es `IOS_APP_STORE_CONNECT_KEY_ID`.
+5. Haga clic en "Descargar API Key" para obtener `AuthKey_XXXX.p8` (**solo se descarga una vez** — guárdela localmente), luego codifíquela en base64 en `IOS_APP_STORE_CONNECT_API_KEY_BASE64`:
+   - macOS/Linux: `base64 -w0 AuthKey_XXXX.p8`
+   - Windows PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("AuthKey_XXXX.p8"))`
 
 ### Configuración única
 
