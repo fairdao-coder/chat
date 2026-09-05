@@ -316,7 +316,7 @@ class CallController extends StateNotifier<CallState> {
 
   Future<void> _onIce((String, String) p) async {
     final (callId, candJson) = p;
-    if (state.callId != callId || _pc == null) return;
+    if (state.callId != callId) return;
     try {
       final m = jsonDecode(candJson) as Map<String, dynamic>;
       final cand = RTCIceCandidate(
@@ -324,21 +324,20 @@ class CallController extends StateNotifier<CallState> {
         m['sdpMid'] as String?,
         m['sdpMLineIndex'] as int?,
       );
-      // 遠端 candidate 早於 remoteDescription 到達時先緩存，
-      // 否則 addCandidate 會失敗導致該 candidate 永久丟失（區域網 host candidate 極快）。
-      if (!_remoteDescriptionSet) {
-        _pendingCandidates.add(cand);
-        return;
-      }
-      await _pc!.addCandidate(cand);
+      // candidate 一律先緩存：對方 _pc 尚未建立，或本地 remoteDescription 尚未設置時
+      // 直接 addCandidate 會失敗（區域網直連下 host candidate 極快、極易早到）。
+      // 待條件滿足後由 _flushPendingCandidates 統一加入，避免 candidate 被永久丟棄。
+      _pendingCandidates.add(cand);
+      await _flushPendingCandidates();
     } catch (_) {
       // ignore malformed candidate
     }
   }
 
-  /// 將 remoteDescription 就緒前緩存的 candidate 統一加入。
+  /// 將緩存的 candidate 於「_pc 已建立且 remoteDescription 已設置」時統一加入。
+  /// 條件不滿足者繼續留在緩存，待下次 flush（收到 offer/answer 或新到達時）再處理。
   Future<void> _flushPendingCandidates() async {
-    if (_pc == null || _pendingCandidates.isEmpty) return;
+    if (_pc == null || !_remoteDescriptionSet || _pendingCandidates.isEmpty) return;
     final pending = List<RTCIceCandidate>.from(_pendingCandidates);
     _pendingCandidates.clear();
     for (final cand in pending) {
