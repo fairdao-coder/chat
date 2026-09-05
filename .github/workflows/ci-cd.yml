@@ -473,6 +473,52 @@ jobs:
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$HOME/Library/MobileDevice/Provisioning Profiles/embedded.mobileprovision"
 
+      # --- Configure manual signing ---------------------------------------
+      # Flutter 預設為自動簽名 + iPhone Developer 身份；CI 僅匯入「發佈」憑證，
+      # archive 時會找不到 Development 憑證而失敗（TestFlight 須用發佈憑證）。
+      # 此步驟改為手動簽名，並從 .mobileprovision 取出 Team / Profile UUID 寫入。
+      - name: Configure manual signing
+        if: >-
+          ${{ env.IOS_DIST_CERT_BASE64 != '' &&
+              env.IOS_DIST_CERT_PASSWORD != '' &&
+              env.IOS_PROVISIONING_PROFILE_BASE64 != '' }}
+        env:
+          IOS_DIST_CERT_BASE64: ${{ secrets.IOS_DIST_CERT_BASE64 }}
+          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          PROFILE="$HOME/Library/MobileDevice/Provisioning Profiles/embedded.mobileprovision"
+          if [ ! -f "$PROFILE" ]; then
+            echo "::error::Provisioning profile not found"; exit 1
+          fi
+          PLIST=$(security cms -D -i "$PROFILE" 2>/dev/null)
+          TEAM=$(printf '%s' "$PLIST" | plutil -extract TeamIdentifier.0 raw -)
+          if [ -z "$TEAM" ] && [ -n "${IOS_TEAM_ID:-}" ]; then TEAM="$IOS_TEAM_ID"; fi
+          if [ -z "$TEAM" ]; then
+            echo "::error::無法從描述檔取得 Team ID，請設定 IOS_TEAM_ID secret"; exit 1
+          fi
+          PROFILE_UUID=$(printf '%s' "$PLIST" | plutil -extract UUID raw -)
+          echo "Team ID: $TEAM   Profile UUID: $PROFILE_UUID"
+          # 切換 Xcode 工程為手動簽名 + 發佈身份
+          PBX="ios/Runner.xcodeproj/project.pbxproj"
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PBX"
+          sed -i '' 's/"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "iPhone Developer";/"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";/g' "$PBX"
+          # ExportOptions 的 teamID 必須與描述檔一致
+          plutil -replace teamID -string "$TEAM" ios/ExportOptions.plist
+          # DEVELOPMENT_TEAM / PROVISIONING_PROFILE_SPECIFIER 在工程 pbxproj 未定義，
+          # 故由 Release.xcconfig 提供（xcconfig 值會生效）。
+          XCCONFIG="ios/Flutter/Release.xcconfig"
+          {
+            echo ""
+            echo "DEVELOPMENT_TEAM = $TEAM"
+            echo "PROVISIONING_PROFILE_SPECIFIER = $PROFILE_UUID"
+            echo "CODE_SIGN_STYLE = Manual"
+            echo "CODE_SIGN_IDENTITY = Apple Distribution"
+          } >> "$XCCONFIG"
+          echo "::notice title=iOS signing::已切換為手動簽名（team $TEAM, profile $PROFILE_UUID）"
+
       # --- Build ------------------------------------------------------------
       # Signed path uses `flutter build ipa` (which runs an xcodebuild archive
       # + export). Unsigned path uses `flutter build ios --no-codesign`.
@@ -493,9 +539,6 @@ jobs:
             args+=(--dart-define=API_BASE="${{ vars.PUBLIC_API_BASE }}")
           fi
           if [ -f "$HOME/Library/MobileDevice/Provisioning Profiles/embedded.mobileprovision" ]; then
-            if [ -n "${IOS_TEAM_ID:-}" ]; then
-              plutil -replace teamID -string "$IOS_TEAM_ID" ios/ExportOptions.plist
-            fi
             args+=(--export-options-plist=ios/ExportOptions.plist)
           fi
           flutter build ipa "${args[@]}"
