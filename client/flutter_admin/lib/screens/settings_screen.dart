@@ -187,6 +187,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
 
+    final iceServersCard = _IceServersCard(
+      settings: _settings!,
+      canWrite: _canWrite,
+      onChanged: () => setState(() {}),
+    );
+
     final items = <_SettingItem>[
       _SettingItem(
         icon: Icons.visibility,
@@ -272,6 +278,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               skinCard,
               defaultColumnCard,
+              iceServersCard,
               Card(
                     child: Column(
                       children: [
@@ -374,6 +381,245 @@ class _SettingRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// WebRTC ICE 服務器（STUN/TURN）編輯卡片。
+///
+/// 直接讀寫 [settings.iceServers]（即 [SystemSettingsDto.rtConfig]），
+/// 保存時隨同其他設置一併提交。外部替換 [settings]（加載/重置/保存回傳）時，
+/// 若 [rtConfig] 實際改變則重新同步，避免編輯中丟失焦點。
+class _IceServersCard extends StatefulWidget {
+  final SystemSettingsDto settings;
+  final bool canWrite;
+  final VoidCallback onChanged;
+  const _IceServersCard({
+    required this.settings,
+    required this.canWrite,
+    required this.onChanged,
+  });
+
+  @override
+  State<_IceServersCard> createState() => _IceServersCardState();
+}
+
+class _IceServersCardState extends State<_IceServersCard> {
+  late List<IceServerEntry> _servers;
+  late List<TextEditingController> _urlCtrls;
+  late List<TextEditingController> _userCtrls;
+  late List<TextEditingController> _credCtrls;
+
+  @override
+  void initState() {
+    super.initState();
+    _servers = widget.settings.iceServers
+        .map((e) => IceServerEntry(
+              urls: List.from(e.urls),
+              username: e.username,
+              credential: e.credential,
+              credentialType: e.credentialType,
+            ))
+        .toList();
+    _buildControllers();
+  }
+
+  void _buildControllers() {
+    _urlCtrls =
+        _servers.map((e) => TextEditingController(text: e.urls.join(', '))).toList();
+    _userCtrls =
+        _servers.map((e) => TextEditingController(text: e.username ?? '')).toList();
+    _credCtrls =
+        _servers.map((e) => TextEditingController(text: e.credential ?? '')).toList();
+  }
+
+  void _disposeControllers() {
+    for (final c in _urlCtrls) c.dispose();
+    for (final c in _userCtrls) c.dispose();
+    for (final c in _credCtrls) c.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _IceServersCard old) {
+    super.didUpdateWidget(old);
+    // 外部資料（加載/重置/保存回傳）改變時重新同步；編輯過程中 rtConfig 原地變更不觸發。
+    if (old.settings.rtConfig != widget.settings.rtConfig) {
+      _disposeControllers();
+      _servers = widget.settings.iceServers
+          .map((e) => IceServerEntry(
+                urls: List.from(e.urls),
+                username: e.username,
+                credential: e.credential,
+                credentialType: e.credentialType,
+              ))
+          .toList();
+      _buildControllers();
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposeControllers();
+    super.dispose();
+  }
+
+  void _sync() {
+    widget.settings.iceServers = _servers;
+    widget.onChanged();
+  }
+
+  void _setUrls(int i, String text) {
+    _servers[i].urls = text
+        .split(RegExp(r'[,\s;]+'))
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    _sync();
+  }
+
+  void _add() {
+    setState(() {
+      _servers.add(IceServerEntry());
+      _urlCtrls.add(TextEditingController());
+      _userCtrls.add(TextEditingController());
+      _credCtrls.add(TextEditingController());
+    });
+    _sync();
+  }
+
+  void _remove(int i) {
+    setState(() {
+      _servers.removeAt(i);
+      _urlCtrls[i].dispose();
+      _userCtrls[i].dispose();
+      _credCtrls[i].dispose();
+      _urlCtrls.removeAt(i);
+      _userCtrls.removeAt(i);
+      _credCtrls.removeAt(i);
+    });
+    _sync();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.dns_outlined, color: AppTheme.primary),
+                const SizedBox(width: 8),
+                const Text('WebRTC 實時通信（STUN/TURN）',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              '配置語音/視頻通話使用的 ICE 服務器。僅填 STUN 即可在同網絡通話；'
+              '跨網絡（如手機流量與 WiFi）建議配置 TURN 中繼。留空則客戶端回落默認 STUN。',
+              style: TextStyle(color: AppTheme.textSub, fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            for (var i = 0; i < _servers.length; i++) ...[
+              if (i > 0) const Divider(height: 16),
+              _serverEditor(i),
+            ],
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: widget.canWrite ? _add : null,
+              icon: const Icon(Icons.add),
+              label: const Text('添加服務器'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _serverEditor(int i) {
+    final s = _servers[i];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('服務器 ${i + 1}', style: const TextStyle(fontWeight: FontWeight.w600)),
+            const Spacer(),
+            if (widget.canWrite)
+              IconButton(
+                onPressed: () => _remove(i),
+                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                tooltip: '刪除',
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _urlCtrls[i],
+          enabled: widget.canWrite,
+          decoration: const InputDecoration(
+            labelText: '地址（多個以逗號分隔）',
+            prefixIcon: Icon(Icons.link),
+            hintText: 'stun:stun.l.google.com:19302 或 turn:turn.example.com:3478?transport=udp',
+          ),
+          onChanged: (v) => _setUrls(i, v),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _userCtrls[i],
+                enabled: widget.canWrite,
+                decoration: const InputDecoration(
+                  labelText: '用戶名（TURN 選填）',
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+                onChanged: (v) {
+                  s.username = v.trim().isEmpty ? null : v.trim();
+                  _sync();
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: _credCtrls[i],
+                enabled: widget.canWrite,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: '憑證（TURN 選填）',
+                  prefixIcon: Icon(Icons.key_outlined),
+                ),
+                onChanged: (v) {
+                  s.credential = v.trim().isEmpty ? null : v.trim();
+                  _sync();
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String?>(
+          value: s.credentialType,
+          decoration: const InputDecoration(
+            labelText: '憑證類型',
+            prefixIcon: Icon(Icons.badge_outlined),
+          ),
+          items: const [
+            DropdownMenuItem<String?>(value: null, child: Text('密碼（默認）')),
+            DropdownMenuItem<String?>(value: 'password', child: Text('password')),
+            DropdownMenuItem<String?>(value: 'oauth', child: Text('oauth')),
+          ],
+          onChanged: (v) {
+            s.credentialType = v;
+            _sync();
+          },
+        ),
+      ],
     );
   }
 }

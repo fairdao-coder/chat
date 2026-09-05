@@ -132,14 +132,11 @@ class _BannerItemState extends ConsumerState<_BannerItem> {
       widget.onDismiss();
       return;
     }
-    // 先觸發 dismiss，再於下一幀導航，避免在 provider 狀態變化引發的 rebuild 過程中
-    // 同步調用 context.go，降低 context / Riverpod 生命週期競態風險。
+    // 先導航、再 dismiss：若先 dismiss 會立即把本 item 從 provider 中移除並 dispose，
+    // 導致下方 addPostFrameCallback 內 mounted 已變為 false，跳轉被靜默丟棄。
+    final query = m.isGroup ? 'groupId=$targetId' : 'friendId=$targetId';
+    context.go('/chat?$query');
     widget.onDismiss();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final query = m.isGroup ? 'groupId=$targetId' : 'friendId=$targetId';
-      context.go('/chat?$query');
-    });
   }
 
   @override

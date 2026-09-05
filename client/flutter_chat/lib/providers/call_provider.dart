@@ -7,6 +7,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../data/signalr_client.dart';
 import '../models/call_signal.dart';
 import '../providers/core_providers.dart';
+import '../providers/features_provider.dart';
 
 /// 當前通話階段。
 enum CallStatus { idle, outgoing, incoming, connecting, connected }
@@ -65,13 +66,14 @@ class CallState {
 
 final callProvider =
     StateNotifierProvider<CallController, CallState>((ref) {
-  return CallController(ref.read(hubProvider));
+  return CallController(ref);
 });
 
 /// 管理一次 WebRTC 語音/視頻通話：本地/遠端媒體流、PeerConnection、與 SignalR 的信令交換。
 ///
 /// 設計為單例（非 family）：全局只有一個活躍通話，來電由頂層 [CallOverlay] 統一呈現。
 class CallController extends StateNotifier<CallState> {
+  final Ref _ref;
   final ChatHubClient _hub;
 
   RTCPeerConnection? _pc;
@@ -79,6 +81,12 @@ class CallController extends StateNotifier<CallState> {
   final RTCVideoRenderer localRenderer = RTCVideoRenderer();
   final RTCVideoRenderer remoteRenderer = RTCVideoRenderer();
   bool _renderersReady = false;
+
+  // 早於 remoteDescription 到達的 ICE candidate 會被 addCandidate 拒絕，
+  // 而早到的 host candidate 在區域網直連場景極常見（產生很快）。
+  // 這裡先緩存，待 setRemoteDescription 後再統一加入，避免 candidate 被丟失。
+  final List<RTCIceCandidate> _pendingCandidates = [];
+  bool _remoteDescriptionSet = false;
 
   StreamSubscription<CallInvite>? _subInvite;
   StreamSubscription<String>? _subAccepted;
@@ -90,7 +98,10 @@ class CallController extends StateNotifier<CallState> {
   Timer? _noAnswerTimer;
   Timer? _durationTimer;
 
-  CallController(this._hub) : super(const CallState()) {
+  CallController(Ref ref)
+      : _ref = ref,
+        _hub = ref.read(hubProvider),
+        super(const CallState()) {
     _init();
   }
 
@@ -208,13 +219,21 @@ class CallController extends StateNotifier<CallState> {
 
   // ---------------- PeerConnection ----------------
 
+  /// 構建 WebRTC ICE 配置。
+  ///
+  /// 優先使用後台下發的 ICE 服務器列表（STUN/TURN）。
+  /// 未配置時回落：僅保留區域網直連能力（host candidate），不依賴外網 STUN，
+  /// 使純內網/無外網環境也能正常建立語音視頻通話。
+  Map<String, dynamic> _iceConfig() {
+    final features = _ref.read(featuresProvider).valueOrNull;
+    final iceServers = features?.iceServers ?? const <Map<String, dynamic>>[];
+    // 空列表表示不配置任何 STUN/TURN，讓 WebRTC 僅靠 host candidate 完成區域網直連。
+    return {'iceServers': iceServers};
+  }
+
   Future<void> _createPeer() async {
-    _pc = await createPeerConnection({
-      'iceServers': [
-        {'urls': 'stun:stun.l.google.com:19302'},
-        {'urls': 'stun:stun1.l.google.com:19302'},
-      ],
-    });
+    _pc = await createPeerConnection(_iceConfig());
+    _remoteDescriptionSet = false;
     _pc!.onIceCandidate = (candidate) async {
       if (state.callId != null && mounted) {
         await _hub.sendIceCandidate(state.callId!, jsonEncode(candidate.toMap()));
@@ -270,6 +289,8 @@ class CallController extends StateNotifier<CallState> {
       final m = jsonDecode(sdpJson) as Map<String, dynamic>;
       final desc = RTCSessionDescription(m['sdp'] as String?, m['type'] as String?);
       await _pc!.setRemoteDescription(desc);
+      _remoteDescriptionSet = true;
+      await _flushPendingCandidates();
       final answer = await _pc!.createAnswer();
       await _pc!.setLocalDescription(answer);
       await _hub.sendAnswer(callId, jsonEncode(answer.toMap()));
@@ -286,6 +307,8 @@ class CallController extends StateNotifier<CallState> {
       final m = jsonDecode(sdpJson) as Map<String, dynamic>;
       final desc = RTCSessionDescription(m['sdp'] as String?, m['type'] as String?);
       await _pc!.setRemoteDescription(desc);
+      _remoteDescriptionSet = true;
+      await _flushPendingCandidates();
     } catch (_) {
       // ignore malformed answer
     }
@@ -301,9 +324,29 @@ class CallController extends StateNotifier<CallState> {
         m['sdpMid'] as String?,
         m['sdpMLineIndex'] as int?,
       );
+      // 遠端 candidate 早於 remoteDescription 到達時先緩存，
+      // 否則 addCandidate 會失敗導致該 candidate 永久丟失（區域網 host candidate 極快）。
+      if (!_remoteDescriptionSet) {
+        _pendingCandidates.add(cand);
+        return;
+      }
       await _pc!.addCandidate(cand);
     } catch (_) {
       // ignore malformed candidate
+    }
+  }
+
+  /// 將 remoteDescription 就緒前緩存的 candidate 統一加入。
+  Future<void> _flushPendingCandidates() async {
+    if (_pc == null || _pendingCandidates.isEmpty) return;
+    final pending = List<RTCIceCandidate>.from(_pendingCandidates);
+    _pendingCandidates.clear();
+    for (final cand in pending) {
+      try {
+        await _pc!.addCandidate(cand);
+      } catch (_) {
+        // ignore malformed candidate
+      }
     }
   }
 
@@ -371,6 +414,8 @@ class CallController extends StateNotifier<CallState> {
     _durationTimer?.cancel();
     _pc?.close();
     _pc = null;
+    _pendingCandidates.clear();
+    _remoteDescriptionSet = false;
     _localStream?.getTracks().forEach((t) => t.stop());
     _localStream = null;
     localRenderer.srcObject = null;

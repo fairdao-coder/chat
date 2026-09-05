@@ -47,13 +47,14 @@ public class SystemSettingsController : ControllerBase
         var s = await GetOrCreateAsync();
         s.ChatConfig = req.ChatConfig;
         s.OtherConfig = req.OtherConfig;
+        s.RtConfig = req.RtConfig;
         s.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
         await _audit.LogAsync(
             "settings.update",
             target: "system",
-            detail: $"chatConfig={s.ChatConfig},otherConfig={s.OtherConfig}");
+            detail: $"chatConfig={s.ChatConfig},otherConfig={s.OtherConfig},rtConfig={(s.RtConfig == null ? "default" : "set")}");
 
         return Ok(ToDto(s));
     }
@@ -74,5 +75,5 @@ public class SystemSettingsController : ControllerBase
     }
 
     private static SystemSettingsDto ToDto(SystemSettings s) =>
-        new(s.ChatConfig, s.OtherConfig, s.UpdatedAt);
+        new(s.ChatConfig, s.OtherConfig, s.RtConfig, s.UpdatedAt);
 }

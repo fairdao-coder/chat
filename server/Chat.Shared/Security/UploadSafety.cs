@@ -82,6 +82,16 @@ public static class UploadSafety
     {
         if (!Allowed.TryGetValue(extension, out var signatures)) return true;
 
+        // MP4 容器族（.m4a / .mp4）：'ftyp' 標籤位於偏移 4（前 4 字節為 box 大小），
+        // 不在文件開頭，須跳過偏移再比對。
+        if ((extension.Equals(".m4a", StringComparison.OrdinalIgnoreCase) ||
+             extension.Equals(".mp4", StringComparison.OrdinalIgnoreCase)) &&
+            head.Length >= 8 &&
+            head.Slice(4, 4).SequenceEqual(new byte[] { 0x66, 0x74, 0x79, 0x70 }))
+        {
+            return true;
+        }
+
         foreach (var sig in signatures)
         {
             if (head.Length >= sig.Length && head[..sig.Length].SequenceEqual(sig))
@@ -91,13 +101,15 @@ public static class UploadSafety
     }
 
     /// <summary>
-    /// 讀取文件頭並校驗魔數。僅讀取前 16 字節，避免為校驗而緩衝整個文件。
+    /// 讀取文件頭並校驗魔數。MP4 容器族的 'ftyp' 位於偏移 4，故至少讀取 8 字節，
+    /// 避免為校驗而緩衝整個文件。
     /// </summary>
     public static async Task<bool> SniffAsync(Stream stream, string extension, CancellationToken ct = default)
     {
         if (!Allowed.TryGetValue(extension, out var signatures)) return true;
 
-        var maxLen = signatures.Max(s => s.Length);
+        // 容器類（.m4a/.mp4）的 'ftyp' 在偏移 4，至少讀 8 字節才覆蓋得到。
+        var maxLen = Math.Max(signatures.Max(s => s.Length), 8);
         var buffer = new byte[maxLen];
         var read = await stream.ReadAtLeastAsync(buffer, maxLen, throwOnEndOfStream: false, ct);
         if (read == 0) return false;

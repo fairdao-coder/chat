@@ -155,11 +155,16 @@ class SystemSettingsDto {
   /// 其他配置 JSON：{"DefaultColumnId":"xxx"}；null 表示無。
   String? otherConfig;
 
+  /// WebRTC 實時通信配置 JSON：{"IceServers":[{"Urls":[...],"Username":...,"Credential":...,"CredentialType":...}]}；
+  /// null 表示未配置（客戶端回落默認 STUN）。
+  String? rtConfig;
+
   final DateTime? updatedAt;
 
   SystemSettingsDto({
     required this.chatConfig,
     this.otherConfig,
+    this.rtConfig,
     this.updatedAt,
   });
 
@@ -210,10 +215,33 @@ class SystemSettingsDto {
     otherConfig = m.isEmpty ? null : jsonEncode(m);
   }
 
+  /// WebRTC ICE 服務器列表（STUN/TURN）的強類型視圖，供後臺編輯界面使用。
+  /// 解析失敗或為空時返回空列表（保存後客戶端回落默認 STUN）。
+  List<IceServerEntry> get iceServers {
+    if (rtConfig == null || rtConfig!.trim().isEmpty) return [];
+    try {
+      final m = jsonDecode(rtConfig!) as Map<String, dynamic>?;
+      final list = m?['IceServers'] as List<dynamic>?;
+      if (list == null) return [];
+      return list
+          .map((e) => IceServerEntry.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  set iceServers(List<IceServerEntry> v) {
+    rtConfig = jsonEncode({
+      'IceServers': v.map((e) => e.toJson()).toList(),
+    });
+  }
+
   factory SystemSettingsDto.fromJson(Map<String, dynamic> j) =>
       SystemSettingsDto(
         chatConfig: j['chatConfig'] as String? ?? '{}',
         otherConfig: j['otherConfig'] as String?,
+        rtConfig: j['rtConfig'] as String?,
         updatedAt:
             j['updatedAt'] == null ? null : DateTime.tryParse(j['updatedAt']),
       );
@@ -221,6 +249,7 @@ class SystemSettingsDto {
   Map<String, dynamic> toJson() => {
         'chatConfig': chatConfig,
         'otherConfig': otherConfig,
+        'rtConfig': rtConfig,
       };
 
   SystemSettingsDto copyWith({
@@ -232,11 +261,13 @@ class SystemSettingsDto {
     bool? allowRegister,
     String? chatConfig,
     String? otherConfig,
+    String? rtConfig,
     DateTime? updatedAt,
   }) {
     final s = SystemSettingsDto(
       chatConfig: chatConfig ?? this.chatConfig,
       otherConfig: otherConfig ?? this.otherConfig,
+      rtConfig: rtConfig ?? this.rtConfig,
       updatedAt: updatedAt ?? this.updatedAt,
     );
     if (showOnlineStatus != null) s._showOnlineStatus = showOnlineStatus;
@@ -247,6 +278,41 @@ class SystemSettingsDto {
     if (allowRegister != null) s._allowRegister = allowRegister;
     return s;
   }
+}
+
+/// 單個 ICE 服務器（STUN/TURN）編輯模型，對應後端 [IceServer] 實體。
+class IceServerEntry {
+  /// 服務器地址，支持多值（如多 host）；TURN 亦可帶 ?transport=udp 等查詢。
+  List<String> urls;
+  String? username;
+  String? credential;
+
+  /// 憑證類型："password" 或 "oauth"；null 表示按 password 處理。
+  String? credentialType;
+
+  IceServerEntry({
+    this.urls = const [],
+    this.username,
+    this.credential,
+    this.credentialType,
+  });
+
+  factory IceServerEntry.fromJson(Map<String, dynamic> j) => IceServerEntry(
+        urls: (j['Urls'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [],
+        username: j['Username'] as String?,
+        credential: j['Credential'] as String?,
+        credentialType: j['CredentialType'] as String?,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'Urls': urls,
+        if (username != null) 'Username': username,
+        if (credential != null) 'Credential': credential,
+        if (credentialType != null) 'CredentialType': credentialType,
+      };
 }
 
 class DiscoverColumnDto {

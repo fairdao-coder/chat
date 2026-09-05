@@ -287,7 +287,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       await _uploadAndSend(
         bytes: bytes,
         path: null,
-        name: 'voice_${DateTime.now().microsecondsSinceEpoch}.m4a',
+        name: kIsWeb
+            ? 'voice_${DateTime.now().microsecondsSinceEpoch}.webm'
+            : 'voice_${DateTime.now().microsecondsSinceEpoch}.m4a',
         kind: MessageType.voice,
         durationSec: _recordSeconds,
       );

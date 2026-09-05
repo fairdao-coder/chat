@@ -30,6 +30,6 @@ public class FeaturesController : ControllerBase
         if (s is null)
             return Ok(new FeatureSettingsDto(new ChatFeatureConfig().ToJson()));
 
-        return Ok(new FeatureSettingsDto(s.ChatConfig, s.OtherConfig));
+        return Ok(new FeatureSettingsDto(s.ChatConfig, s.OtherConfig, s.RtConfig));
     }
 }

@@ -45,6 +45,7 @@ public static class DatabaseMigrator
         await ExecuteAsync(conn, """
             ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "ChatConfig" text NOT NULL DEFAULT '{}';
             ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "OtherConfig" text;
+            ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "RtConfig" text;
             """);
 
         // 3) 篩出仍殘留的舊欄位。
