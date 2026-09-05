@@ -105,6 +105,8 @@ using (var scope = app.Services.CreateScope())
         db, scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("AdminServer.Migrate"));
     await DatabaseMigrator.MigrateMessagesAsync(
         db, scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("AdminServer.Migrate"));
+    await DatabaseMigrator.MigrateUsersAsync(
+        db, scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("AdminServer.Migrate"));
     await SeedAsync(db, builder.Configuration, scope.ServiceProvider.GetRequiredService<ILoggerFactory>());
 }
 

@@ -15,6 +15,7 @@ import 'pages/main_shell.dart';
 import 'pages/scan_page.dart';
 import 'pages/settings_page.dart';
 import 'pages/my_qr_page.dart';
+import 'pages/share_profile_page.dart';
 import 'pages/webview_page.dart';
 import 'pages/mini_app_page.dart';
 import 'providers/auth_provider.dart';
@@ -180,10 +181,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           final isGroup = groupId != null;
           final name = state.uri.queryParameters['name'];
           final String id = isGroup ? groupId : (friendId ?? '');
+          final service = state.uri.queryParameters['service'] == '1';
           return ChatPage(
             target: ChatTarget(
               id: id,
               isGroup: isGroup,
+              isService: service,
             ),
             title: name,
           );
@@ -208,6 +211,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/my-qr',
         builder: (context, state) => const MyQrPage(),
+      ),
+      GoRoute(
+        path: '/share-profile',
+        builder: (context, state) => const ShareProfilePage(),
       ),
       GoRoute(
         path: '/webview',

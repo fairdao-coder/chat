@@ -267,6 +267,18 @@ class ApiClient {
     await _req(() => _dio.delete('/api/friends/$friendId'));
   }
 
+  /// 在線客服列表（客服帳號免好友關係即可私聊）。用戶「聯繫客服」時展示，供其手動選擇。
+  Future<List<UserDto>> getServiceAgents() async {
+    final data = await _req(() => _dio.get('/api/users/service-list'));
+    return (data as List).map((e) => UserDto.fromJson(e)).toList();
+  }
+
+  /// 按用戶 Id 取得公開資料（含客服帳號），用於進入私聊前確認對方資訊。
+  Future<UserDto> getUserProfile(String id) async {
+    final data = await _req(() => _dio.get('/api/users/$id/profile'));
+    return UserDto.fromJson(data as Map<String, dynamic>);
+  }
+
   // ---------- Groups ----------
 
   Future<GroupDto> createGroup(String name, List<String> memberIds) async {

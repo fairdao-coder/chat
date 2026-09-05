@@ -183,6 +183,38 @@ public static class DatabaseMigrator
         logger.LogInformation("DiscoverColumns 多語言標題欄位已就緒。");
     }
 
+    /// <summary>
+    /// 客服帳號改由獨立 ServiceAgents 表承載：清理舊的 Users.IsService 標記列，並建立 ServiceAgents 表。
+    /// 兩步皆冪等，新庫自動跳過。
+    /// </summary>
+    public static async Task MigrateUsersAsync(AdminDbContext db, ILogger logger)
+    {
+        var conn = db.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open)
+            await conn.OpenAsync();
+
+        // 1) 清理舊的 Users.IsService 標記列（已遷移到獨立 ServiceAgents 表）。
+        await ExecuteAsync(conn, """
+            DROP INDEX IF EXISTS "IX_Users_IsService";
+            ALTER TABLE "Users" DROP COLUMN IF EXISTS "IsService";
+            """);
+
+        // 2) 客服帳號獨立表：僅客服用戶入表。冪等。
+        await ExecuteAsync(conn, """
+            CREATE TABLE IF NOT EXISTS "ServiceAgents" (
+                "Id" uuid NOT NULL PRIMARY KEY,
+                "UserId" uuid NOT NULL,
+                "CreatedAt" timestamp with time zone NOT NULL
+            );
+            """);
+
+        await ExecuteAsync(conn, """
+            CREATE UNIQUE INDEX IF NOT EXISTS "IX_ServiceAgents_UserId" ON "ServiceAgents" ("UserId");
+            """);
+
+        logger.LogInformation("ServiceAgents 客服帳號表已就緒（Users.IsService 標記已移除）。");
+    }
+
     /// 讀取 SystemSettings 表的現有欄位名（大小寫不敏感集合）。
     private static async Task<HashSet<string>> QueryColumnNamesAsync(DbConnection conn)
     {

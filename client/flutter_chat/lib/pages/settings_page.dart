@@ -11,6 +11,7 @@ import '../providers/core_providers.dart';
 import '../providers/locale_provider.dart';
 import '../providers/theme_mode_provider.dart';
 import '../widgets/app_avatar.dart';
+import '../widgets/service_agents_sheet.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -243,6 +244,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     subtitle: Text(context.tr('扫码添加我为好友')),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => context.push('/my-qr'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.person_add_alt_1_outlined),
+                    title: Text(context.tr('分享我的名片')),
+                    subtitle: Text(context.tr('通过链接发起对话')),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/share-profile'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.support_agent_rounded),
+                    title: Text(context.tr('联系客服')),
+                    subtitle: Text(context.tr('向在线客服咨询')),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => ServiceAgentsSheet.show(context),
                   ),
                   ListTile(
                     leading: const Icon(Icons.delete_sweep_outlined),

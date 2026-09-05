@@ -85,4 +85,43 @@ public class UsersController : ApiControllerBase
         var online = await _presence.GetOnlineUsers(friendIds.Select(x => x.ToString()));
         return Ok(online);
     }
+
+    /// <summary>
+    /// 在線客服列表。用戶在「聯繫客服」時由此取得當前可接入的客服帳號，再手動選擇其一進入私聊。
+    /// 客服為普通用戶，僅當其 Id 出現在 ServiceAgents 表時才被視為客服；與其私聊豁免好友關係（見 MessageService）。
+    /// </summary>
+    [HttpGet("service-list")]
+    public async Task<IActionResult> ServiceList(CancellationToken ct = default)
+    {
+        var allService = await _db.ServiceAgents
+            .AsNoTracking()
+            .Join(_db.Users, s => s.UserId, u => u.Id,
+                (s, u) => new { u.Id, u.UserName, u.NickName, u.AvatarUrl, u.LastSeenAt })
+            .ToListAsync(ct);
+        if (allService.Count == 0) return Ok(Array.Empty<object>());
+
+        // 用 PresenceTracker 過濾出當前在線者；離線客服不對用戶開放接入。
+        var onlineIds = (await _presence.GetOnlineUsers(allService.Select(x => x.Id.ToString())))
+            .ToHashSet();
+        var list = allService
+            .Where(x => onlineIds.Contains(x.Id.ToString()))
+            .Select(x => new UserDto(x.Id, x.UserName, x.NickName, x.AvatarUrl, true, x.LastSeenAt))
+            .ToList();
+        return Ok(list);
+    }
+
+    /// <summary>
+    /// 按用戶 Id 取得公開資料（含客服帳號）。用於用戶選定客服後，進入私聊前確認對方資訊。
+    /// </summary>
+    [HttpGet("{id:guid}/profile")]
+    public async Task<IActionResult> Profile(Guid id, CancellationToken ct = default)
+    {
+        var u = await _db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (u == null) return NotFound();
+        // 是否客服：依賴獨立 ServiceAgents 表是否存在對應記錄。
+        var isService = await _db.ServiceAgents.AsNoTracking().AnyAsync(s => s.UserId == id, ct);
+        return Ok(new UserDto(u.Id, u.UserName, u.NickName, u.AvatarUrl, isService, u.LastSeenAt));
+    }
 }

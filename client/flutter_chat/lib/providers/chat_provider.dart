@@ -15,15 +15,22 @@ import 'core_providers.dart';
 class ChatTarget {
   final String id; // group id, or friend (peer) id
   final bool isGroup;
-  const ChatTarget({required this.id, required this.isGroup});
+  /// 是否為客服會話（客服帳號免好友關係，UI 隱藏「加好友」並顯示客服標識）。
+  final bool isService;
+  const ChatTarget(
+      {required this.id, required this.isGroup, this.isService = false});
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ChatTarget && other.id == id && other.isGroup == isGroup;
+      other is ChatTarget &&
+          other.id == id &&
+          other.isGroup == isGroup &&
+          other.isService == isService;
 
   @override
-  int get hashCode => id.hashCode ^ (isGroup ? 1 : 0);
+  int get hashCode =>
+      id.hashCode ^ (isGroup ? 1 : 0) ^ (isService ? 2 : 0);
 }
 
 final chatProvider =

@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../data/api_client.dart';
 import '../l10n/app_localizations.dart';
+import '../config/app_config.dart';
 import '../providers/auth_provider.dart';
 import '../providers/config_link_provider.dart';
 import '../providers/core_providers.dart';
@@ -18,10 +19,12 @@ bool get _cameraSupported => kIsMobilePlatform;
 
 /// 掃一掃頁面。
 ///
-/// 支援三類掃描結果：
+/// 支援四類掃描結果：
 ///   1. 配置鏈接 `fairchat://config?...` -> 彈出確認對話框導入配置；
-///   2. http(s) 網頁鏈接            -> 調起外部瀏覽器打開；
-///   3. 其他純文本                  -> 以對話框展示文本內容。
+///   2. 名片鏈接 `fairchat://user/<id>` -> 發起好友請求；
+///   3. 對話鏈接 `fairchat://chat/<id>` -> 跳轉私聊頁；
+///   4. http(s) 網頁鏈接            -> 調起外部瀏覽器打開；
+///   5. 其他純文本                  -> 以對話框展示文本內容。
 class ScanPage extends ConsumerStatefulWidget {
   const ScanPage({super.key});
 
@@ -165,6 +168,18 @@ class _ScanPageState extends ConsumerState<ScanPage> {
         return;
       }
       await _handleUserCard(userId);
+      return;
+    }
+
+    if (uri != null && uri.scheme == 'fairchat' && uri.host == 'chat') {
+      // 1.8) 發起對話鏈接：fairchat://chat/<id> -> 跳轉私聊頁。
+      final chatId = AppConfig.parseChatLink(uri);
+      if (chatId == null) {
+        if (mounted) _resetScan();
+        return;
+      }
+      await ref.read(configLinkProvider.notifier).handleLink(uri);
+      if (mounted) context.pop();
       return;
     }
 

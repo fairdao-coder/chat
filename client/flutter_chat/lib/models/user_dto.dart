@@ -5,6 +5,8 @@ class UserDto {
   final String? avatarUrl;
   final bool isOnline;
   final DateTime? lastSeenAt;
+  /// 是否為客服帳號（可免好友關係直接私聊）。
+  final bool isService;
 
   const UserDto({
     required this.id,
@@ -13,6 +15,7 @@ class UserDto {
     this.avatarUrl,
     this.isOnline = false,
     this.lastSeenAt,
+    this.isService = false,
   });
 
   factory UserDto.fromJson(Map<String, dynamic> j) => UserDto(
@@ -24,6 +27,7 @@ class UserDto {
         lastSeenAt: j['lastSeenAt'] == null
             ? null
             : DateTime.parse(j['lastSeenAt'] as String),
+        isService: j['isService'] as bool? ?? false,
       );
 
   Map<String, dynamic> toJson() => {
@@ -32,6 +36,7 @@ class UserDto {
         'nickName': nickName,
         'avatarUrl': avatarUrl,
         'isOnline': isOnline,
+        'isService': isService,
         'lastSeenAt': lastSeenAt?.toIso8601String(),
       };
 
@@ -42,6 +47,7 @@ class UserDto {
     String? avatarUrl,
     bool? isOnline,
     DateTime? lastSeenAt,
+    bool? isService,
   }) =>
       UserDto(
         id: id ?? this.id,
@@ -50,5 +56,6 @@ class UserDto {
         avatarUrl: avatarUrl ?? this.avatarUrl,
         isOnline: isOnline ?? this.isOnline,
         lastSeenAt: lastSeenAt ?? this.lastSeenAt,
+        isService: isService ?? this.isService,
       );
 }

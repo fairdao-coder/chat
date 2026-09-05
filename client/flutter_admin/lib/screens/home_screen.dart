@@ -11,6 +11,7 @@ import 'audit_screen.dart';
 import 'accounts_screen.dart';
 import 'discover_columns_screen.dart';
 import 'settings_screen.dart';
+import 'service_accounts_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -30,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _dests = const [
       Dest('儀表盤', Icons.dashboard, 'dashboard.view', DashboardScreen()),
       Dest('用戶管理', Icons.people, 'users.read', UsersScreen()),
+      Dest('客服管理', Icons.support_agent_rounded, 'users.read', ServiceAccountsScreen()),
       Dest('角色管理', Icons.badge, 'roles.read', RolesScreen()),
       Dest('審計日誌', Icons.history, 'audit.read', AuditScreen()),
       Dest('管理員', Icons.manage_accounts, 'admins.read', AccountsScreen()),

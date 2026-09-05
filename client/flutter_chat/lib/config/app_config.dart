@@ -157,6 +157,35 @@ class AppConfig {
     );
   }
 
+  /// 解析「发起对话」深链，返回目标用户 id。
+  ///
+  /// 支持的形态：
+  ///   fairchat://chat/<userId>            （扫码 / 点链接直接发起私聊）
+  ///   fairchat://config?chat=<userId>     （配置链接携带的私聊参数）
+  ///   https://host/?chat=<userId>         （Web 分享链接）
+  ///
+  /// 返回 null 表示不是有效的「发起对话」链接。
+  static String? parseChatLink(Uri uri) {
+    final scheme = uri.scheme.toLowerCase();
+    final host = uri.host.toLowerCase();
+    final path = uri.path.toLowerCase();
+
+    // fairchat://chat/<id>
+    if (scheme == 'fairchat' && (host == 'chat' || path.startsWith('/chat'))) {
+      final id = uri.pathSegments.isNotEmpty
+          ? uri.pathSegments.last
+          : uri.queryParameters['id'];
+      final t = id?.trim();
+      return (t != null && t.isNotEmpty) ? t : null;
+    }
+
+    // 配置 / Web 链接里的 chat 查询参数
+    final chat = uri.queryParameters['chat']?.trim();
+    if (chat != null && chat.isNotEmpty) return chat;
+
+    return null;
+  }
+
   /// 应用 [parseLink] 的解析结果并持久化。
   /// 返回 api 地址是否变化（变化时调用方需要 invalidate 依赖旧地址的 provider）。
   static Future<bool> applyLink(

@@ -12,6 +12,7 @@ public class AdminDbContext : DbContext
     // 注意：所有表（含聊天表）統一由 AdminServer 負責建表，ChatServer 僅使用不建表。
     // 因此這裡的索引配置即為物理 schema；ChatServer 側的對等配置僅供其查詢計劃參考。
     public DbSet<AppUser> Users => Set<AppUser>();
+    public DbSet<ServiceAgent> ServiceAgents => Set<ServiceAgent>();
     public DbSet<Message> Messages => Set<Message>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<Friendship> Friendships => Set<Friendship>();
@@ -36,6 +37,13 @@ public class AdminDbContext : DbContext
             e.HasIndex(u => u.CreatedAt);
             // 「近 5 分鐘活躍」在線統計。
             e.HasIndex(u => u.LastSeenAt);
+        });
+
+        b.Entity<ServiceAgent>(e =>
+        {
+            e.HasIndex(s => s.UserId).IsUnique();
+            e.HasOne(s => s.User).WithMany().HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<Message>(e =>

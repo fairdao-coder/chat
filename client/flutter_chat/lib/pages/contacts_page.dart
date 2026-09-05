@@ -7,6 +7,7 @@ import '../providers/conversations_provider.dart';
 import '../providers/presence_provider.dart';
 import '../widgets/app_avatar.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/service_agents_sheet.dart';
 
 /// 通訊錄 tab：列出全部好友，按暱稱排序；支援搜尋；點擊進入私聊。
 class ContactsPage extends ConsumerStatefulWidget {
@@ -54,6 +55,24 @@ class _ContactsPageState extends ConsumerState<ContactsPage> {
       ),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+            child: ListTile(
+              leading: const Icon(Icons.support_agent_rounded),
+              title: Text(context.tr('联系客服')),
+              subtitle: Text(context.tr('向在线客服咨询')),
+              trailing: const Icon(Icons.chevron_right),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              tileColor: Theme.of(context)
+                  .colorScheme
+                  .surfaceContainerHighest
+                  .withValues(alpha: 0.5),
+              onTap: () => ServiceAgentsSheet.show(context),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
             child: TextField(

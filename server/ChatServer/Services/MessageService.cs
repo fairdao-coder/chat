@@ -79,18 +79,22 @@ public class MessageService : IMessageService
         if (!Guid.TryParse(toUserId, out var toId) || toId == Guid.Empty)
             throw new MessageSendException("E_BAD_TARGET", "收件人 ID 格式不正確");
 
-        var targetExists = await _db.Users.AsNoTracking().AnyAsync(u => u.Id == toId, ct);
-        if (!targetExists)
+        var toUser = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == toId, ct);
+        if (toUser == null)
             throw new MessageSendException("E_TARGET_NOT_FOUND", "對方用戶不存在");
 
-        // 私聊必須為好友（前端按 E_FRIEND_REQUIRED 提供「加好友」操作）。
-        var areFriends = await _db.Friendships
-            .AsNoTracking()
-            .AnyAsync(f => f.Status == FriendshipStatus.Accepted &&
-                           ((f.RequesterId == fromId && f.AddresseeId == toId) ||
-                            (f.RequesterId == toId && f.AddresseeId == fromId)), ct);
-        if (!areFriends)
-            throw new MessageSendException("E_FRIEND_REQUIRED", "你們還不是好友，無法發送消息。先添加對方為好友後再聊吧～");
+        // 客服帳號（出現在 ServiceAgents 表）免好友關係即可與用戶私聊；其餘私聊必須為好友。
+        var isService = await _db.ServiceAgents.AsNoTracking().AnyAsync(s => s.UserId == toId, ct);
+        if (!isService)
+        {
+            var areFriends = await _db.Friendships
+                .AsNoTracking()
+                .AnyAsync(f => f.Status == FriendshipStatus.Accepted &&
+                               ((f.RequesterId == fromId && f.AddresseeId == toId) ||
+                                (f.RequesterId == toId && f.AddresseeId == fromId)), ct);
+            if (!areFriends)
+                throw new MessageSendException("E_FRIEND_REQUIRED", "你們還不是好友，無法發送消息。先添加對方為好友後再聊吧～");
+        }
 
         EnsureNotEmpty(content, mediaUrl);
 

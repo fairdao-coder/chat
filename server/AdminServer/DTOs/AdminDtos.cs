@@ -35,6 +35,15 @@ public record PagedResult<T>(List<T> Items, int Total, int Page, int PageSize);
 public record UpdateUserRequest(string? NickName, string? AvatarUrl);
 public record BanUserRequest(bool Banned, string? Reason);
 
+/// <summary>後臺創建客服帳號請求。客服帳號為普通聊天用戶，僅當其 Id 出現在 ServiceAgents 表時才被視為客服。</summary>
+public record CreateServiceAccountRequest(
+    string UserName, string NickName, string Password, string? AvatarUrl = null);
+
+/// <summary>客服帳號列表項。</summary>
+public record ServiceAccountDto(
+    Guid Id, string UserName, string NickName, string? AvatarUrl,
+    bool IsOnline, DateTime LastSeenAt, bool IsBanned);
+
 public record CreateRoleRequest(string Name, string Permissions, string? Description);
 public record UpdateRoleRequest(string Name, string Permissions, string? Description);
 

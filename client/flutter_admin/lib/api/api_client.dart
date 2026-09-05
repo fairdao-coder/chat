@@ -80,6 +80,23 @@ class ApiClient {
     await delete('/api/admin/discover/$id');
   }
 
+  // ---- 客服帳號管理 ----
+  Future<Map<String, dynamic>> listServiceAccounts(
+      {int page = 1, int pageSize = 50}) async {
+    final data = await get(
+        '/api/admin/service-accounts?page=$page&pageSize=$pageSize');
+    return data as Map<String, dynamic>;
+  }
+
+  Future<ServiceAccountDto> createServiceAccount(Map<String, dynamic> body) async {
+    final data = await post('/api/admin/service-accounts', body);
+    return ServiceAccountDto.fromJson(data);
+  }
+
+  Future<void> deleteServiceAccount(String id) async {
+    await delete('/api/admin/service-accounts/$id');
+  }
+
   // ---- 系統功能開關 ----
   Future<SystemSettingsDto> getSettings() async {
     final data = await get('/api/admin/settings');

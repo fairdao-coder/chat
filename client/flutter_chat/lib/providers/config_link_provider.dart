@@ -9,6 +9,7 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../config/app_config.dart';
 import '../l10n/app_localizations.dart';
@@ -41,7 +42,14 @@ class ConfigLinkController extends StateNotifier<bool> {
     // web 上 Uri.base 同步可用：構造時就能確定是否有待確認配置，
     // 讓登錄頁首幀渲染正確，避免「表單 → 加載圈」的閃爍。
     if (kIsWeb) {
-      final cfg = AppConfig.parseLink(Uri.base);
+      final uri = _webUri();
+      // 優先處理「發起對話」深鏈（可攜帶在配置鏈接中）。
+      final chatId = AppConfig.parseChatLink(uri);
+      if (chatId != null) {
+        unawaited(_openChat(chatId));
+        return;
+      }
+      final cfg = AppConfig.parseLink(uri);
       if (cfg != null) {
         state = true;
         unawaited(_confirm(cfg));
@@ -51,30 +59,58 @@ class ConfigLinkController extends StateNotifier<bool> {
     unawaited(_startMobile());
   }
 
+  /// Web 下的當前頁面 Uri。兼容兩種鏈接形態：
+  ///   - 標準查詢：https://host/?chat=xxx   （queryParameters 直接可讀）
+  ///   - Hash 路由：https://host/#/?chat=xxx （參數在 fragment 中）
+  Uri _webUri() {
+    final base = Uri.base;
+    // 若主 URL 已含 chat/config 參數，直接使用。
+    if (base.queryParameters.containsKey('chat') ||
+        base.queryParameters.containsKey('name') ||
+        base.queryParameters.containsKey('api')) {
+      return base;
+    }
+    final frag = base.fragment;
+    if (frag.isEmpty) return base;
+    // fragment 形如 "/?chat=xxx" 或 "?chat=xxx"，補全 host 以便統一解析。
+    final fragUri = Uri.parse(frag.startsWith('/') ? frag : '/$frag');
+    return Uri(
+      scheme: base.scheme,
+      host: base.host,
+      port: base.port,
+      path: fragUri.path,
+      queryParameters: fragUri.queryParameters.isEmpty
+          ? base.queryParameters
+          : fragUri.queryParameters,
+    );
+  }
+
   Future<void> _startMobile() async {
     // 1) 冷啟動鏈接
     Uri? initial;
     try {
       initial = await _appLinks.getInitialLink();
     } catch (_) {}
-    if (initial != null) {
-      final cfg = AppConfig.parseLink(initial);
-      if (cfg != null) {
-        state = true;
-        await _confirm(cfg);
-      }
-    }
+    if (initial != null) await _handleUri(initial);
     // 2) 運行中的深鏈
     _sub = _appLinks.uriLinkStream.listen(
-      (uri) async {
-        final cfg = AppConfig.parseLink(uri);
-        if (cfg != null) {
-          state = true;
-          await _confirm(cfg);
-        }
-      },
+      (uri) async => _handleUri(uri),
       onError: (_) {},
     );
+  }
+
+  /// 分流：配置鏈接 vs「發起對話」深鏈。
+  Future<void> _handleUri(Uri uri) async {
+    final chatId = AppConfig.parseChatLink(uri);
+    if (chatId != null) {
+      await _openChat(chatId);
+      return;
+    }
+    final cfg = AppConfig.parseLink(uri);
+    if (cfg != null) {
+      state = true;
+      await _confirm(cfg);
+    }
   }
 
   /// 等待 root navigator 可用。App 剛起步時可能還沒完成首幀構建，
@@ -88,14 +124,38 @@ class ConfigLinkController extends StateNotifier<bool> {
     return null;
   }
 
-  /// 供掃一掃等場景顯式提交一條配置鏈接。解析失敗（無可應用項）時不彈窗。
-  /// 返回 true 表示成功彈出確認框並處理完畢；false 表示該鏈接不是有效配置。
+  /// 供掃一掃等場景顯式提交一條鏈接。依鏈接類型分流：
+  ///   - 發起對話鏈接 -> 直接跳轉私聊頁（非好友會提示先加好友）；
+  ///   - 配置鏈接     -> 彈出確認框應用。
+  /// 返回 true 表示成功處理；false 表示該鏈接無法識別。
   Future<bool> handleLink(Uri uri) async {
+    final chatId = AppConfig.parseChatLink(uri);
+    if (chatId != null) {
+      await _openChat(chatId);
+      return true;
+    }
     final cfg = AppConfig.parseLink(uri);
     if (cfg == null) return false;
     state = true;
     await _confirm(cfg);
     return true;
+  }
+
+  /// 跳轉到與 [userId] 的私聊頁。若當前頁面為登錄頁（未登錄）則先提示登錄；
+  /// 若與對方尚未成為好友，由 ChatPage 自身處理「先加好友」的提示，這裡不預判。
+  Future<void> _openChat(String userId) async {
+    final ctx = await _waitForContext();
+    if (ctx == null || !ctx.mounted) return;
+    final auth = _ref.read(authProvider);
+    if (auth.user == null) {
+      // 未登錄：跳轉登錄，登錄後用戶需重新打開鏈接。
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        SnackBar(content: Text(ctx.tr('请先登录后再发起对话'))),
+      );
+      ctx.go('/login');
+      return;
+    }
+    ctx.push('/chat?friendId=$userId');
   }
 
   /// 彈出確認框並應用。應用前必須讓用戶確認——api 地址會被用於提交登錄

@@ -158,10 +158,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final err = await ref
         .read(chatProvider(widget.target).notifier)
         .sendText(text, replyTo: _replyTo);
+    if (!mounted) return;
     if (err == null) {
       _stopTyping(); // 消息已發出，對方不應再看到「正在輸入」
       _ctrl.clear();
-      if (mounted) setState(() => _replyTo = null);
+      setState(() => _replyTo = null);
     } else {
       _handleHubError(err);
     }
@@ -320,6 +321,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     required MessageType kind,
     int? durationSec,
   }) async {
+    if (!mounted) return;
     if ((bytes == null || bytes.isEmpty) && (path == null || path.isEmpty)) {
       _toast(_lt('文件内容读取失败，请重试'));
       return;
@@ -335,6 +337,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         bytes: bytes,
         filename: name,
       );
+      if (!mounted) return;
       developer.log(
           'uploaded url=${up.url} ct=${up.contentType} size=${up.size}',
           name: 'chat');
@@ -342,6 +345,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       final err = kind == MessageType.voice
           ? await notifier.sendVoice(up.url, durationSec ?? 0)
           : await notifier.sendMedia(up.url, messageTypeToJson(kind));
+      if (!mounted) return;
       if (err != null) {
         developer.log('send returned err=$err', name: 'chat');
         _handleHubError(err);
@@ -349,6 +353,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         developer.log('send ok', name: 'chat');
       }
     } catch (e, st) {
+      if (!mounted) return;
       developer.log('upload error', name: 'chat', error: e, stackTrace: st);
       _toast('${_lt('上传失败')}: $e');
     } finally {
@@ -357,7 +362,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   }
 
   void _handleHubError(String raw) {
+    if (!mounted) return;
     final (code, message) = parseHubError(raw);
+    // 客服會話本身已豁免好友校驗；若仍收到「需好友」錯誤，直接提示而不引導加好友。
+    if (code == ErrorCodes.friendRequired && widget.target.isService) {
+      _toast(message);
+      return;
+    }
     if (code == ErrorCodes.friendRequired) {
       showDialog(
         context: context,
@@ -614,7 +625,13 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title),
-            if (!widget.target.isGroup)
+            if (widget.target.isService)
+              Text(
+                _lt('客服'),
+                style: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w500),
+              )
+            else if (!widget.target.isGroup)
               PeerStatus(
                 online: peerOnline,
                 typing: peerTyping,

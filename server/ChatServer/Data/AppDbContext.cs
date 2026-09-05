@@ -8,6 +8,7 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     public DbSet<AppUser> Users => Set<AppUser>();
+    public DbSet<ServiceAgent> ServiceAgents => Set<ServiceAgent>();
     public DbSet<Friendship> Friendships => Set<Friendship>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
@@ -24,6 +25,13 @@ public class AppDbContext : DbContext
         b.Entity<AppUser>(e =>
         {
             e.HasIndex(u => u.UserName).IsUnique();
+        });
+
+        b.Entity<ServiceAgent>(e =>
+        {
+            e.HasIndex(s => s.UserId).IsUnique();
+            e.HasOne(s => s.User).WithMany().HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<Friendship>(e =>

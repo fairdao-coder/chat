@@ -35,6 +35,25 @@ class RoleDto {
       permissions.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 }
 
+class ServiceAccountDto {
+  final String id;
+  final String userName;
+  final String nickName;
+  final String? avatarUrl;
+  final bool isOnline;
+  final DateTime lastSeenAt;
+  final bool isBanned;
+
+  ServiceAccountDto.fromJson(Map<String, dynamic> j)
+      : id = j['id'],
+        userName = j['userName'],
+        nickName = j['nickName'],
+        avatarUrl = j['avatarUrl'],
+        isOnline = j['isOnline'] ?? false,
+        lastSeenAt = DateTime.parse(j['lastSeenAt']),
+        isBanned = j['isBanned'] ?? false;
+}
+
 class AuditLogDto {
   final String id;
   final String adminUserName;
