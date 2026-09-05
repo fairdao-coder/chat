@@ -434,9 +434,15 @@ class _IceServersCardState extends State<_IceServersCard> {
   }
 
   void _disposeControllers() {
-    for (final c in _urlCtrls) c.dispose();
-    for (final c in _userCtrls) c.dispose();
-    for (final c in _credCtrls) c.dispose();
+    for (final c in _urlCtrls) {
+      c.dispose();
+    }
+    for (final c in _userCtrls) {
+      c.dispose();
+    }
+    for (final c in _credCtrls) {
+      c.dispose();
+    }
   }
 
   @override
@@ -604,7 +610,7 @@ class _IceServersCardState extends State<_IceServersCard> {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String?>(
-          value: s.credentialType,
+          initialValue: s.credentialType,
           decoration: const InputDecoration(
             labelText: '憑證類型',
             prefixIcon: Icon(Icons.badge_outlined),
