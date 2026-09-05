@@ -383,3 +383,8 @@ client/flutter_admin/.dart_tool/
 # ---- Runtime uploads (user-generated content, not source) ----
 server/ChatServer/uploads/
 server/AdminServer/uploads/
+
+# ---- iOS signing secrets (NEVER commit) ----
+client/*.p12
+client/*.mobileprovision
+client/*.p8
