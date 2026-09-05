@@ -444,9 +444,9 @@ jobs:
       # provisioning profile into ~/Library/MobileDevice/Provisioning Profiles.
       - name: Import signing certificate & profile
         if: >-
-          ${{ env.IOS_DIST_CERT_BASE64 != '' &&
-              env.IOS_DIST_CERT_PASSWORD != '' &&
-              env.IOS_PROVISIONING_PROFILE_BASE64 != '' }}
+          ${{ secrets.IOS_DIST_CERT_BASE64 != '' &&
+              secrets.IOS_DIST_CERT_PASSWORD != '' &&
+              secrets.IOS_PROVISIONING_PROFILE_BASE64 != '' }}
         env:
           IOS_DIST_CERT_BASE64: ${{ secrets.IOS_DIST_CERT_BASE64 }}
           IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
@@ -474,9 +474,9 @@ jobs:
       # + export). Unsigned path uses `flutter build ios --no-codesign`.
       - name: Build signed iOS IPA
         if: >-
-          ${{ env.IOS_DIST_CERT_BASE64 != '' &&
-              env.IOS_DIST_CERT_PASSWORD != '' &&
-              env.IOS_PROVISIONING_PROFILE_BASE64 != '' }}
+          ${{ secrets.IOS_DIST_CERT_BASE64 != '' &&
+              secrets.IOS_DIST_CERT_PASSWORD != '' &&
+              secrets.IOS_PROVISIONING_PROFILE_BASE64 != '' }}
         env:
           IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
         run: |
@@ -495,9 +495,9 @@ jobs:
 
       - name: Build unsigned iOS app
         if: >-
-          ${{ !(env.IOS_DIST_CERT_BASE64 != '' &&
-                env.IOS_DIST_CERT_PASSWORD != '' &&
-                env.IOS_PROVISIONING_PROFILE_BASE64 != '') }}
+          ${{ !(secrets.IOS_DIST_CERT_BASE64 != '' &&
+                secrets.IOS_DIST_CERT_PASSWORD != '' &&
+                secrets.IOS_PROVISIONING_PROFILE_BASE64 != '') }}
         run: |
           set -euo pipefail
           args=(--release --no-codesign)
@@ -509,9 +509,9 @@ jobs:
       # --- Package -----------------------------------------------------------
       - name: Package signed IPA
         if: >-
-          ${{ env.IOS_DIST_CERT_BASE64 != '' &&
-              env.IOS_DIST_CERT_PASSWORD != '' &&
-              env.IOS_PROVISIONING_PROFILE_BASE64 != '' }}
+          ${{ secrets.IOS_DIST_CERT_BASE64 != '' &&
+              secrets.IOS_DIST_CERT_PASSWORD != '' &&
+              secrets.IOS_PROVISIONING_PROFILE_BASE64 != '' }}
         run: |
           set -euo pipefail
           mkdir -p ios-out
@@ -526,9 +526,9 @@ jobs:
 
       - name: Package unsigned app
         if: >-
-          ${{ !(env.IOS_DIST_CERT_BASE64 != '' &&
-                env.IOS_DIST_CERT_PASSWORD != '' &&
-                env.IOS_PROVISIONING_PROFILE_BASE64 != '') }}
+          ${{ !(secrets.IOS_DIST_CERT_BASE64 != '' &&
+                secrets.IOS_DIST_CERT_PASSWORD != '' &&
+                secrets.IOS_PROVISIONING_PROFILE_BASE64 != '') }}
         run: |
           set -euo pipefail
           mkdir -p ios-out
