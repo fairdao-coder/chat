@@ -105,9 +105,9 @@ class _MyAppState extends ConsumerState<MyApp> {
     SystemChrome.setSystemUIOverlayStyle(
       isDarkMode
           ? SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent)
-          // 亮色模式：深色图标 + 浅色状态栏背景，保证时间/电量清晰可见。
+          // 亮色模式：深色图标 + 透明状态栏背景，让页面内容延伸至顶部，保证时间/电量清晰可见。
           : SystemUiOverlayStyle.dark.copyWith(
-              statusBarColor: AppColors.lightSurface,
+              statusBarColor: Colors.transparent,
               systemNavigationBarColor: AppColors.lightSurface,
               systemNavigationBarIconBrightness: Brightness.dark,
             ),
