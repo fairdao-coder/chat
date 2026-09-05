@@ -164,7 +164,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 style: TextStyle(color: AppTheme.textSub, fontSize: 12)),
             const SizedBox(height: 12),
             DropdownButtonFormField<String?>(
-              value: _settings!.defaultColumnId,
+              initialValue: _settings!.defaultColumnId,
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.push_pin_outlined),
               ),

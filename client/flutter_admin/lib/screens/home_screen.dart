@@ -221,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     final content = current?.screen ?? const Center(child: Text('無可用模塊'));
-    final onSelect = (i) => setState(() => _index = i);
+    void onSelect(int i) => setState(() => _index = i);
 
     // 寬屏（≥900）：側欄常駐左側佔位，不再懸浮遮擋內容；
     // 窄屏：保留懸浮抽屜（小屏空間有限，需要時再拉出）。
