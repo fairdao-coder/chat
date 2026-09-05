@@ -446,6 +446,7 @@ jobs:
 
       # 雙重保險：即便 bump-version 未能成功更新，也在構建前將 build number
       # （iOS CFBundleVersion）重設為當前 UTC 時間戳，確保嚴格大於 App Store 已上傳號。
+      # 用 perl 改寫以兼容 macOS（BSD sed 的 -i 語法與 GNU sed 不同，會報錯）。
       - name: Stamp iOS build number (timestamp)
         run: |
           set -euo pipefail
@@ -454,7 +455,7 @@ jobs:
           name="${ver%+*}"
           ts="$(date -u +%Y%m%d%H%M)"
           new="${name}+${ts}"
-          sed -i "s/^version:.*/version: $new/" "$file"
+          perl -i -pe "s{^version:\\s*.*}{version: $new}" "$file"
           echo "stamped build number -> $new"
 
       - name: Pub get
