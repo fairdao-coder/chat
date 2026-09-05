@@ -223,6 +223,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         value: _settings!.allowVoice,
         onChanged: (v) => _toggle(v, (val) => _settings = _settings!.copyWith(allowVoice: val)),
       ),
+      _SettingItem(
+        icon: Icons.person_add,
+        title: '允許用戶註冊',
+        desc: '關閉後，普通用戶將無法在登錄頁自助註冊新帳號（僅後台可建立）',
+        value: _settings!.allowRegister,
+        onChanged: (v) => _toggle(v, (val) => _settings = _settings!.copyWith(allowRegister: val)),
+      ),
     ];
 
     return SingleChildScrollView(

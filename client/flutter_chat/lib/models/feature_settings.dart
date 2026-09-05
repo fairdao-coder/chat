@@ -36,6 +36,9 @@ class FeatureSettings {
   /// 是否允許發送語音消息。
   bool get allowVoice => _chatBool('AllowVoice');
 
+  /// 是否允許普通用戶自助註冊新帳號。
+  bool get allowRegister => _chatBool('AllowRegister');
+
   /// 默認打開的欄目（底部固定 Tab）Id，null 表示未配置。
   String? get defaultColumnId {
     if (otherConfig == null) return null;

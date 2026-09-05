@@ -8,6 +8,7 @@ import '../l10n/app_localizations.dart';
 import '../providers/auth_provider.dart';
 import '../providers/config_link_provider.dart';
 import '../providers/locale_provider.dart';
+import '../providers/features_provider.dart';
 import '../widgets/brand.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -74,6 +75,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     // 面對登錄界面（也防止把憑據輸進指向舊地址的會話）。
     // 監聽與彈窗由 App 級別的 configLinkProvider 統一處理。
     final formVisible = !ref.watch(configLinkProvider);
+
+    // 是否允許註冊：拉取失敗時回退為允許（全開），避免界面異常。
+    final allowRegister = ref.watch(featuresProvider).maybeWhen(
+          data: (f) => f.allowRegister,
+          orElse: () => true,
+        );
+    final isRegister = allowRegister ? _isRegister : false;
 
     return Scaffold(
       appBar: AppBar(
@@ -159,9 +167,32 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 value: true,
                                 label: Text(context.tr('注册')),
                                 icon: const Icon(Icons.person_add_alt_1),
+                                enabled: allowRegister,
                               ),
                             ],
                           ),
+                          if (!allowRegister) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: cs.errorContainer.withValues(alpha: 0.16),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.block, color: cs.error),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      context.tr('注册功能已关闭'),
+                                      style: TextStyle(color: cs.error),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 20),
                           TextField(
                             controller: _userCtrl,
@@ -181,7 +212,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             obscureText: true,
                             textInputAction: TextInputAction.next,
                           ),
-                          if (_isRegister) ...[
+                          if (isRegister) ...[
                             const SizedBox(height: 14),
                             TextField(
                               controller: _nickCtrl,
@@ -204,7 +235,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                       color: Colors.white,
                                     ),
                                   )
-                                : Text(_isRegister
+                                : Text(isRegister
                                     ? context.tr('注册并登录')
                                     : context.tr('登录')),
                           ),
@@ -218,7 +249,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ),
                     ),
                   ),
-                  if (formVisible)
+                  if (formVisible && allowRegister)
                     TextButton(
                       onPressed: loading
                           ? null

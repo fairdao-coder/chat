@@ -174,6 +174,7 @@ class SystemSettingsDto {
   set _enableVideoCall(bool v) => _setChat('EnableVideoCall', v);
   set _allowFile(bool v) => _setChat('AllowFile', v);
   set _allowVoice(bool v) => _setChat('AllowVoice', v);
+  set _allowRegister(bool v) => _setChat('AllowRegister', v);
 
   void _setChat(String key, bool v) {
     final m = _chat;
@@ -186,6 +187,7 @@ class SystemSettingsDto {
   bool get enableVideoCall => _chatBool('EnableVideoCall');
   bool get allowFile => _chatBool('AllowFile');
   bool get allowVoice => _chatBool('AllowVoice');
+  bool get allowRegister => _chatBool('AllowRegister');
 
   /// 默認打開的欄目（底部固定 Tab）Id；null 表示未配置。
   String? get defaultColumnId {
@@ -227,6 +229,7 @@ class SystemSettingsDto {
     bool? enableVideoCall,
     bool? allowFile,
     bool? allowVoice,
+    bool? allowRegister,
     String? chatConfig,
     String? otherConfig,
     DateTime? updatedAt,
@@ -241,6 +244,7 @@ class SystemSettingsDto {
     if (enableVideoCall != null) s._enableVideoCall = enableVideoCall;
     if (allowFile != null) s._allowFile = allowFile;
     if (allowVoice != null) s._allowVoice = allowVoice;
+    if (allowRegister != null) s._allowRegister = allowRegister;
     return s;
   }
 }

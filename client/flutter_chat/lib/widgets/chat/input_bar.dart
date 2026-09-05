@@ -208,6 +208,12 @@ class _ChatInputBarState extends State<ChatInputBar>
                     icon: const Icon(Icons.backspace_outlined, size: 20),
                     onPressed: _backspace,
                   ),
+                  // 關閉表情面板：提供明確關閉入口，避免彈層「關不掉」。
+                  IconButton(
+                    tooltip: context.tr('关闭'),
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => setState(() => _emojiOpen = false),
+                  ),
                 ],
               ),
             ),
@@ -338,7 +344,11 @@ class _ChatInputBarState extends State<ChatInputBar>
                 tooltip: context.tr('表情'),
                 onTap: busy
                     ? null
-                    : () => setState(() => _emojiOpen = !_emojiOpen),
+                    : () {
+                        // 打開表情面板時先收起軟鍵盤，避免鍵盤與面板重疊導致點擊錯亂、關不掉。
+                        if (!_emojiOpen) _focus.unfocus();
+                        setState(() => _emojiOpen = !_emojiOpen);
+                      },
               ),
               // 发送 / 更多（平滑切换）
               AnimatedSwitcher(

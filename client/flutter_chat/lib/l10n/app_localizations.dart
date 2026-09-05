@@ -115,6 +115,7 @@ class L10n {
     '更多': '更多',
     '常用表情': '常用表情',
     '删除': '删除',
+    '关闭': '关闭',
     '正在录音': '正在录音',
     '录音失败': '录音失败',
     '麦克风权限被拒绝': '麦克风权限被拒绝',
@@ -205,6 +206,7 @@ class L10n {
     '对方已发送好友请求': '对方已发送好友请求',
     '添加到通讯录': '添加到通讯录',
     '请输入验证消息': '请输入验证消息',
+    '注册功能已关闭': '注册功能已关闭',
   };
 
   static const Map<String, String> _zhHant = {
@@ -293,6 +295,7 @@ class L10n {
     '更多': '更多',
     '常用表情': '常用表情',
     '删除': '刪除',
+    '关闭': '關閉',
     '正在录音': '正在錄音',
     '录音失败': '錄音失敗',
     '麦克风权限被拒绝': '麥克風權限被拒絕',
@@ -394,6 +397,7 @@ class L10n {
     '对方已发送好友请求': '對方已傳送好友邀請',
     '添加到通讯录': '新增到通訊錄',
     '请输入验证消息': '請輸入驗證訊息',
+    '注册功能已关闭': '註冊功能已關閉',
   };
 
   static const Map<String, String> _en = {
@@ -482,6 +486,7 @@ class L10n {
     '更多': 'More',
     '常用表情': 'Frequently used',
     '删除': 'Delete',
+    '关闭': 'Close',
     '正在录音': 'Recording',
     '录音失败': 'Recording failed',
     '麦克风权限被拒绝': 'Microphone permission denied',
@@ -583,6 +588,7 @@ class L10n {
     '对方已发送好友请求': 'Friend request already sent',
     '添加到通讯录': 'Add to Contacts',
     '请输入验证消息': 'Enter a verification message',
+    '注册功能已关闭': 'Registration is closed',
   };
 
   static const Map<String, String> _es = {
@@ -671,6 +677,7 @@ class L10n {
     '更多': 'Más',
     '常用表情': 'Frecuentes',
     '删除': 'Eliminar',
+    '关闭': 'Cerrar',
     '正在录音': 'Grabando',
     '录音失败': 'Error de grabación',
     '麦克风权限被拒绝': 'Permiso de micrófono denegado',
@@ -772,6 +779,7 @@ class L10n {
     '对方已发送好友请求': 'Solicitud ya enviada',
     '添加到通讯录': 'Añadir a contactos',
     '请输入验证消息': 'Escribe un mensaje de verificación',
+    '注册功能已关闭': 'El registro está cerrado',
   };
 
   static AppLocalizations _resolve(Locale locale) {

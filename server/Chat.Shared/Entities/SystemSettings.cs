@@ -45,6 +45,8 @@ public sealed class ChatFeatureConfig
     public bool EnableVideoCall { get; set; } = true;
     public bool AllowFile { get; set; } = true;
     public bool AllowVoice { get; set; } = true;
+    /// <summary>是否允許普通用戶自助註冊新帳號；關閉後僅後台可建立帳號。</summary>
+    public bool AllowRegister { get; set; } = true;
 
     public static ChatFeatureConfig FromJson(string? json)
     {
@@ -64,6 +66,8 @@ public sealed class ChatFeatureConfig
             cfg.AllowFile = v4.GetBoolean();
         if (r.TryGetProperty(nameof(AllowVoice), out var v5) && (v5.ValueKind == System.Text.Json.JsonValueKind.True || v5.ValueKind == System.Text.Json.JsonValueKind.False))
             cfg.AllowVoice = v5.GetBoolean();
+        if (r.TryGetProperty(nameof(AllowRegister), out var v6) && (v6.ValueKind == System.Text.Json.JsonValueKind.True || v6.ValueKind == System.Text.Json.JsonValueKind.False))
+            cfg.AllowRegister = v6.GetBoolean();
         return cfg;
     }
 
