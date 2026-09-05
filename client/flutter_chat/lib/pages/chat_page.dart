@@ -112,6 +112,25 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   }
 
   @override
+  void deactivate() {
+    // 在 deactivate（仍 mounted）中清理會話焦點，避免在 dispose 中調用 ref
+    // 觸發 Riverpod "Cannot use ref after the widget was disposed" 錯誤。
+    _clearActiveConversation();
+    super.deactivate();
+  }
+
+  void _clearActiveConversation() {
+    final myId = ref.read(authProvider).user?.id;
+    if (myId == null) return;
+    final convId = widget.target.isGroup
+        ? groupConversationId(widget.target.id)
+        : privateConversationId(myId, widget.target.id);
+    if (ref.read(activeConversationProvider) == convId) {
+      ref.read(activeConversationProvider.notifier).state = null;
+    }
+  }
+
+  @override
   void dispose() {
     _stopTyping();
     _ctrl.removeListener(_onTextChanged);
@@ -119,16 +138,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     _scroll.dispose();
     _recordTimer?.cancel();
     _recorder.dispose();
-    // 離開會話時清除焦點，恢復對該會話消息的橫幅提醒（若仍為本會話）。
-    final myId = ref.read(authProvider).user?.id;
-    if (myId != null) {
-      final convId = widget.target.isGroup
-          ? groupConversationId(widget.target.id)
-          : privateConversationId(myId, widget.target.id);
-      if (ref.read(activeConversationProvider) == convId) {
-        ref.read(activeConversationProvider.notifier).state = null;
-      }
-    }
     super.dispose();
   }
 

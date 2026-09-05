@@ -21,14 +21,15 @@ class MessageBannerOverlay extends ConsumerStatefulWidget {
 class _MessageBannerOverlayState extends ConsumerState<MessageBannerOverlay>
     with WidgetsBindingObserver {
   bool _resumed = true;
+  ProviderSubscription<List<IncomingMessage>>? _msgSub;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     // 监听新增通知；处于后台/息屏时播放提示音。
-    ref.listenManual(messageNotificationsProvider, (prev, next) {
-      if (_resumed) return;
+    _msgSub = ref.listenManual(messageNotificationsProvider, (prev, next) {
+      if (!mounted || _resumed) return;
       final prevList = prev ?? const <IncomingMessage>[];
       final added = next.where((m) => !prevList.any((p) => p.id == m.id));
       if (added.isNotEmpty) {
@@ -47,6 +48,8 @@ class _MessageBannerOverlayState extends ConsumerState<MessageBannerOverlay>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _msgSub?.close();
+    _msgSub = null;
     super.dispose();
   }
 
@@ -114,8 +117,10 @@ class _BannerItemState extends ConsumerState<_BannerItem> {
   }
 
   void _open() {
+    if (!mounted) return;
     final m = widget.message;
     widget.onDismiss();
+    if (!mounted) return;
     final query = m.isGroup ? 'groupId=${m.targetId}' : 'friendId=${m.targetId}';
     context.go('/chat?$query');
   }

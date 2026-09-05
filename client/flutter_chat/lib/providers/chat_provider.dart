@@ -60,7 +60,7 @@ class ChatController extends StateNotifier<ChatState> {
   final ChatTarget _target;
   StreamSubscription<MessageDto>? _sub;
   StreamSubscription<MessageDto>? _recallSub;
-  late final String _convId;
+  String? _convId;
 
   ChatController(this._api, this._hub, this._ref, this._target)
       : super(const ChatState(loading: true)) {
@@ -71,9 +71,15 @@ class ChatController extends StateNotifier<ChatState> {
 
   Future<void> _init() async {
     final myId = _myId;
+    if (myId == null) {
+      // 從通知橫幅點擊進入會話時，若登入狀態尚未載入完成，避免 null check 崩潰。
+      state = state.copyWith(
+          loading: false, error: '未登錄或登入狀態尚未載入，請稍後重試');
+      return;
+    }
     _convId = _target.isGroup
         ? groupConversationId(_target.id)
-        : privateConversationId(myId!, _target.id);
+        : privateConversationId(myId, _target.id);
 
     try {
       final history = _target.isGroup
@@ -162,8 +168,10 @@ class ChatController extends StateNotifier<ChatState> {
 
   /// 清空當前會話的聊天記錄（僅自己的視角）。
   Future<String?> clearHistory() async {
+    final convId = _convId;
+    if (convId == null) return '未登錄';
     try {
-      await _api.clearConversation(_convId);
+      await _api.clearConversation(convId);
       state = state.copyWith(messages: []);
       return null;
     } catch (e) {
@@ -195,7 +203,7 @@ class ChatController extends StateNotifier<ChatState> {
     // 樂觀插入：發送後立刻在本地顯示氣泡，不等服務端回發，避免"點了沒反應"。
     final optimistic = MessageDto(
       id: 'optimistic_${DateTime.now().microsecondsSinceEpoch}',
-      conversationId: _convId,
+      conversationId: _convId!,
       senderId: myId,
       senderName: _ref.read(authProvider).user?.nickName ?? '',
       chatType: _target.isGroup ? ChatType.group : ChatType.private,
@@ -231,7 +239,7 @@ class ChatController extends StateNotifier<ChatState> {
         'url=$mediaUrl seconds=$seconds', name: 'chat');
     final optimistic = MessageDto(
       id: 'optimistic_${DateTime.now().microsecondsSinceEpoch}',
-      conversationId: _convId,
+      conversationId: _convId!,
       senderId: myId,
       senderName: _ref.read(authProvider).user?.nickName ?? '',
       chatType: _target.isGroup ? ChatType.group : ChatType.private,
