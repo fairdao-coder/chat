@@ -558,7 +558,12 @@ jobs:
           if [ -f "$HOME/Library/MobileDevice/Provisioning Profiles/embedded.mobileprovision" ]; then
             args+=(--export-options-plist=ios/ExportOptions.plist)
           fi
-          flutter build ipa "${args[@]}"
+          flutter build ipa --verbose "${args[@]}" 2>&1 | tee build-ios.log || {
+            echo "::error::flutter build ipa 失敗，最近 80 行日誌如下："
+            tail -n 80 build-ios.log || true
+            echo "::error::完整日誌 build-ios.log 已輸出到上方"
+            exit 1
+          }
 
       - name: Build unsigned iOS app
         if: >-
