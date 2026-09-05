@@ -56,10 +56,11 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 		<!-- 允許特定域名使用 HTTP（不走 HTTPS）。
-		     NSIncludesSubdomains 使 *.adad.54faka.cn 亦生效。 -->
+		     以根域名 54faka.cn 配置並開啟 NSIncludesSubdomains，
+		     使所有 *.54faka.cn 子域名（含 adad.54faka.cn）皆生效。 -->
 		<key>NSExceptionDomains</key>
 		<dict>
-			<key>adad.54faka.cn</key>
+			<key>54faka.cn</key>
 			<dict>
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>
 				<true/>

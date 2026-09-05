@@ -423,7 +423,7 @@ jobs:
   # ---------------------------------------------------------------------------
   build-ios:
     name: Build iOS
-    needs: [client]
+    needs: [client, bump-version]
     if: github.ref == 'refs/heads/main'
     runs-on: macos-latest
     defaults:
@@ -433,12 +433,29 @@ jobs:
       KEYCHAIN_PATH: ${{ github.workspace }}/ios-signing.keychain-db
     steps:
       - uses: actions/checkout@v4
+        with:
+          # bump-version 已把版本號 push 回 main，拉取最新提交以取得新 build number
+          ref: ${{ github.ref }}
+          fetch-depth: 0
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.47.2"
           cache: true
+
+      # 雙重保險：即便 bump-version 未能成功更新，也在構建前將 build number
+      # （iOS CFBundleVersion）重設為當前 UTC 時間戳，確保嚴格大於 App Store 已上傳號。
+      - name: Stamp iOS build number (timestamp)
+        run: |
+          set -euo pipefail
+          file="pubspec.yaml"
+          ver="$(sed -n 's/^version:[[:space:]]*//p' "$file" | head -1 | tr -d '\r')"
+          name="${ver%+*}"
+          ts="$(date -u +%Y%m%d%H%M)"
+          new="${name}+${ts}"
+          sed -i "s/^version:.*/version: $new/" "$file"
+          echo "stamped build number -> $new"
 
       - name: Pub get
         run: flutter pub get
