@@ -313,7 +313,7 @@ jobs:
   # ---------------------------------------------------------------------------
   build-android:
     name: Build Android APK
-    needs: [client]
+    needs: [client, bump-version]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -325,6 +325,12 @@ jobs:
       GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.vfs.watch=false -Dorg.gradle.caching=false"
     steps:
       - uses: actions/checkout@v4
+        with:
+          # bump-version 已把版本號 push 回 main，拉取最新提交以取得新 build number
+          # （Android versionCode 上限 2147483647，必須 10 位時間戳，否則 Gradle 報
+          # flutterVersionCode must be an integer）。
+          ref: ${{ github.ref }}
+          fetch-depth: 0
 
       # 17 must match JavaVersion.VERSION_17 in android/app/build.gradle.kts.
       - name: Setup Java
