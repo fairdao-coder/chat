@@ -169,11 +169,14 @@ jobs:
   # ---------------------------------------------------------------------------
   # Bump the client version on every deployable change.
   #
-  # Runs only on push to main. When client source changes, increment
-  # versionCode (+1) and the patch part of versionName (+1) in pubspec.yaml,
-  # then commit + push back. The follow-up run (triggered by this push) builds
-  # and publishes with the new version. A guard skips when the last commit is
-  # already a bump, preventing an infinite loop.
+  # Runs only on push to main. When client source changes, increment the patch
+  # part of versionName (+1) and set the build number (versionCode / iOS
+  # CFBundleVersion) to a UTC timestamp (YYYYMMDDHHmm) in pubspec.yaml, then
+  # commit + push back. The timestamp guarantees the build number is always
+  # strictly increasing and never collides with an already-uploaded iOS build
+  # (App Store error -19232 "bundle version must be higher"). The follow-up run
+  # (triggered by this push) builds and publishes with the new version. A guard
+  # skips when the last commit is already a bump, preventing an infinite loop.
   # ---------------------------------------------------------------------------
   bump-version:
     name: Bump client version
@@ -209,9 +212,12 @@ jobs:
             [ -f "$file" ] || return 0
             local ver name code maj min patch new
             ver="$(sed -n 's/^version:[[:space:]]*//p' "$file" | head -1 | tr -d '\r')"
-            name="${ver%+*}"; code="${ver##*+}"
+            name="${ver%+*}"
             IFS='.' read -r maj min patch <<< "$name"
-            patch=$((patch + 1)); code=$((code + 1))
+            patch=$((patch + 1))
+            # build number 用時間戳（UTC，分鐘精度）：保證每次嚴格遞增，
+            # 永不與 App Store Connect 已上傳的 build 號衝突（避免 -19232）。
+            code="$(date -u +%Y%m%d%H%M)"
             new="${maj}.${min}.${patch}+${code}"
             sed -i "s/^version:.*/version: $new/" "$file"
             git add "$file"
