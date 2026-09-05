@@ -196,6 +196,8 @@ App Store Connect（上傳後於 TestFlight 建群即可）：
    - macOS/Linux：`base64 -w0 AuthKey_XXXX.p8`
    - Windows PowerShell：`[Convert]::ToBase64String([IO.File]::ReadAllBytes("AuthKey_XXXX.p8"))`
 
+> **注意**：上傳前必須先到 [App Store Connect](https://appstoreconnect.apple.com) → 我的 App → 「+」新建 App，平台選 **iOS**，**Bundle ID 必須選擇 `com.servestatic.chat`**（名稱/SKU 可自訂），否則上傳會報 `Cannot determine the Apple ID from Bundle ID`。建立 App 記錄後重新執行 workflow 即可於 TestFlight 看到建置版本。
+
 ### 一次性配置
 
 > `gh-pages` 分支首次部署時由 workflow 自動建立（force push），無需手動建；但 Pages 設定

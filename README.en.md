@@ -195,6 +195,8 @@ On top of signing, configure these three App Store Connect API key secrets and C
    - macOS/Linux: `base64 -w0 AuthKey_XXXX.p8`
    - Windows PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("AuthKey_XXXX.p8"))`
 
+> **Note**: Before uploading, you must first go to [App Store Connect](https://appstoreconnect.apple.com) → My Apps → "+" to create an App, choose platform **iOS**, and **select Bundle ID `com.servestatic.chat`** (name/SKU are up to you). Otherwise the upload fails with `Cannot determine the Apple ID from Bundle ID`. After creating the App record, re-run the workflow and the build will appear in TestFlight.
+
 ### One-time Setup
 
 > The `gh-pages` branch is created automatically by the workflow on first deploy (force push) — no manual creation needed; but Pages settings

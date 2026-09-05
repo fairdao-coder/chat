@@ -195,6 +195,8 @@ Además de la firma, configure estos tres secrets de la API Key de App Store Con
    - macOS/Linux: `base64 -w0 AuthKey_XXXX.p8`
    - Windows PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("AuthKey_XXXX.p8"))`
 
+> **Nota**: Antes de subir, primero debe ir a [App Store Connect](https://appstoreconnect.apple.com) → Mis Apps → "+" para crear una App, elija la plataforma **iOS** y **seleccione el Bundle ID `com.servestatic.chat`** (nombre/SKU a su elección). De lo contrario la subida falla con `Cannot determine the Apple ID from Bundle ID`. Después de crear el registro de la App, vuelva a ejecutar el workflow y la compilación aparecerá en TestFlight.
+
 ### Configuración única
 
 > La rama `gh-pages` la crea automáticamente el workflow en el primer despliegue (force push) — no es necesario crearla manualmente; pero la configuración de Pages
