@@ -488,25 +488,42 @@ jobs:
           IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
           IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
         run: |
-          set -euo pipefail
+          set -eo pipefail
           PROFILE="$HOME/Library/MobileDevice/Provisioning Profiles/embedded.mobileprovision"
           if [ ! -f "$PROFILE" ]; then
             echo "::error::Provisioning profile not found"; exit 1
           fi
           PLIST=$(security cms -D -i "$PROFILE" 2>/dev/null)
-          TEAM=$(printf '%s' "$PLIST" | plutil -extract TeamIdentifier.0 raw -)
+
+          # 解析 Team ID
+          TEAM=""
+          if command -v plutil >/dev/null 2>&1; then
+            TEAM=$(printf '%s' "$PLIST" | plutil -extract TeamIdentifier.0 raw - 2>/dev/null || true)
+          fi
           if [ -z "$TEAM" ] && [ -n "${IOS_TEAM_ID:-}" ]; then TEAM="$IOS_TEAM_ID"; fi
           if [ -z "$TEAM" ]; then
             echo "::error::無法從描述檔取得 Team ID，請設定 IOS_TEAM_ID secret"; exit 1
           fi
-          PROFILE_UUID=$(printf '%s' "$PLIST" | plutil -extract UUID raw -)
+
+          # 解析 Profile UUID
+          PROFILE_UUID=""
+          if command -v plutil >/dev/null 2>&1; then
+            PROFILE_UUID=$(printf '%s' "$PLIST" | plutil -extract UUID raw - 2>/dev/null || true)
+          fi
+          if [ -z "$PROFILE_UUID" ]; then
+            echo "::error::無法從描述檔取得 Profile UUID"; exit 1
+          fi
+
           echo "Team ID: $TEAM   Profile UUID: $PROFILE_UUID"
+
           # 切換 Xcode 工程為手動簽名 + 發佈身份
           PBX="ios/Runner.xcodeproj/project.pbxproj"
           sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PBX"
           sed -i '' 's/"CODE_SIGN_IDENTITY\[sdk=iphoneos\*\]" = "iPhone Developer";/"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Distribution";/g' "$PBX"
+
           # ExportOptions 的 teamID 必須與描述檔一致
           plutil -replace teamID -string "$TEAM" ios/ExportOptions.plist
+
           # DEVELOPMENT_TEAM / PROVISIONING_PROFILE_SPECIFIER 在工程 pbxproj 未定義，
           # 故由 Release.xcconfig 提供（xcconfig 值會生效）。
           XCCONFIG="ios/Flutter/Release.xcconfig"
