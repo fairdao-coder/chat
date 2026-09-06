@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../config/constants.dart';
 import '../data/signalr_client.dart';
 import '../l10n/app_localizations.dart';
 import '../models/call_dto.dart';
@@ -15,7 +14,6 @@ import '../models/enums.dart';
 import '../models/feature_settings.dart';
 import '../router.dart';
 import '../services/webrtc_service.dart';
-import 'auth_provider.dart';
 import 'core_providers.dart';
 import 'features_provider.dart';
 
