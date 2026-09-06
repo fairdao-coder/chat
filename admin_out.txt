@@ -1,0 +1,590 @@
+从 .\server\AdminServer\Properties\launchSettings.json 使用启动设置...
+dbug: Microsoft.EntityFrameworkCore.Infrastructure[10401]
+      An 'IServiceProvider' was created for internal use by Entity Framework.
+dbug: Microsoft.EntityFrameworkCore.Model[10601]
+      The index {'RequesterId'} was not created on entity type 'Friendship' as the properties are already covered by the index {'RequesterId', 'AddresseeId'}.
+dbug: Microsoft.EntityFrameworkCore.Model[10601]
+      The index {'GroupId'} was not created on entity type 'GroupMember' as the properties are already covered by the index {'GroupId', 'UserId'}.
+dbug: Microsoft.EntityFrameworkCore.Infrastructure[10403]
+      Entity Framework Core 10.0.11 initialized 'AdminDbContext' using provider 'Npgsql.EntityFrameworkCore.PostgreSQL:10.0.3+5e912bf071068a44e5abbdab497b313ba99d3ee1' with options: None
+dbug: Microsoft.EntityFrameworkCore.Database.Connection[20005]
+      Creating DbConnection.
+dbug: Microsoft.EntityFrameworkCore.Database.Connection[20006]
+      Created DbConnection. (42ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Connection[20000]
+      Opening connection to database 'chatdb' on server 'tcp://192.168.10.200:5432'.
+dbug: Microsoft.EntityFrameworkCore.Database.Connection[20001]
+      Opened connection to database 'chatdb' on server 'tcp://192.168.10.200:5432'.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20103]
+      Creating DbCommand for 'ExecuteNonQuery'.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20104]
+      Created DbCommand for 'ExecuteNonQuery' (6ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20106]
+      Initialized DbCommand for 'ExecuteNonQuery' (12ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20100]
+      Executing DbCommand [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (44ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT 1
+dbug: Microsoft.EntityFrameworkCore.Database.Connection[20002]
+      Closing connection to database 'chatdb' on server 'tcp://192.168.10.200:5432'.
+dbug: Microsoft.EntityFrameworkCore.Database.Connection[20003]
+      Closed connection to database 'chatdb' on server 'tcp://192.168.10.200:5432' (4ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20103]
+      Creating DbCommand for 'ExecuteScalar'.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20104]
+      Created DbCommand for 'ExecuteScalar' (0ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20106]
+      Initialized DbCommand for 'ExecuteScalar' (0ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Connection[20000]
+      Opening connection to database 'chatdb' on server 'tcp://192.168.10.200:5432'.
+dbug: Microsoft.EntityFrameworkCore.Database.Connection[20001]
+      Opened connection to database 'chatdb' on server 'tcp://192.168.10.200:5432'.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20100]
+      Executing DbCommand [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT CASE WHEN COUNT(*) = 0 THEN FALSE ELSE TRUE END
+FROM pg_class AS cls
+JOIN pg_namespace AS ns ON ns.oid = cls.relnamespace
+WHERE
+        cls.relkind IN ('r', 'v', 'm', 'f', 'p') AND
+        ns.nspname NOT IN ('pg_catalog', 'information_schema') AND
+        -- Exclude tables which are members of PG extensions
+        NOT EXISTS (
+            SELECT 1 FROM pg_depend WHERE
+                classid=(
+                    SELECT cls.oid
+                    FROM pg_class AS cls
+                             JOIN pg_namespace AS ns ON ns.oid = cls.relnamespace
+                    WHERE relname='pg_class' AND ns.nspname='pg_catalog'
+                ) AND
+                objid=cls.oid AND
+                deptype IN ('e', 'x')
+        )
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (64ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT CASE WHEN COUNT(*) = 0 THEN FALSE ELSE TRUE END
+FROM pg_class AS cls
+JOIN pg_namespace AS ns ON ns.oid = cls.relnamespace
+WHERE
+        cls.relkind IN ('r', 'v', 'm', 'f', 'p') AND
+        ns.nspname NOT IN ('pg_catalog', 'information_schema') AND
+        -- Exclude tables which are members of PG extensions
+        NOT EXISTS (
+            SELECT 1 FROM pg_depend WHERE
+                classid=(
+                    SELECT cls.oid
+                    FROM pg_class AS cls
+                             JOIN pg_namespace AS ns ON ns.oid = cls.relnamespace
+                    WHERE relname='pg_class' AND ns.nspname='pg_catalog'
+                ) AND
+                objid=cls.oid AND
+                deptype IN ('e', 'x')
+        )
+dbug: Microsoft.EntityFrameworkCore.Database.Connection[20002]
+      Closing connection to database 'chatdb' on server 'tcp://192.168.10.200:5432'.
+dbug: Microsoft.EntityFrameworkCore.Database.Connection[20003]
+      Closed connection to database 'chatdb' on server 'tcp://192.168.10.200:5432' (0ms).
+info: AdminServer.Migrate[0]
+      SystemSettings 已是新結構，跳過欄位遷移。
+info: AdminServer.Migrate[0]
+      DiscoverColumns 多語言標題欄位已就緒。
+info: AdminServer.Migrate[0]
+      Messages 撤回/引用欄位與 MessageHides、ConversationStates 表已就緒。
+info: AdminServer.Migrate[0]
+      ServiceAgents 客服帳號表已就緒（Users.IsService 標記已移除）。
+dbug: Microsoft.EntityFrameworkCore.Query[10111]
+      Compiling query expression: 
+      'DbSet<AdminRole>()
+          .Any()'
+dbug: Microsoft.EntityFrameworkCore.Query[10107]
+      Generated query execution expression: 
+      'queryContext => ShapedQueryCompilingExpressionVisitor.SingleAsync<bool>(
+          asyncEnumerable: SingleQueryingEnumerable.Create<bool>(
+              relationalQueryContext: (RelationalQueryContext)queryContext, 
+              relationalCommandResolver: parameters => [LIFTABLE Constant: RelationalCommandCache.QueryExpression(
+                  Projection Mapping:
+                      EmptyProjectionMember -> 0
+                  SELECT EXISTS (
+                      SELECT 1
+                      FROM AdminRoles AS a)) | Resolver: c => new RelationalCommandCache(
+                  c.Dependencies.MemoryCache, 
+                  c.RelationalDependencies.QuerySqlGeneratorFactory, 
+                  c.RelationalDependencies.RelationalParameterBasedSqlProcessorFactory, 
+                  Projection Mapping:
+                      EmptyProjectionMember -> 0
+                  SELECT EXISTS (
+                      SELECT 1
+                      FROM AdminRoles AS a), 
+                  False, 
+                  Parameter
+              )].GetRelationalCommandTemplate(parameters), 
+              readerColumns: null, 
+              shaper: (queryContext, dataReader, resultContext, resultCoordinator) => 
+              {
+                  bool? value1;
+                  value1 = dataReader.IsDBNull(0) ? default(bool?) : (bool?)dataReader.GetBoolean(0);
+                  return (bool)value1;
+              }, 
+              contextType: AdminServer.Data.AdminDbContext, 
+              standAloneStateManager: False, 
+              detailedErrorsEnabled: False, 
+              threadSafetyChecksEnabled: True), 
+          cancellationToken: queryContext.CancellationToken)'
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20103]
+      Creating DbCommand for 'ExecuteReader'.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20104]
+      Created DbCommand for 'ExecuteReader' (0ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20106]
+      Initialized DbCommand for 'ExecuteReader' (0ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20100]
+      Executing DbCommand [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "AdminRoles" AS a)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (15ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "AdminRoles" AS a)
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20301]
+      Closing data reader to 'chatdb' on server 'tcp://192.168.10.200:5432'.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20300]
+      A data reader for 'chatdb' on server 'tcp://192.168.10.200:5432' is being disposed after spending 11ms reading results.
+dbug: Microsoft.EntityFrameworkCore.Query[10111]
+      Compiling query expression: 
+      'DbSet<AdminUser>()
+          .Any()'
+dbug: Microsoft.EntityFrameworkCore.Query[10107]
+      Generated query execution expression: 
+      'queryContext => ShapedQueryCompilingExpressionVisitor.SingleAsync<bool>(
+          asyncEnumerable: SingleQueryingEnumerable.Create<bool>(
+              relationalQueryContext: (RelationalQueryContext)queryContext, 
+              relationalCommandResolver: parameters => [LIFTABLE Constant: RelationalCommandCache.QueryExpression(
+                  Projection Mapping:
+                      EmptyProjectionMember -> 0
+                  SELECT EXISTS (
+                      SELECT 1
+                      FROM AdminUsers AS a)) | Resolver: c => new RelationalCommandCache(
+                  c.Dependencies.MemoryCache, 
+                  c.RelationalDependencies.QuerySqlGeneratorFactory, 
+                  c.RelationalDependencies.RelationalParameterBasedSqlProcessorFactory, 
+                  Projection Mapping:
+                      EmptyProjectionMember -> 0
+                  SELECT EXISTS (
+                      SELECT 1
+                      FROM AdminUsers AS a), 
+                  False, 
+                  Parameter
+              )].GetRelationalCommandTemplate(parameters), 
+              readerColumns: null, 
+              shaper: (queryContext, dataReader, resultContext, resultCoordinator) => 
+              {
+                  bool? value1;
+                  value1 = dataReader.IsDBNull(0) ? default(bool?) : (bool?)dataReader.GetBoolean(0);
+                  return (bool)value1;
+              }, 
+              contextType: AdminServer.Data.AdminDbContext, 
+              standAloneStateManager: False, 
+              detailedErrorsEnabled: False, 
+              threadSafetyChecksEnabled: True), 
+          cancellationToken: queryContext.CancellationToken)'
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20103]
+      Creating DbCommand for 'ExecuteReader'.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20104]
+      Created DbCommand for 'ExecuteReader' (0ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20106]
+      Initialized DbCommand for 'ExecuteReader' (0ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20100]
+      Executing DbCommand [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "AdminUsers" AS a)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (14ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "AdminUsers" AS a)
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20301]
+      Closing data reader to 'chatdb' on server 'tcp://192.168.10.200:5432'.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20300]
+      A data reader for 'chatdb' on server 'tcp://192.168.10.200:5432' is being disposed after spending 0ms reading results.
+dbug: Microsoft.EntityFrameworkCore.Query[10111]
+      Compiling query expression: 
+      'DbSet<AdminRole>()
+          .FirstOrDefault(r => r.Name == @name)'
+dbug: Microsoft.EntityFrameworkCore.Query[10107]
+      Generated query execution expression: 
+      'queryContext => ShapedQueryCompilingExpressionVisitor.SingleOrDefaultAsync<AdminRole>(
+          asyncEnumerable: SingleQueryingEnumerable.Create<AdminRole>(
+              relationalQueryContext: (RelationalQueryContext)queryContext, 
+              relationalCommandResolver: parameters => [LIFTABLE Constant: RelationalCommandCache.QueryExpression(
+                  Projection Mapping:
+                      EmptyProjectionMember -> Dictionary<IPropertyBase, int> { [Property: AdminRole.Id (Guid) Required PK AfterSave:Throw ValueGenerated.OnAdd, 0], [Property: AdminRole.Description (string), 1], [Property: AdminRole.Name (string) Required, 2], [Property: AdminRole.Permissions (string) Required, 3] }
+                  SELECT TOP(1) a.Id, a.Description, a.Name, a.Permissions
+                  FROM AdminRoles AS a
+                  WHERE a.Name == @name) | Resolver: c => new RelationalCommandCache(
+                  c.Dependencies.MemoryCache, 
+                  c.RelationalDependencies.QuerySqlGeneratorFactory, 
+                  c.RelationalDependencies.RelationalParameterBasedSqlProcessorFactory, 
+                  Projection Mapping:
+                      EmptyProjectionMember -> Dictionary<IPropertyBase, int> { [Property: AdminRole.Id (Guid) Required PK AfterSave:Throw ValueGenerated.OnAdd, 0], [Property: AdminRole.Description (string), 1], [Property: AdminRole.Name (string) Required, 2], [Property: AdminRole.Permissions (string) Required, 3] }
+                  SELECT TOP(1) a.Id, a.Description, a.Name, a.Permissions
+                  FROM AdminRoles AS a
+                  WHERE a.Name == @name, 
+                  False, 
+                  Parameter
+              )].GetRelationalCommandTemplate(parameters), 
+              readerColumns: null, 
+              shaper: (queryContext, dataReader, resultContext, resultCoordinator) => 
+              {
+                  AdminRole entity;
+                  entity = 
+                  {
+                      MaterializationContext materializationContext1;
+                      IEntityType entityType1;
+                      AdminRole instance1;
+                      InternalEntityEntry entry1;
+                      bool hasNullKey1;
+                      materializationContext1 = new MaterializationContext(
+                          [LIFTABLE Constant: ValueBuffer | Resolver: _ => (object)ValueBuffer.Empty], 
+                          queryContext.Context
+                      );
+                      instance1 = default(AdminRole);
+                      entry1 = queryContext.TryGetEntry(
+                          key: [LIFTABLE Constant: Key: AdminRole.Id PK | Resolver: c => c.Dependencies.Model.FindEntityType("AdminServer.Entities.AdminRole").FindPrimaryKey()], 
+                          keyValues: new object[]{ (object)dataReader.GetGuid(0) }, 
+                          throwOnNullKey: True, 
+                          hasNullKey: hasNullKey1);
+                      !(hasNullKey1) ? entry1 != default(InternalEntityEntry) ? 
+                      {
+                          entityType1 = entry1.EntityType;
+                          return instance1 = (AdminRole)entry1.Entity;
+                      } : 
+                      {
+                          ISnapshot shadowSnapshot1;
+                          shadowSnapshot1 = [LIFTABLE Constant: Snapshot | Resolver: _ => Snapshot.Empty];
+                          entityType1 = [LIFTABLE Constant: EntityType: AdminRole | Resolver: namelessParameter{0} => namelessParameter{0}.Dependencies.Model.FindEntityType("AdminServer.Entities.AdminRole")];
+                          instance1 = switch (entityType1)
+                          {
+                              case [LIFTABLE Constant: EntityType: AdminRole | Resolver: namelessParameter{1} => namelessParameter{1}.Dependencies.Model.FindEntityType("AdminServer.Entities.AdminRole")]: 
+                                  {
+                                      return 
+                                      {
+                                          AdminRole instance;
+                                          instance = new AdminRole();
+                                          instance.<Id>k__BackingField = dataReader.GetGuid(0);
+                                          instance.<Description>k__BackingField = dataReader.IsDBNull(1) ? default(string) : dataReader.GetString(1);
+                                          instance.<Name>k__BackingField = dataReader.GetString(2);
+                                          instance.<Permissions>k__BackingField = dataReader.GetString(3);
+                                          (instance is IInjectableService) ? ((IInjectableService)instance).Injected(
+                                              context: materializationContext1.Context, 
+                                              entity: instance, 
+                                              queryTrackingBehavior: TrackAll, 
+                                              structuralType: [LIFTABLE Constant: EntityType: AdminRole | Resolver: namelessParameter{2} => namelessParameter{2}.Dependencies.Model.FindEntityType("AdminServer.Entities.AdminRole")]) : default(void);
+                                          return instance;
+                                      }}
+                              default: 
+                                  default(AdminRole)
+                          }
+                          ;
+                          entry1 = entityType1 == default(IEntityType) ? default(InternalEntityEntry) : queryContext.StartTracking(
+                              entityType: entityType1, 
+                              entity: instance1, 
+                              snapshot: shadowSnapshot1);
+                          return instance1;
+                      } : default(void);
+                      return instance1;
+                  };
+                  return entity;
+              }, 
+              contextType: AdminServer.Data.AdminDbContext, 
+              standAloneStateManager: False, 
+              detailedErrorsEnabled: False, 
+              threadSafetyChecksEnabled: True), 
+          cancellationToken: queryContext.CancellationToken)'
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20103]
+      Creating DbCommand for 'ExecuteReader'.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20104]
+      Created DbCommand for 'ExecuteReader' (0ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20106]
+      Initialized DbCommand for 'ExecuteReader' (4ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20100]
+      Executing DbCommand [Parameters=[@name='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."Description", a."Name", a."Permissions"
+      FROM "AdminRoles" AS a
+      WHERE a."Name" = @name
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (30ms) [Parameters=[@name='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."Description", a."Name", a."Permissions"
+      FROM "AdminRoles" AS a
+      WHERE a."Name" = @name
+      LIMIT 1
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'AdminRole' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20301]
+      Closing data reader to 'chatdb' on server 'tcp://192.168.10.200:5432'.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20300]
+      A data reader for 'chatdb' on server 'tcp://192.168.10.200:5432' is being disposed after spending 78ms reading results.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20103]
+      Creating DbCommand for 'ExecuteReader'.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20104]
+      Created DbCommand for 'ExecuteReader' (0ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20106]
+      Initialized DbCommand for 'ExecuteReader' (0ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20100]
+      Executing DbCommand [Parameters=[@name='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."Description", a."Name", a."Permissions"
+      FROM "AdminRoles" AS a
+      WHERE a."Name" = @name
+      LIMIT 1
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (12ms) [Parameters=[@name='?'], CommandType='Text', CommandTimeout='30']
+      SELECT a."Id", a."Description", a."Name", a."Permissions"
+      FROM "AdminRoles" AS a
+      WHERE a."Name" = @name
+      LIMIT 1
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'AdminRole' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20301]
+      Closing data reader to 'chatdb' on server 'tcp://192.168.10.200:5432'.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20300]
+      A data reader for 'chatdb' on server 'tcp://192.168.10.200:5432' is being disposed after spending 0ms reading results.
+dbug: Microsoft.EntityFrameworkCore.Query[10111]
+      Compiling query expression: 
+      'DbSet<SystemSettings>()
+          .Any()'
+dbug: Microsoft.EntityFrameworkCore.Query[10107]
+      Generated query execution expression: 
+      'queryContext => ShapedQueryCompilingExpressionVisitor.SingleAsync<bool>(
+          asyncEnumerable: SingleQueryingEnumerable.Create<bool>(
+              relationalQueryContext: (RelationalQueryContext)queryContext, 
+              relationalCommandResolver: parameters => [LIFTABLE Constant: RelationalCommandCache.QueryExpression(
+                  Projection Mapping:
+                      EmptyProjectionMember -> 0
+                  SELECT EXISTS (
+                      SELECT 1
+                      FROM SystemSettings AS s)) | Resolver: c => new RelationalCommandCache(
+                  c.Dependencies.MemoryCache, 
+                  c.RelationalDependencies.QuerySqlGeneratorFactory, 
+                  c.RelationalDependencies.RelationalParameterBasedSqlProcessorFactory, 
+                  Projection Mapping:
+                      EmptyProjectionMember -> 0
+                  SELECT EXISTS (
+                      SELECT 1
+                      FROM SystemSettings AS s), 
+                  False, 
+                  Parameter
+              )].GetRelationalCommandTemplate(parameters), 
+              readerColumns: null, 
+              shaper: (queryContext, dataReader, resultContext, resultCoordinator) => 
+              {
+                  bool? value1;
+                  value1 = dataReader.IsDBNull(0) ? default(bool?) : (bool?)dataReader.GetBoolean(0);
+                  return (bool)value1;
+              }, 
+              contextType: AdminServer.Data.AdminDbContext, 
+              standAloneStateManager: False, 
+              detailedErrorsEnabled: False, 
+              threadSafetyChecksEnabled: True), 
+          cancellationToken: queryContext.CancellationToken)'
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20103]
+      Creating DbCommand for 'ExecuteReader'.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20104]
+      Created DbCommand for 'ExecuteReader' (0ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20106]
+      Initialized DbCommand for 'ExecuteReader' (0ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20100]
+      Executing DbCommand [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "SystemSettings" AS s)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (12ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "SystemSettings" AS s)
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20301]
+      Closing data reader to 'chatdb' on server 'tcp://192.168.10.200:5432'.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20300]
+      A data reader for 'chatdb' on server 'tcp://192.168.10.200:5432' is being disposed after spending 0ms reading results.
+dbug: Microsoft.EntityFrameworkCore.Query[10111]
+      Compiling query expression: 
+      'DbSet<DiscoverColumn>()'
+dbug: Microsoft.EntityFrameworkCore.Query[10107]
+      Generated query execution expression: 
+      'queryContext => SingleQueryingEnumerable.Create<DiscoverColumn>(
+          relationalQueryContext: (RelationalQueryContext)queryContext, 
+          relationalCommandResolver: parameters => [LIFTABLE Constant: RelationalCommandCache.QueryExpression(
+              Projection Mapping:
+                  EmptyProjectionMember -> Dictionary<IPropertyBase, int> { [Property: DiscoverColumn.Id (Guid) Required PK AfterSave:Throw ValueGenerated.OnAdd, 0], [Property: DiscoverColumn.Content (string), 1], [Property: DiscoverColumn.CreatedAt (DateTime) Required, 2], [Property: DiscoverColumn.Enabled (bool) Required Index, 3], [Property: DiscoverColumn.Icon (string), 4], [Property: DiscoverColumn.Kind (string) Required, 5], [Property: DiscoverColumn.Pinned (bool) Required Index, 6], [Property: DiscoverColumn.Sort (int) Required Index, 7], [Property: DiscoverColumn.Title (string) Required, 8], [Property: DiscoverColumn.TitleI18n (string), 9] }
+              SELECT d.Id, d.Content, d.CreatedAt, d.Enabled, d.Icon, d.Kind, d.Pinned, d.Sort, d.Title, d.TitleI18n
+              FROM DiscoverColumns AS d) | Resolver: c => new RelationalCommandCache(
+              c.Dependencies.MemoryCache, 
+              c.RelationalDependencies.QuerySqlGeneratorFactory, 
+              c.RelationalDependencies.RelationalParameterBasedSqlProcessorFactory, 
+              Projection Mapping:
+                  EmptyProjectionMember -> Dictionary<IPropertyBase, int> { [Property: DiscoverColumn.Id (Guid) Required PK AfterSave:Throw ValueGenerated.OnAdd, 0], [Property: DiscoverColumn.Content (string), 1], [Property: DiscoverColumn.CreatedAt (DateTime) Required, 2], [Property: DiscoverColumn.Enabled (bool) Required Index, 3], [Property: DiscoverColumn.Icon (string), 4], [Property: DiscoverColumn.Kind (string) Required, 5], [Property: DiscoverColumn.Pinned (bool) Required Index, 6], [Property: DiscoverColumn.Sort (int) Required Index, 7], [Property: DiscoverColumn.Title (string) Required, 8], [Property: DiscoverColumn.TitleI18n (string), 9] }
+              SELECT d.Id, d.Content, d.CreatedAt, d.Enabled, d.Icon, d.Kind, d.Pinned, d.Sort, d.Title, d.TitleI18n
+              FROM DiscoverColumns AS d, 
+              False, 
+              Parameter
+          )].GetRelationalCommandTemplate(parameters), 
+          readerColumns: null, 
+          shaper: (queryContext, dataReader, resultContext, resultCoordinator) => 
+          {
+              DiscoverColumn entity;
+              entity = 
+              {
+                  MaterializationContext materializationContext1;
+                  IEntityType entityType1;
+                  DiscoverColumn instance1;
+                  InternalEntityEntry entry1;
+                  bool hasNullKey1;
+                  materializationContext1 = new MaterializationContext(
+                      [LIFTABLE Constant: ValueBuffer | Resolver: _ => (object)ValueBuffer.Empty], 
+                      queryContext.Context
+                  );
+                  instance1 = default(DiscoverColumn);
+                  entry1 = queryContext.TryGetEntry(
+                      key: [LIFTABLE Constant: Key: DiscoverColumn.Id PK | Resolver: c => c.Dependencies.Model.FindEntityType("Chat.Shared.Entities.DiscoverColumn").FindPrimaryKey()], 
+                      keyValues: new object[]{ (object)dataReader.GetGuid(0) }, 
+                      throwOnNullKey: True, 
+                      hasNullKey: hasNullKey1);
+                  !(hasNullKey1) ? entry1 != default(InternalEntityEntry) ? 
+                  {
+                      entityType1 = entry1.EntityType;
+                      return instance1 = (DiscoverColumn)entry1.Entity;
+                  } : 
+                  {
+                      ISnapshot shadowSnapshot1;
+                      shadowSnapshot1 = [LIFTABLE Constant: Snapshot | Resolver: _ => Snapshot.Empty];
+                      entityType1 = [LIFTABLE Constant: EntityType: DiscoverColumn | Resolver: namelessParameter{0} => namelessParameter{0}.Dependencies.Model.FindEntityType("Chat.Shared.Entities.DiscoverColumn")];
+                      instance1 = switch (entityType1)
+                      {
+                          case [LIFTABLE Constant: EntityType: DiscoverColumn | Resolver: namelessParameter{1} => namelessParameter{1}.Dependencies.Model.FindEntityType("Chat.Shared.Entities.DiscoverColumn")]: 
+                              {
+                                  return 
+                                  {
+                                      DiscoverColumn instance;
+                                      instance = new DiscoverColumn();
+                                      instance.<Id>k__BackingField = dataReader.GetGuid(0);
+                                      instance.<Content>k__BackingField = dataReader.IsDBNull(1) ? default(string) : dataReader.GetString(1);
+                                      instance.<CreatedAt>k__BackingField = dataReader.GetDateTime(2);
+                                      instance.<Enabled>k__BackingField = dataReader.GetBoolean(3);
+                                      instance.<Icon>k__BackingField = dataReader.IsDBNull(4) ? default(string) : dataReader.GetString(4);
+                                      instance.<Kind>k__BackingField = dataReader.GetString(5);
+                                      instance.<Pinned>k__BackingField = dataReader.GetBoolean(6);
+                                      instance.<Sort>k__BackingField = dataReader.GetInt32(7);
+                                      instance.<Title>k__BackingField = dataReader.GetString(8);
+                                      instance.<TitleI18n>k__BackingField = dataReader.IsDBNull(9) ? default(string) : dataReader.GetString(9);
+                                      (instance is IInjectableService) ? ((IInjectableService)instance).Injected(
+                                          context: materializationContext1.Context, 
+                                          entity: instance, 
+                                          queryTrackingBehavior: TrackAll, 
+                                          structuralType: [LIFTABLE Constant: EntityType: DiscoverColumn | Resolver: namelessParameter{2} => namelessParameter{2}.Dependencies.Model.FindEntityType("Chat.Shared.Entities.DiscoverColumn")]) : default(void);
+                                      return instance;
+                                  }}
+                          default: 
+                              default(DiscoverColumn)
+                      }
+                      ;
+                      entry1 = entityType1 == default(IEntityType) ? default(InternalEntityEntry) : queryContext.StartTracking(
+                          entityType: entityType1, 
+                          entity: instance1, 
+                          snapshot: shadowSnapshot1);
+                      return instance1;
+                  } : default(void);
+                  return instance1;
+              };
+              return entity;
+          }, 
+          contextType: AdminServer.Data.AdminDbContext, 
+          standAloneStateManager: False, 
+          detailedErrorsEnabled: False, 
+          threadSafetyChecksEnabled: True)'
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20103]
+      Creating DbCommand for 'ExecuteReader'.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20104]
+      Created DbCommand for 'ExecuteReader' (0ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20106]
+      Initialized DbCommand for 'ExecuteReader' (0ms).
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20100]
+      Executing DbCommand [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT d."Id", d."Content", d."CreatedAt", d."Enabled", d."Icon", d."Kind", d."Pinned", d."Sort", d."Title", d."TitleI18n"
+      FROM "DiscoverColumns" AS d
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (14ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT d."Id", d."Content", d."CreatedAt", d."Enabled", d."Icon", d."Kind", d."Pinned", d."Sort", d."Title", d."TitleI18n"
+      FROM "DiscoverColumns" AS d
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
+      Context 'AdminDbContext' started tracking 'DiscoverColumn' entity. Consider using 'DbContextOptionsBuilder.EnableSensitiveDataLogging' to see key values.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20301]
+      Closing data reader to 'chatdb' on server 'tcp://192.168.10.200:5432'.
+dbug: Microsoft.EntityFrameworkCore.Database.Command[20300]
+      A data reader for 'chatdb' on server 'tcp://192.168.10.200:5432' is being disposed after spending 34ms reading results.
+dbug: Microsoft.EntityFrameworkCore.Update[10004]
+      SaveChanges starting for 'AdminDbContext'.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10800]
+      DetectChanges starting for 'AdminDbContext'.
+dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10801]
+      DetectChanges completed for 'AdminDbContext'.
+dbug: Microsoft.EntityFrameworkCore.Update[10005]
+      SaveChanges completed for 'AdminDbContext' with 0 entities written to the database.
+dbug: Microsoft.EntityFrameworkCore.Infrastructure[10407]
+      'AdminDbContext' disposed.
+dbug: Microsoft.EntityFrameworkCore.Database.Connection[20007]
+      Disposing connection to database 'chatdb' on server 'tcp://192.168.10.200:5432'.
+dbug: Microsoft.EntityFrameworkCore.Database.Connection[20008]
+      Disposed connection to database 'chatdb' on server 'tcp://192.168.10.200:5432' (0ms).
+dbug: Microsoft.Extensions.Hosting.Internal.Host[1]
+      Hosting starting
+info: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[63]
+      User profile is available. Using 'C:\Users\xbdki\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5299
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Users\xbdki\code\chat\server\AdminServer
+dbug: Microsoft.Extensions.Hosting.Internal.Host[2]
+      Hosting started
