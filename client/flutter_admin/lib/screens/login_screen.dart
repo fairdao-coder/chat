@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme.dart';
+import '../l10n/app_strings.dart';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 import '../api/api_client.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -34,7 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } catch (e) {
-      setState(() => _error = '網絡錯誤：$e');
+      setState(() => _error = '${context.read<LocaleProvider>().t[K.errorNetwork]}：$e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -43,6 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width > 760;
+    final t = context.watch<LocaleProvider>().t;
     final card = Container(
       width: 380,
       padding: const EdgeInsets.all(32),
@@ -64,20 +67,20 @@ class _LoginScreenState extends State<LoginScreen> {
             child: const Icon(Icons.admin_panel_settings, size: 34, color: Colors.white),
           ),
           const SizedBox(height: 16),
-          const Text('聊天後臺管理系統',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
+          Text(t[K.appTitle],
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.textMain)),
           const SizedBox(height: 4),
           const Text('Chat Admin Console', style: TextStyle(color: AppTheme.textSub)),
           const SizedBox(height: 28),
           TextField(
             controller: _userCtrl,
-            decoration: const InputDecoration(labelText: '管理員賬號', prefixIcon: Icon(Icons.person_outline)),
+            decoration: InputDecoration(labelText: t[K.loginAccount], prefixIcon: const Icon(Icons.person_outline)),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _passCtrl,
             obscureText: true,
-            decoration: const InputDecoration(labelText: '密碼', prefixIcon: Icon(Icons.lock_outline)),
+            decoration: InputDecoration(labelText: t[K.loginPassword], prefixIcon: const Icon(Icons.lock_outline)),
             onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: 20),
@@ -96,11 +99,11 @@ class _LoginScreenState extends State<LoginScreen> {
               onPressed: _loading ? null : _submit,
               child: _loading
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('登 錄'),
+                  : Text(t[K.loginSubmit]),
             ),
           ),
           const SizedBox(height: 16),
-          const Text('默認賬號 admin / admin123', style: TextStyle(color: AppTheme.textSub, fontSize: 12)),
+          Text(t[K.loginHint], style: const TextStyle(color: AppTheme.textSub, fontSize: 12)),
         ],
       ),
     );
@@ -136,20 +139,20 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       const Icon(Icons.admin_panel_settings, size: 56, color: Colors.white),
                       const SizedBox(height: 20),
-                      const Text('歡迎回來',
-                          style: TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.bold)),
+                      Text(t[K.loginWelcome],
+                          style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 12),
-                      const Text('統一管理用戶、角色、發現頁與系統功能配置。',
-                          style: TextStyle(color: Colors.white70, fontSize: 16, height: 1.5)),
+                      Text(t[K.loginSlogan],
+                          style: const TextStyle(color: Colors.white70, fontSize: 16, height: 1.5)),
                       const SizedBox(height: 28),
                       Wrap(
                         spacing: 10,
                         runSpacing: 10,
                         children: [
-                          _FeatureChip(Icons.people, '用戶管理'),
-                          _FeatureChip(Icons.badge, '角色權限'),
-                          _FeatureChip(Icons.explore, '發現頁'),
-                          _FeatureChip(Icons.tune, '系統配置'),
+                          _FeatureChip(Icons.people, t[K.featUsers]),
+                          _FeatureChip(Icons.badge, t[K.featRoles]),
+                          _FeatureChip(Icons.explore, t[K.featDiscover]),
+                          _FeatureChip(Icons.tune, t[K.featSettings]),
                         ],
                       ),
                     ],

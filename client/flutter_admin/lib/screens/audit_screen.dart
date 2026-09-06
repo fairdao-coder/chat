@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../l10n/app_strings.dart';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 
 class AuditScreen extends StatefulWidget {
   const AuditScreen({super.key});
@@ -46,7 +48,7 @@ class _AuditScreenState extends State<AuditScreen> {
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      if (mounted) setState(() => _error = '加載失敗：$e');
+      if (mounted) setState(() => _error = '${context.read<LocaleProvider>().t[K.loadFailed]}$e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -54,15 +56,16 @@ class _AuditScreenState extends State<AuditScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.watch<LocaleProvider>().t;
     final totalPages = (_total / _pageSize).ceil();
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '審計日誌',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Text(
+            t[K.navAudit],
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Row(
@@ -71,9 +74,9 @@ class _AuditScreenState extends State<AuditScreen> {
                 width: 280,
                 child: TextField(
                   controller: _searchCtrl,
-                  decoration: const InputDecoration(
-                    labelText: '搜索動作 / 操作人',
-                    prefixIcon: Icon(Icons.search),
+                  decoration: InputDecoration(
+                    labelText: t[K.auditSearchHint],
+                    prefixIcon: const Icon(Icons.search),
                   ),
                   onSubmitted: (_) {
                     _page = 1;
@@ -87,10 +90,10 @@ class _AuditScreenState extends State<AuditScreen> {
                   _page = 1;
                   _load();
                 },
-                child: const Text('搜索'),
+                child: Text(t[K.search]),
               ),
               const Spacer(),
-              Text('共 $_total 條'),
+              Text(t.tr(K.auditTotal, {'n': '$_total'})),
             ],
           ),
           const SizedBox(height: 16),
@@ -109,13 +112,13 @@ class _AuditScreenState extends State<AuditScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : SingleChildScrollView(
                       child: DataTable(
-                        columns: const [
-                          DataColumn(label: Text('時間')),
-                          DataColumn(label: Text('操作人')),
-                          DataColumn(label: Text('動作')),
-                          DataColumn(label: Text('目標')),
-                          DataColumn(label: Text('詳情')),
-                          DataColumn(label: Text('IP')),
+                        columns: [
+                          DataColumn(label: Text(t[K.colTime])),
+                          DataColumn(label: Text(t[K.colOperator])),
+                          DataColumn(label: Text(t[K.colAction])),
+                          DataColumn(label: Text(t[K.colTarget])),
+                          DataColumn(label: Text(t[K.colDetail])),
+                          const DataColumn(label: Text('IP')),
                         ],
                         rows: _items
                             .map(
@@ -152,7 +155,10 @@ class _AuditScreenState extends State<AuditScreen> {
                     : null,
                 icon: const Icon(Icons.chevron_left),
               ),
-              Text('第 $_page / ${totalPages == 0 ? 1 : totalPages} 頁'),
+              Text(t.tr(K.auditPage, {
+                'a': '$_page',
+                'b': '${totalPages == 0 ? 1 : totalPages}',
+              })),
               IconButton(
                 onPressed: _page < totalPages
                     ? () {

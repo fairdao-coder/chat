@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
@@ -234,7 +235,12 @@ class CallController extends StateNotifier<CallState> {
   Future<void> _createPeer() async {
     _pc = await createPeerConnection(_iceConfig());
     _remoteDescriptionSet = false;
+    _pc!.onSignalingState = (s) => debugPrint('[RTC] signaling=$s');
+    _pc!.onIceGatheringState = (s) => debugPrint('[RTC] iceGathering=$s');
+    _pc!.onIceConnectionState = (s) => debugPrint('[RTC] iceConnection=$s');
+    _pc!.onConnectionState = (s) => debugPrint('[RTC] connection=$s');
     _pc!.onIceCandidate = (candidate) async {
+      debugPrint('[RTC] localCandidate: ${candidate.candidate}');
       if (state.callId != null && mounted) {
         await _hub.sendIceCandidate(state.callId!, jsonEncode(candidate.toMap()));
       }
@@ -324,6 +330,7 @@ class CallController extends StateNotifier<CallState> {
         m['sdpMid'] as String?,
         m['sdpMLineIndex'] as int?,
       );
+      debugPrint('[RTC] remoteCandidate: ${cand.candidate}');
       // candidate 一律先緩存：對方 _pc 尚未建立，或本地 remoteDescription 尚未設置時
       // 直接 addCandidate 會失敗（區域網直連下 host candidate 極快、極易早到）。
       // 待條件滿足後由 _flushPendingCandidates 統一加入，避免 candidate 被永久丟棄。

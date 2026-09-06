@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../l10n/app_strings.dart';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 import '../theme.dart';
 import '../widgets/discover_column_dialog.dart';
 import '../widgets/discover_column_meta.dart';
@@ -35,8 +37,9 @@ class _DiscoverColumnsScreenState extends State<DiscoverColumnsScreen> {
       col?.pinned == true || _pinnedCount < _maxPinned;
 
   /// 固定欄目已達上限時的提示。
-  void _pinLimitToast() =>
-      _toast('固定欄目最多 $_maxPinned 個，請先取消其它欄目的固定');
+  void _pinLimitToast() => _toast(
+        context.read<LocaleProvider>().t.tr(K.discPinLimit, {'n': '$_maxPinned'}),
+      );
 
   @override
   void initState() {
@@ -52,13 +55,16 @@ class _DiscoverColumnsScreenState extends State<DiscoverColumnsScreen> {
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      if (mounted) setState(() => _error = '加載失敗：$e');
+      if (mounted) {
+        setState(() => _error = '${context.read<LocaleProvider>().t[K.loadFailed]}$e');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _edit(DiscoverColumnDto? col) async {
+    final t = context.read<LocaleProvider>().t;
     final api = context.read<AuthProvider>().api;
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -80,29 +86,30 @@ class _DiscoverColumnsScreenState extends State<DiscoverColumnsScreen> {
         await api.updateDiscover(col.id, result);
       }
       if (mounted) {
-        _toast(col == null ? '已新增' : '已保存');
+        _toast(col == null ? t[K.discCreated] : t[K.saved]);
         await _load();
       }
     } on ApiException catch (e) {
-      if (mounted) _toast('操作失敗：${e.message}');
+      if (mounted) _toast('${t[K.discOpFailed]}${e.message}');
     }
   }
 
   Future<void> _delete(DiscoverColumnDto col) async {
+    final t = context.read<LocaleProvider>().t;
     final api = context.read<AuthProvider>().api;
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('確認刪除'),
-        content: Text('確定刪除欄目「${col.title}」？'),
+        title: Text(t[K.discConfirmDeleteTitle]),
+        content: Text(t.tr(K.discConfirmDelete, {'n': col.title})),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('取消')),
+              child: Text(t[K.cancel])),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('刪除'),
+            child: Text(t[K.delete]),
           ),
         ],
       ),
@@ -112,11 +119,11 @@ class _DiscoverColumnsScreenState extends State<DiscoverColumnsScreen> {
     try {
       await api.deleteDiscover(col.id);
       if (mounted) {
-        _toast('已刪除');
+        _toast(t[K.discDeleted]);
         await _load();
       }
     } on ApiException catch (e) {
-      if (mounted) _toast('刪除失敗：${e.message}');
+      if (mounted) _toast('${t[K.discDeleteFailed]}${e.message}');
     }
   }
 
@@ -149,6 +156,7 @@ class _DiscoverColumnsScreenState extends State<DiscoverColumnsScreen> {
     bool? pinned,
   }) async {
     if (!_canWrite) return;
+    final t = context.read<LocaleProvider>().t;
     // 切到「固定」且已達上限：直接攔截。
     if (pinned == true && !_canPin(col)) {
       _pinLimitToast();
@@ -171,7 +179,7 @@ class _DiscoverColumnsScreenState extends State<DiscoverColumnsScreen> {
       if (!mounted) return;
       // 失敗回滾為原值，避免界面與服務端狀態不一致。
       if (idx >= 0) setState(() => _items[idx] = col);
-      _toast('操作失敗：${e is ApiException ? e.message : e}');
+      _toast('${t[K.discOpFailed]}${e is ApiException ? e.message : e}');
     }
   }
 
@@ -182,6 +190,7 @@ class _DiscoverColumnsScreenState extends State<DiscoverColumnsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.watch<LocaleProvider>().t;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -189,20 +198,20 @@ class _DiscoverColumnsScreenState extends State<DiscoverColumnsScreen> {
         children: [
           Row(
             children: [
-              const Text('發現頁欄目',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(t[K.navDiscover],
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const Spacer(),
               if (_canWrite)
                 FilledButton.icon(
                   onPressed: () => _edit(null),
                   icon: const Icon(Icons.add),
-                  label: const Text('新增欄目'),
+                  label: Text(t[K.discAdd]),
                 ),
               const SizedBox(width: 8),
               IconButton(
                 onPressed: _load,
                 icon: const Icon(Icons.refresh),
-                tooltip: '刷新',
+                tooltip: t[K.discRefresh],
               ),
             ],
           ),
@@ -221,7 +230,7 @@ class _DiscoverColumnsScreenState extends State<DiscoverColumnsScreen> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _items.isEmpty
-                    ? const Center(child: Text('暫無欄目'))
+                    ? Center(child: Text(t[K.discEmpty]))
                     : ListView.separated(
                         itemCount: _items.length,
                         separatorBuilder: (_, __) => const Divider(height: 1),
@@ -266,6 +275,7 @@ class _ColumnTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.watch<LocaleProvider>().t;
     final c = column;
     return ListTile(
       leading: CircleAvatar(
@@ -290,7 +300,7 @@ class _ColumnTile extends StatelessWidget {
                 children: [
                   Icon(Icons.push_pin, size: 11, color: Colors.amber.shade800),
                   const SizedBox(width: 3),
-                  Text('固定',
+                  Text(t[K.discPinned],
                       style: TextStyle(
                           fontSize: 10, color: Colors.amber.shade800)),
                 ],
@@ -309,10 +319,10 @@ class _ColumnTile extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (!c.enabled)
-            const Chip(
-              label: Text('已隱藏', style: TextStyle(fontSize: 11)),
+            Chip(
+              label: Text(t[K.discHidden], style: const TextStyle(fontSize: 11)),
               visualDensity: VisualDensity.compact,
-              backgroundColor: Color(0xFFEEEEEE),
+              backgroundColor: const Color(0xFFEEEEEE),
             ),
           if (canWrite)
             IconButton(
@@ -320,7 +330,7 @@ class _ColumnTile extends StatelessWidget {
                 c.pinned ? Icons.push_pin : Icons.push_pin_outlined,
                 color: c.pinned ? Colors.amber.shade700 : Colors.grey,
               ),
-              tooltip: c.pinned ? '取消固定' : '固定到底部導航',
+              tooltip: c.pinned ? t[K.discUnpin] : t[K.discPin],
               onPressed: onTogglePinned,
             ),
           if (canWrite)
@@ -329,7 +339,7 @@ class _ColumnTile extends StatelessWidget {
                 c.enabled ? Icons.visibility : Icons.visibility_off,
                 color: c.enabled ? AppTheme.primary : Colors.grey,
               ),
-              tooltip: c.enabled ? '停用' : '啟用',
+              tooltip: c.enabled ? t[K.disabled] : t[K.enabled],
               onPressed: onToggleEnabled,
             ),
           if (canWrite) ...[

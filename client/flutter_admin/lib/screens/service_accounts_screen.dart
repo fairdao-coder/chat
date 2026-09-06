@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../l10n/app_strings.dart';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 import '../theme.dart';
 
 /// 客服帳號管理：創建/列出/移除客服帳號。客服帳號本質是普通聊天用戶，僅當其 Id 出現在 ServiceAgents 表時才被視為客服，
@@ -52,6 +54,7 @@ class _ServiceAccountsScreenState extends State<ServiceAccountsScreen> {
   }
 
   Future<void> _create() async {
+    final t = context.read<LocaleProvider>().t;
     final userNameCtl = TextEditingController();
     final nickCtl = TextEditingController();
     final pwdCtl = TextEditingController();
@@ -63,7 +66,7 @@ class _ServiceAccountsScreenState extends State<ServiceAccountsScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setD) => AlertDialog(
-          title: const Text('新增客服帳號'),
+          title: Text(t[K.svcNewTitle]),
           content: Form(
             key: formKey,
             child: Column(
@@ -71,31 +74,31 @@ class _ServiceAccountsScreenState extends State<ServiceAccountsScreen> {
               children: [
                 TextFormField(
                   controller: userNameCtl,
-                  decoration: const InputDecoration(
-                    labelText: '用戶名',
-                    prefixIcon: Icon(Icons.person),
+                  decoration: InputDecoration(
+                    labelText: t[K.userUsername],
+                    prefixIcon: const Icon(Icons.person),
                   ),
-                  validator: (v) => v == null || v.length < 3 ? '至少3個字元' : null,
+                  validator: (v) => v == null || v.length < 3 ? t[K.svcMinChars3] : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: nickCtl,
-                  decoration: const InputDecoration(
-                    labelText: '顯示名稱',
-                    prefixIcon: Icon(Icons.badge),
+                  decoration: InputDecoration(
+                    labelText: t[K.adminDisplayName],
+                    prefixIcon: const Icon(Icons.badge),
                   ),
-                  validator: (v) => v == null || v.isEmpty ? '請填寫顯示名稱' : null,
+                  validator: (v) => v == null || v.isEmpty ? t[K.svcNameRequired] : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: pwdCtl,
                   obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: '登錄密碼',
-                    prefixIcon: Icon(Icons.lock),
-                    helperText: '至少6位',
+                  decoration: InputDecoration(
+                    labelText: t[K.svcLoginPwd],
+                    prefixIcon: const Icon(Icons.lock),
+                    helperText: t[K.pwdNewHint],
                   ),
-                  validator: (v) => v == null || v.length < 6 ? '密碼至少6位' : null,
+                  validator: (v) => v == null || v.length < 6 ? t[K.pwdTooShort] : null,
                 ),
                 if (err != null) ...[
                   const SizedBox(height: 12),
@@ -113,7 +116,7 @@ class _ServiceAccountsScreenState extends State<ServiceAccountsScreen> {
             ),
           ),
           actions: [
-            TextButton(onPressed: busy ? null : () => Navigator.pop(ctx), child: const Text('取消')),
+            TextButton(onPressed: busy ? null : () => Navigator.pop(ctx), child: Text(t[K.cancel])),
             FilledButton(
               onPressed: busy
                   ? null
@@ -133,7 +136,7 @@ class _ServiceAccountsScreenState extends State<ServiceAccountsScreen> {
                         await _load();
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('客服帳號已創建'), backgroundColor: AppTheme.primary),
+                            SnackBar(content: Text(t[K.svcCreated]), backgroundColor: AppTheme.primary),
                           );
                         }
                       } on ApiException catch (e) {
@@ -144,13 +147,13 @@ class _ServiceAccountsScreenState extends State<ServiceAccountsScreen> {
                       } catch (_) {
                         setD(() {
                           busy = false;
-                          err = '網絡錯誤，請重試';
+                          err = t[K.errorNetworkRetry];
                         });
                       }
                     },
               child: busy
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('創建'),
+                  : Text(t[K.create]),
             ),
           ],
         ),
@@ -159,17 +162,18 @@ class _ServiceAccountsScreenState extends State<ServiceAccountsScreen> {
   }
 
   Future<void> _remove(ServiceAccountDto a) async {
+    final t = context.read<LocaleProvider>().t;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('移除客服帳號'),
-        content: Text('確定將「${a.nickName}」移出客服？該帳號將保留為普通用戶，歷史會話不會丟失。'),
+        title: Text(t[K.svcRemoveTitle]),
+        content: Text(t.tr(K.svcRemoveConfirm, {'n': a.nickName})),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(t[K.cancel])),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('移除'),
+            child: Text(t[K.svcRemove]),
           ),
         ],
       ),
@@ -180,13 +184,13 @@ class _ServiceAccountsScreenState extends State<ServiceAccountsScreen> {
       await _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已移出客服'), backgroundColor: AppTheme.primary),
+          SnackBar(content: Text(t[K.svcRemoved]), backgroundColor: AppTheme.primary),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('移除失敗: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('${t[K.svcRemoveFailed]}$e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -194,6 +198,7 @@ class _ServiceAccountsScreenState extends State<ServiceAccountsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.watch<LocaleProvider>().t;
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -205,17 +210,18 @@ class _ServiceAccountsScreenState extends State<ServiceAccountsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('客服帳號', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    Text(t[K.svcTitle],
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
-                    Text('創建多個客服帳號，用戶「聯繫客服」時可選擇在線客服直接對話（免好友關係）。',
-                        style: TextStyle(color: AppTheme.textSub, fontSize: 13)),
+                    Text(t[K.svcDesc],
+                        style: const TextStyle(color: AppTheme.textSub, fontSize: 13)),
                   ],
                 ),
               ),
               FilledButton.icon(
                 onPressed: _create,
                 icon: const Icon(Icons.add),
-                label: const Text('新增客服'),
+                label: Text(t[K.svcAdd]),
               ),
             ],
           ),
@@ -233,12 +239,12 @@ class _ServiceAccountsScreenState extends State<ServiceAccountsScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(_error!, style: const TextStyle(color: Colors.red)),
-                              TextButton(onPressed: _load, child: const Text('重試')),
+                              TextButton(onPressed: _load, child: Text(t[K.retry])),
                             ],
                           ),
                         )
                       : _items.isEmpty
-                          ? const Center(child: Text('暫無客服帳號，點擊右上角新增'))
+                          ? Center(child: Text(t[K.svcEmpty]))
                           : ListView.separated(
                               padding: const EdgeInsets.all(8),
                               itemCount: _items.length,
@@ -264,7 +270,7 @@ class _ServiceAccountsScreenState extends State<ServiceAccountsScreen> {
                                           borderRadius: BorderRadius.circular(12),
                                         ),
                                         child: Text(
-                                          a.isOnline ? '在線' : '離線',
+                                          a.isOnline ? t[K.userOnline] : t[K.userOffline],
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: a.isOnline ? Colors.green : Colors.grey,
@@ -278,7 +284,7 @@ class _ServiceAccountsScreenState extends State<ServiceAccountsScreen> {
                                         ),
                                       IconButton(
                                         icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                        tooltip: '移除客服',
+                                        tooltip: t[K.svcRemoveAgent],
                                         onPressed: () => _remove(a),
                                       ),
                                     ],

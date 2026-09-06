@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../l10n/app_strings.dart';
 import '../theme.dart';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 
 class RolesScreen extends StatefulWidget {
   const RolesScreen({super.key});
@@ -19,14 +21,14 @@ class _RolesScreenState extends State<RolesScreen> {
   String? _error;
 
   static const List<Map<String, String>> _allPerms = [
-    {'k': 'dashboard.view', 'label': '查看儀表盤'},
-    {'k': 'users.read', 'label': '查看用戶'},
-    {'k': 'users.write', 'label': '管理用戶（編輯/封禁）'},
-    {'k': 'roles.read', 'label': '查看角色'},
-    {'k': 'roles.write', 'label': '管理角色'},
-    {'k': 'audit.read', 'label': '查看審計日誌'},
-    {'k': 'admins.read', 'label': '查看管理員'},
-    {'k': 'admins.write', 'label': '管理管理員'},
+    {'k': 'dashboard.view', 'label': K.permViewDashboard},
+    {'k': 'users.read', 'label': K.permViewUsers},
+    {'k': 'users.write', 'label': K.permManageUsers},
+    {'k': 'roles.read', 'label': K.permViewRoles},
+    {'k': 'roles.write', 'label': K.permManageRoles},
+    {'k': 'audit.read', 'label': K.permViewAudit},
+    {'k': 'admins.read', 'label': K.permViewAdmins},
+    {'k': 'admins.write', 'label': K.permManageAdmins},
   ];
 
   bool get _canWrite => context.read<AuthProvider>().hasPerm('roles.write');
@@ -52,13 +54,14 @@ class _RolesScreenState extends State<RolesScreen> {
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      if (mounted) setState(() => _error = '加載失敗：$e');
+      if (mounted) setState(() => _error = '${context.read<LocaleProvider>().t[K.loadFailed]}$e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _save(RoleDto? existing) async {
+    final t = context.read<LocaleProvider>().t;
     final api = context.read<AuthProvider>().api;
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final descCtrl = TextEditingController(text: existing?.description ?? '');
@@ -67,7 +70,7 @@ class _RolesScreenState extends State<RolesScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => AlertDialog(
-          title: Text(existing == null ? '新建角色' : '編輯角色'),
+          title: Text(existing == null ? t[K.roleNewTitle] : t[K.roleEditTitle]),
           content: SizedBox(
             width: 360,
             child: SingleChildScrollView(
@@ -76,21 +79,21 @@ class _RolesScreenState extends State<RolesScreen> {
                 children: [
                   TextField(
                     controller: nameCtrl,
-                    decoration: const InputDecoration(labelText: '角色名'),
+                    decoration: InputDecoration(labelText: t[K.roleName]),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: descCtrl,
-                    decoration: const InputDecoration(labelText: '描述'),
+                    decoration: InputDecoration(labelText: t[K.roleDesc]),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    '權限',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                  Text(
+                    t[K.rolePerms],
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   ..._allPerms.map(
                     (p) => CheckboxListTile(
-                      title: Text(p['label']!),
+                      title: Text(t[p['label']!]),
                       subtitle: Text(
                         p['k']!,
                         style: const TextStyle(
@@ -113,11 +116,11 @@ class _RolesScreenState extends State<RolesScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('取消'),
+              child: Text(t[K.cancel]),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('保存'),
+              child: Text(t[K.save]),
             ),
           ],
         ),
@@ -152,20 +155,21 @@ class _RolesScreenState extends State<RolesScreen> {
   }
 
   Future<void> _delete(RoleDto r) async {
+    final t = context.read<LocaleProvider>().t;
     final api = context.read<AuthProvider>().api;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('刪除角色'),
-        content: Text('確認刪除角色「${r.name}」？'),
+        title: Text(t[K.roleDeleteTitle]),
+        content: Text(t.tr(K.roleConfirmDelete, {'n': r.name})),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
+            child: Text(t[K.cancel]),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('刪除'),
+            child: Text(t[K.delete]),
           ),
         ],
       ),
@@ -184,6 +188,7 @@ class _RolesScreenState extends State<RolesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.watch<LocaleProvider>().t;
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -191,16 +196,16 @@ class _RolesScreenState extends State<RolesScreen> {
         children: [
           Row(
             children: [
-              const Text(
-                '角色管理',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Text(
+                t[K.navRoles],
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const Spacer(),
               if (_canWrite)
                 FilledButton.icon(
                   onPressed: () => _save(null),
                   icon: const Icon(Icons.add),
-                  label: const Text('新建角色'),
+                  label: Text(t[K.roleNewTitle]),
                 ),
             ],
           ),
@@ -229,7 +234,7 @@ class _RolesScreenState extends State<RolesScreen> {
                         ),
                         title: Text(r.name),
                         subtitle: Text(
-                          r.perms.isEmpty ? '（無權限）' : r.perms.join('  '),
+                          r.perms.isEmpty ? t[K.roleNoPerm] : r.perms.join('  '),
                           style: const TextStyle(fontSize: 12),
                         ),
                         trailing: _canWrite

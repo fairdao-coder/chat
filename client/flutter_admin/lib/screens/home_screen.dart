@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../api/api_client.dart';
+import '../l10n/app_strings.dart';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 import '../theme.dart';
 import '../widgets/app_drawer.dart';
 import 'dashboard_screen.dart';
@@ -29,14 +31,14 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _dests = const [
-      Dest('儀表盤', Icons.dashboard, 'dashboard.view', DashboardScreen()),
-      Dest('用戶管理', Icons.people, 'users.read', UsersScreen()),
-      Dest('客服管理', Icons.support_agent_rounded, 'users.read', ServiceAccountsScreen()),
-      Dest('角色管理', Icons.badge, 'roles.read', RolesScreen()),
-      Dest('審計日誌', Icons.history, 'audit.read', AuditScreen()),
-      Dest('管理員', Icons.manage_accounts, 'admins.read', AccountsScreen()),
-      Dest('發現頁欄目', Icons.explore, 'discover.read', DiscoverColumnsScreen()),
-      Dest('系統配置', Icons.tune, 'settings.read', SettingsScreen()),
+      Dest(K.navDashboard, Icons.dashboard, 'dashboard.view', DashboardScreen()),
+      Dest(K.navUsers, Icons.people, 'users.read', UsersScreen()),
+      Dest(K.navService, Icons.support_agent_rounded, 'users.read', ServiceAccountsScreen()),
+      Dest(K.navRoles, Icons.badge, 'roles.read', RolesScreen()),
+      Dest(K.navAudit, Icons.history, 'audit.read', AuditScreen()),
+      Dest(K.navAdmins, Icons.manage_accounts, 'admins.read', AccountsScreen()),
+      Dest(K.navDiscover, Icons.explore, 'discover.read', DiscoverColumnsScreen()),
+      Dest(K.navSettings, Icons.tune, 'settings.read', SettingsScreen()),
     ];
   }
 
@@ -51,6 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// 當前管理員自助修改密碼：舊密碼 + 新密碼 + 確認，提交到後端校驗。
   Future<void> _changePassword() async {
+    final t = context.read<LocaleProvider>().t;
     final oldCtrl = TextEditingController();
     final newCtrl = TextEditingController();
     final confirmCtrl = TextEditingController();
@@ -62,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (dialogCtx, setDialogState) => AlertDialog(
-          title: const Text('修改密碼'),
+          title: Text(t[K.changePwd]),
           contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
           content: Form(
             key: formKey,
@@ -72,34 +75,34 @@ class _HomeScreenState extends State<HomeScreen> {
                 TextFormField(
                   controller: oldCtrl,
                   obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: '舊密碼',
-                    prefixIcon: Icon(Icons.lock_outline),
+                  decoration: InputDecoration(
+                    labelText: t[K.pwdOld],
+                    prefixIcon: const Icon(Icons.lock_outline),
                   ),
-                  validator: (v) => v == null || v.isEmpty ? '請輸入舊密碼' : null,
+                  validator: (v) => v == null || v.isEmpty ? t[K.pwdRequired] : null,
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: newCtrl,
                   obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: '新密碼',
-                    helperText: '至少6位',
-                    prefixIcon: Icon(Icons.lock),
+                  decoration: InputDecoration(
+                    labelText: t[K.pwdNew],
+                    helperText: t[K.pwdNewHint],
+                    prefixIcon: const Icon(Icons.lock),
                   ),
                   validator: (v) =>
-                      v == null || v.length < 6 ? '密碼長度至少6位' : null,
+                      v == null || v.length < 6 ? t[K.pwdTooShort] : null,
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: confirmCtrl,
                   obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: '確認新密碼',
-                    prefixIcon: Icon(Icons.lock),
+                  decoration: InputDecoration(
+                    labelText: t[K.pwdConfirm],
+                    prefixIcon: const Icon(Icons.lock),
                   ),
                   validator: (v) =>
-                      v != newCtrl.text ? '兩次輸入的新密碼不一致' : null,
+                      v != newCtrl.text ? t[K.pwdMismatch] : null,
                 ),
                 if (errorMsg != null) ...[
                   const SizedBox(height: 12),
@@ -122,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
           actions: [
             TextButton(
               onPressed: busy ? null : () => Navigator.pop(dialogCtx),
-              child: const Text('取消'),
+              child: Text(t[K.cancel]),
             ),
             FilledButton(
               onPressed: busy
@@ -144,8 +147,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         if (dialogCtx.mounted) Navigator.pop(dialogCtx);
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('密碼修改成功'),
+                            SnackBar(
+                              content: Text(t[K.pwdSuccess]),
                               backgroundColor: AppTheme.primary,
                             ),
                           );
@@ -158,7 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       } catch (_) {
                         setDialogState(() {
                           busy = false;
-                          errorMsg = '網絡錯誤，請重試';
+                          errorMsg = t[K.errorNetworkRetry];
                         });
                       }
                     },
@@ -168,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('確認修改'),
+                  : Text(t[K.confirm]),
             ),
           ],
         ),
@@ -179,6 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final t = context.watch<LocaleProvider>().t;
     final visible = _visible;
     if (_index >= visible.length) _index = 0;
     final current = visible.isEmpty ? null : visible[_index];
@@ -189,7 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           if (current != null) Icon(current.icon, size: 20, color: AppTheme.primary),
           const SizedBox(width: 8),
-          Text(current?.title ?? '後臺管理'),
+          Text(t[current?.title ?? K.adminConsole]),
         ],
       ),
       elevation: 0,
@@ -216,13 +220,13 @@ class _HomeScreenState extends State<HomeScreen> {
         IconButton(
             onPressed: _changePassword,
             icon: const Icon(Icons.lock_outline),
-            tooltip: '修改密碼'),
-        IconButton(onPressed: _logout, icon: const Icon(Icons.logout), tooltip: '退出登錄'),
+            tooltip: t[K.changePwd]),
+        IconButton(onPressed: _logout, icon: const Icon(Icons.logout), tooltip: t[K.logout]),
         const SizedBox(width: 8),
       ],
     );
 
-    final content = current?.screen ?? const Center(child: Text('無可用模塊'));
+    final content = current?.screen ?? Center(child: Text(t[K.noModule]));
     void onSelect(int i) => setState(() => _index = i);
 
     // 寬屏（≥900）：側欄常駐左側佔位，不再懸浮遮擋內容；

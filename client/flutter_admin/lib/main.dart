@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'theme.dart';
+import 'l10n/app_strings.dart';
 import 'providers/auth_provider.dart';
+import 'providers/locale_provider.dart';
 import 'providers/theme_skin_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
@@ -17,13 +19,18 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()..loadFromStorage()),
         ChangeNotifierProvider(create: (_) => ThemeSkinProvider()),
+        ChangeNotifierProvider(create: (_) => LocaleProvider()),
       ],
-      child: Consumer<ThemeSkinProvider>(
-        builder: (context, skin, _) => MaterialApp(
-          title: '聊天后臺管理系統',
-          theme: AppTheme.active,
-          home: const RootDecider(),
-          debugShowCheckedModeBanner: false,
+      child: Consumer<LocaleProvider>(
+        builder: (context, loc, _) => Consumer<ThemeSkinProvider>(
+          builder: (context, skin, _) => MaterialApp(
+            title: 'Chat Admin Console',
+            locale: loc.flutterLocale,
+            supportedLocales: AppLocale.supported,
+            theme: AppTheme.active,
+            home: const RootDecider(),
+            debugShowCheckedModeBanner: false,
+          ),
         ),
       ),
     );

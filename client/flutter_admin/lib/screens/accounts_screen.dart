@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../l10n/app_strings.dart';
 import '../theme.dart';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
@@ -50,14 +52,15 @@ class _AccountsScreenState extends State<AccountsScreen> {
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      if (mounted) setState(() => _error = '加載失敗：$e');
+      if (mounted) setState(() => _error = '${context.read<LocaleProvider>().t[K.loadFailed]}$e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _create() async {
-    // async 方法內任何 await 之後都不應再用 context；在第一次 await 前先緩存 api。
+    // async 方法內任何 await 之後都不應再用 context；在第一次 await 前先緩存 api/t。
+    final t = context.read<LocaleProvider>().t;
     final api = context.read<AuthProvider>().api;
     final userCtrl = TextEditingController();
     final nameCtrl = TextEditingController();
@@ -67,7 +70,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => AlertDialog(
-          title: const Text('新建管理員'),
+          title: Text(t[K.adminNewTitle]),
           content: SizedBox(
             width: 320,
             child: Column(
@@ -75,23 +78,23 @@ class _AccountsScreenState extends State<AccountsScreen> {
               children: [
                 TextField(
                   controller: userCtrl,
-                  decoration: const InputDecoration(labelText: '登錄賬號'),
+                  decoration: InputDecoration(labelText: t[K.adminUsername]),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: nameCtrl,
-                  decoration: const InputDecoration(labelText: '顯示名稱'),
+                  decoration: InputDecoration(labelText: t[K.adminDisplayName]),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: passCtrl,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: '密碼'),
+                  decoration: InputDecoration(labelText: t[K.loginPassword]),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: roleId,
-                  decoration: const InputDecoration(labelText: '角色'),
+                  decoration: InputDecoration(labelText: t[K.roleName]),
                   items: _roles
                       .map(
                         (r) =>
@@ -106,11 +109,11 @@ class _AccountsScreenState extends State<AccountsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('取消'),
+              child: Text(t[K.cancel]),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('創建'),
+              child: Text(t[K.create]),
             ),
           ],
         ),
@@ -151,6 +154,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.watch<LocaleProvider>().t;
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -158,16 +162,16 @@ class _AccountsScreenState extends State<AccountsScreen> {
         children: [
           Row(
             children: [
-              const Text(
-                '管理員賬號',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Text(
+                t[K.adminTitle],
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const Spacer(),
               if (_canWrite)
                 FilledButton.icon(
                   onPressed: _create,
                   icon: const Icon(Icons.add),
-                  label: const Text('新建管理員'),
+                  label: Text(t[K.adminNewTitle]),
                 ),
             ],
           ),
@@ -199,13 +203,16 @@ class _AccountsScreenState extends State<AccountsScreen> {
                         ),
                         title: Text('${a.displayName}（@${a.userName}）'),
                         subtitle: Text(
-                          '角色：${a.roleName}  ·  創建於 ${a.createdAt.toLocal().toString().split(' ')[0]}',
+                          t.tr(K.adminSubtitle, {
+                            'r': a.roleName,
+                            'd': a.createdAt.toLocal().toString().split(' ')[0],
+                          }),
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Chip(
-                              label: Text(a.isActive ? '啟用' : '停用'),
+                              label: Text(a.isActive ? t[K.enabled] : t[K.disabled]),
                               backgroundColor: a.isActive
                                   ? Colors.green.shade100
                                   : Colors.grey.shade300,
@@ -214,7 +221,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                             if (_canWrite)
                               TextButton(
                                 onPressed: () => _toggle(a),
-                                child: Text(a.isActive ? '停用' : '啟用'),
+                                child: Text(a.isActive ? t[K.disabled] : t[K.enabled]),
                               ),
                           ],
                         ),

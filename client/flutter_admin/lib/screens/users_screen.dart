@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../l10n/app_strings.dart';
 import '../theme.dart';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 
 class UsersScreen extends StatefulWidget {
   const UsersScreen({super.key});
@@ -53,7 +55,7 @@ class _UsersScreenState extends State<UsersScreen> {
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      if (mounted) setState(() => _error = '加載失敗：$e');
+      if (mounted) setState(() => _error = '${context.read<LocaleProvider>().t[K.loadFailed]}$e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -65,24 +67,25 @@ class _UsersScreenState extends State<UsersScreen> {
   }
 
   Future<void> _edit(ChatUserDto u) async {
+    final t = context.read<LocaleProvider>().t;
     final api = context.read<AuthProvider>().api;
     final nickCtrl = TextEditingController(text: u.nickName);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('編輯用戶資料'),
+        title: Text(t[K.userEditTitle]),
         content: TextField(
           controller: nickCtrl,
-          decoration: const InputDecoration(labelText: '暱稱'),
+          decoration: InputDecoration(labelText: t[K.userNickname]),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
+            child: Text(t[K.cancel]),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('保存'),
+            child: Text(t[K.save]),
           ),
         ],
       ),
@@ -95,7 +98,7 @@ class _UsersScreenState extends State<UsersScreen> {
       _load();
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('已保存')));
+            .showSnackBar(SnackBar(content: Text(t[K.saved])));
       }
     } on ApiException catch (e) {
       if (mounted) {
@@ -106,32 +109,35 @@ class _UsersScreenState extends State<UsersScreen> {
   }
 
   Future<void> _ban(ChatUserDto u, bool ban) async {
+    final t = context.read<LocaleProvider>().t;
     final api = context.read<AuthProvider>().api;
     final reasonCtrl = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(ban ? '封禁用戶' : '解封用戶'),
+        title: Text(ban ? t[K.userBanTitle] : t[K.userUnbanTitle]),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(ban ? '確認封禁 @${u.userName}？' : '確認解封 @${u.userName}？'),
+            Text(ban
+                ? t.tr(K.userConfirmBan, {'u': u.userName})
+                : t.tr(K.userConfirmUnban, {'u': u.userName})),
             if (ban) const SizedBox(height: 12),
             if (ban)
               TextField(
                 controller: reasonCtrl,
-                decoration: const InputDecoration(labelText: '原因（可選）'),
+                decoration: InputDecoration(labelText: t[K.userReason]),
               ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
+            child: Text(t[K.cancel]),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(ban ? '封禁' : '解封'),
+            child: Text(ban ? t[K.userBan] : t[K.userUnban]),
           ),
         ],
       ),
@@ -153,15 +159,16 @@ class _UsersScreenState extends State<UsersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.watch<LocaleProvider>().t;
     final totalPages = (_total / _pageSize).ceil();
     return Padding(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '用戶管理',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          Text(
+            t[K.navUsers],
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Row(
@@ -170,17 +177,17 @@ class _UsersScreenState extends State<UsersScreen> {
                 width: 280,
                 child: TextField(
                   controller: _searchCtrl,
-                  decoration: const InputDecoration(
-                    labelText: '搜索用戶名 / 暱稱',
-                    prefixIcon: Icon(Icons.search),
+                  decoration: InputDecoration(
+                    labelText: t[K.userSearchHint],
+                    prefixIcon: const Icon(Icons.search),
                   ),
                   onSubmitted: (_) => _search(),
                 ),
               ),
               const SizedBox(width: 12),
-              FilledButton(onPressed: _search, child: const Text('搜索')),
+              FilledButton(onPressed: _search, child: Text(t[K.search])),
               const Spacer(),
-              Text('共 $_total 個用戶'),
+              Text(t.tr(K.userTotal, {'n': '$_total'})),
             ],
           ),
           const SizedBox(height: 16),
@@ -199,12 +206,12 @@ class _UsersScreenState extends State<UsersScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : SingleChildScrollView(
                       child: DataTable(
-                        columns: const [
-                          DataColumn(label: Text('用戶名')),
-                          DataColumn(label: Text('暱稱')),
-                          DataColumn(label: Text('狀態')),
-                          DataColumn(label: Text('註冊時間')),
-                          DataColumn(label: Text('操作')),
+                        columns: [
+                          DataColumn(label: Text(t[K.userUsername])),
+                          DataColumn(label: Text(t[K.userNickname])),
+                          DataColumn(label: Text(t[K.userStatus])),
+                          DataColumn(label: Text(t[K.userCreatedAt])),
+                          DataColumn(label: Text(t[K.actions])),
                         ],
                         rows: _items
                             .map(
@@ -216,27 +223,27 @@ class _UsersScreenState extends State<UsersScreen> {
                                     Row(
                                       children: [
                                         if (u.isOnline)
-                                          const Chip(
-                                            label: Text('在線'),
+                                          Chip(
+                                            label: Text(t[K.userOnline]),
                                             backgroundColor: Colors.teal,
-                                            labelStyle: TextStyle(
+                                            labelStyle: const TextStyle(
                                               color: Colors.white,
                                             ),
                                             padding: EdgeInsets.zero,
                                           ),
                                         if (u.isBanned)
-                                          const Chip(
-                                            label: Text('已封禁'),
+                                          Chip(
+                                            label: Text(t[K.userBanned]),
                                             backgroundColor: Colors.red,
-                                            labelStyle: TextStyle(
+                                            labelStyle: const TextStyle(
                                               color: Colors.white,
                                             ),
                                             padding: EdgeInsets.zero,
                                           ),
                                         if (!u.isOnline && !u.isBanned)
-                                          const Text(
-                                            '離線',
-                                            style: TextStyle(
+                                          Text(
+                                            t[K.userOffline],
+                                            style: const TextStyle(
                                               color: AppTheme.textSub,
                                             ),
                                           ),
@@ -256,7 +263,7 @@ class _UsersScreenState extends State<UsersScreen> {
                                         if (_canWrite)
                                           TextButton(
                                             onPressed: () => _edit(u),
-                                            child: const Text('編輯'),
+                                            child: Text(t[K.edit]),
                                           )
                                         else
                                           const Text(
@@ -270,7 +277,9 @@ class _UsersScreenState extends State<UsersScreen> {
                                             onPressed: () =>
                                                 _ban(u, !u.isBanned),
                                             child: Text(
-                                              u.isBanned ? '解封' : '封禁',
+                                              u.isBanned
+                                                  ? t[K.userUnban]
+                                                  : t[K.userBan],
                                               style: TextStyle(
                                                 color: u.isBanned
                                                     ? Colors.green
@@ -302,7 +311,10 @@ class _UsersScreenState extends State<UsersScreen> {
                     : null,
                 icon: const Icon(Icons.chevron_left),
               ),
-              Text('第 $_page / ${totalPages == 0 ? 1 : totalPages} 頁'),
+              Text(t.tr(K.pagerPage, {
+                'a': '$_page',
+                'b': '${totalPages == 0 ? 1 : totalPages}',
+              })),
               IconButton(
                 onPressed: _page < totalPages
                     ? () {

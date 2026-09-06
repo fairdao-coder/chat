@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../l10n/app_strings.dart';
 import '../providers/auth_provider.dart';
-import '../providers/theme_skin_provider.dart';
+import '../providers/locale_provider.dart';
 import '../theme.dart';
 
 /// 系統功能開關：是否顯示在線狀態、啟用語音/視頻通話、允許發送文件/語音。
@@ -58,13 +59,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _save() async {
     if (_settings == null) return;
+    final t = context.read<LocaleProvider>().t;
     setState(() => _saving = true);
     try {
       final updated = await context.read<AuthProvider>().api.updateSettings(_settings!);
       if (mounted) {
         setState(() => _settings = updated);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已保存'), backgroundColor: AppTheme.primary),
+          SnackBar(content: Text(t[K.saved]), backgroundColor: AppTheme.primary),
         );
       }
     } on ApiException catch (e) {
@@ -76,7 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('保存失敗：$e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('${t[K.saveFailed]}$e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -91,6 +93,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 界面語言：本地外觀 + 文案，不影響後端設置。
+    // 需在所有 return 分支之前取，否則錯誤/加載分支拿不到 t。
+    final loc = context.watch<LocaleProvider>();
+    final t = loc.t;
     if (_loading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -104,7 +110,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             FilledButton.icon(
               onPressed: _load,
               icon: const Icon(Icons.refresh),
-              label: const Text('重試'),
+              label: Text(t[K.retry]),
             ),
           ],
         ),
@@ -112,9 +118,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     if (_settings == null) return const SizedBox.shrink();
 
-    // 本地外觀（不影響後端設置）。
-    final skin = context.watch<ThemeSkinProvider>();
-    final skinCard = Card(
+
+    // 界面語言切換：寫入 SharedPreferences，僅影響本機後臺界面。
+    final languageCard = Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -122,21 +128,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.brush_outlined, color: AppTheme.primary),
+                Icon(Icons.translate, color: AppTheme.primary),
                 const SizedBox(width: 8),
-                const Text('色彩皮膚', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Text(t[K.language],
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                 const Spacer(),
-                Text(skin.skin == ThemeSkin.sage ? '鼠尾草綠' : '藍',
-                    style: TextStyle(color: AppTheme.textSub)),
+                Text(loc.locale.nativeName, style: TextStyle(color: AppTheme.textSub)),
               ],
             ),
+            const SizedBox(height: 6),
+            Text(t[K.languageDesc],
+                style: const TextStyle(color: AppTheme.textSub, fontSize: 12)),
             const SizedBox(height: 12),
-            SegmentedButton<ThemeSkin>(
-              selected: {skin.skin},
-              onSelectionChanged: (s) => skin.set(s.first),
-              segments: const [
-                ButtonSegment(value: ThemeSkin.blue, label: Text('藍'), icon: Icon(Icons.water_drop)),
-                ButtonSegment(value: ThemeSkin.sage, label: Text('鼠尾草綠'), icon: Icon(Icons.eco)),
+            Wrap(
+              spacing: 8,
+              children: [
+                for (final l in AppLocale.values)
+                  ChoiceChip(
+                    label: Text(l.nativeName),
+                    selected: loc.locale == l,
+                    onSelected: (_) => loc.set(l),
+                  ),
               ],
             ),
           ],
@@ -196,43 +208,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final items = <_SettingItem>[
       _SettingItem(
         icon: Icons.visibility,
-        title: '顯示在線狀態',
-        desc: '在用戶頭像與聊天列表展示在線/離線標識',
+        title: t[K.featOnline],
+        desc: t[K.featOnlineDesc],
         value: _settings!.showOnlineStatus,
         onChanged: (v) => _toggle(v, (val) => _settings = _settings!.copyWith(showOnlineStatus: val)),
       ),
       _SettingItem(
         icon: Icons.call,
-        title: '啟用語音通話',
-        desc: '允許用戶發起一對一語音通話',
+        title: t[K.featVoiceCall],
+        desc: t[K.featVoiceCallDesc],
         value: _settings!.enableVoiceCall,
         onChanged: (v) => _toggle(v, (val) => _settings = _settings!.copyWith(enableVoiceCall: val)),
       ),
       _SettingItem(
         icon: Icons.videocam,
-        title: '啟用視頻通話',
-        desc: '允許用戶發起一對一視頻通話',
+        title: t[K.featVideoCall],
+        desc: t[K.featVideoCallDesc],
         value: _settings!.enableVideoCall,
         onChanged: (v) => _toggle(v, (val) => _settings = _settings!.copyWith(enableVideoCall: val)),
       ),
       _SettingItem(
         icon: Icons.attach_file,
-        title: '允許發送文件',
-        desc: '在聊天輸入框顯示文件發送入口',
+        title: t[K.featFile],
+        desc: t[K.featFileDesc],
         value: _settings!.allowFile,
         onChanged: (v) => _toggle(v, (val) => _settings = _settings!.copyWith(allowFile: val)),
       ),
       _SettingItem(
         icon: Icons.mic,
-        title: '允許發送語音',
-        desc: '在聊天輸入框顯示語音錄制入口',
+        title: t[K.featVoice],
+        desc: t[K.featVoiceDesc],
         value: _settings!.allowVoice,
         onChanged: (v) => _toggle(v, (val) => _settings = _settings!.copyWith(allowVoice: val)),
       ),
       _SettingItem(
         icon: Icons.person_add,
-        title: '允許用戶註冊',
-        desc: '關閉後，普通用戶將無法在登錄頁自助註冊新帳號（僅後台可建立）',
+        title: t[K.featRegister],
+        desc: t[K.featRegisterDesc],
         value: _settings!.allowRegister,
         onChanged: (v) => _toggle(v, (val) => _settings = _settings!.copyWith(allowRegister: val)),
       ),
@@ -265,18 +277,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: Colors.orange.shade200),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.lock_outline, color: Colors.orange, size: 18),
-                      SizedBox(width: 8),
+                      const Icon(Icons.lock_outline, color: Colors.orange, size: 18),
+                      const SizedBox(width: 8),
                       Expanded(
-                        child: Text('當前角色僅有只讀權限，無法修改配置。',
-                            style: TextStyle(color: Colors.orange)),
+                        child: Text(t[K.readOnly],
+                            style: const TextStyle(color: Colors.orange)),
                       ),
                     ],
                   ),
                 ),
-              skinCard,
+              languageCard,
               defaultColumnCard,
               iceServersCard,
               Card(
@@ -301,20 +313,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
                         : const Icon(Icons.save),
-                    label: Text(_saving ? '保存中...' : '保存配置'),
+                    label: Text(_saving ? t[K.saving] : t[K.saveConfig]),
                   ),
                   const SizedBox(width: 12),
                   OutlinedButton.icon(
                     onPressed: _saving ? null : _load,
                     icon: const Icon(Icons.refresh),
-                    label: const Text('重置'),
+                    label: Text(t[K.reset]),
                   ),
                 ],
               ),
               if (_settings!.updatedAt != null) ...[
                 const SizedBox(height: 16),
                 Text(
-                  '最後更新：${_settings!.updatedAt!.toLocal().toString().replaceFirst(RegExp(r'\.\d+$'), '')}',
+                  '${t[K.lastUpdated]}${_settings!.updatedAt!.toLocal().toString().replaceFirst(RegExp(r'\.\d+$'), '')}',
                   style: const TextStyle(color: AppTheme.textSub, fontSize: 12),
                 ),
               ],
@@ -508,6 +520,7 @@ class _IceServersCardState extends State<_IceServersCard> {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.watch<LocaleProvider>().t;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -518,15 +531,14 @@ class _IceServersCardState extends State<_IceServersCard> {
               children: [
                 Icon(Icons.dns_outlined, color: AppTheme.primary),
                 const SizedBox(width: 8),
-                const Text('WebRTC 實時通信（STUN/TURN）',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Text(t[K.iceTitle],
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
               ],
             ),
             const SizedBox(height: 6),
-            const Text(
-              '配置語音/視頻通話使用的 ICE 服務器。僅填 STUN 即可在同網絡通話；'
-              '跨網絡（如手機流量與 WiFi）建議配置 TURN 中繼。留空則客戶端回落默認 STUN。',
-              style: TextStyle(color: AppTheme.textSub, fontSize: 12),
+            Text(
+              t[K.iceDesc],
+              style: const TextStyle(color: AppTheme.textSub, fontSize: 12),
             ),
             const SizedBox(height: 12),
             for (var i = 0; i < _servers.length; i++) ...[
@@ -537,7 +549,7 @@ class _IceServersCardState extends State<_IceServersCard> {
             OutlinedButton.icon(
               onPressed: widget.canWrite ? _add : null,
               icon: const Icon(Icons.add),
-              label: const Text('添加服務器'),
+              label: Text(t[K.iceAdd]),
             ),
           ],
         ),
@@ -546,19 +558,21 @@ class _IceServersCardState extends State<_IceServersCard> {
   }
 
   Widget _serverEditor(int i) {
+    final t = context.watch<LocaleProvider>().t;
     final s = _servers[i];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Text('服務器 ${i + 1}', style: const TextStyle(fontWeight: FontWeight.w600)),
+            Text(t.tr(K.iceServer, {'n': '${i + 1}'}),
+                style: const TextStyle(fontWeight: FontWeight.w600)),
             const Spacer(),
             if (widget.canWrite)
               IconButton(
                 onPressed: () => _remove(i),
                 icon: const Icon(Icons.delete_outline, color: Colors.red),
-                tooltip: '刪除',
+                tooltip: t[K.delete],
               ),
           ],
         ),
@@ -566,9 +580,9 @@ class _IceServersCardState extends State<_IceServersCard> {
         TextField(
           controller: _urlCtrls[i],
           enabled: widget.canWrite,
-          decoration: const InputDecoration(
-            labelText: '地址（多個以逗號分隔）',
-            prefixIcon: Icon(Icons.link),
+          decoration: InputDecoration(
+            labelText: t[K.iceUrls],
+            prefixIcon: const Icon(Icons.link),
             hintText: 'stun:stun.l.google.com:19302 或 turn:turn.example.com:3478?transport=udp',
           ),
           onChanged: (v) => _setUrls(i, v),
@@ -580,9 +594,9 @@ class _IceServersCardState extends State<_IceServersCard> {
               child: TextField(
                 controller: _userCtrls[i],
                 enabled: widget.canWrite,
-                decoration: const InputDecoration(
-                  labelText: '用戶名（TURN 選填）',
-                  prefixIcon: Icon(Icons.person_outline),
+                decoration: InputDecoration(
+                  labelText: t[K.iceUsername],
+                  prefixIcon: const Icon(Icons.person_outline),
                 ),
                 onChanged: (v) {
                   s.username = v.trim().isEmpty ? null : v.trim();
@@ -596,9 +610,9 @@ class _IceServersCardState extends State<_IceServersCard> {
                 controller: _credCtrls[i],
                 enabled: widget.canWrite,
                 obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: '憑證（TURN 選填）',
-                  prefixIcon: Icon(Icons.key_outlined),
+                decoration: InputDecoration(
+                  labelText: t[K.iceCredential],
+                  prefixIcon: const Icon(Icons.key_outlined),
                 ),
                 onChanged: (v) {
                   s.credential = v.trim().isEmpty ? null : v.trim();
@@ -611,12 +625,12 @@ class _IceServersCardState extends State<_IceServersCard> {
         const SizedBox(height: 8),
         DropdownButtonFormField<String?>(
           initialValue: s.credentialType,
-          decoration: const InputDecoration(
-            labelText: '憑證類型',
-            prefixIcon: Icon(Icons.badge_outlined),
+          decoration: InputDecoration(
+            labelText: t[K.iceCredType],
+            prefixIcon: const Icon(Icons.badge_outlined),
           ),
-          items: const [
-            DropdownMenuItem<String?>(value: null, child: Text('密碼（默認）')),
+          items: [
+            DropdownMenuItem<String?>(value: null, child: Text(t[K.iceCredPassword])),
             DropdownMenuItem<String?>(value: 'password', child: Text('password')),
             DropdownMenuItem<String?>(value: 'oauth', child: Text('oauth')),
           ],

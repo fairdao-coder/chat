@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme.dart';
+import '../l10n/app_strings.dart';
+import '../providers/locale_provider.dart';
 
 /// 後臺管理導航目的地定義（公開類型，供 HomeScreen 構造）。
 class Dest {
@@ -30,6 +33,7 @@ class AppSideNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.watch<LocaleProvider>().t;
     return Column(
       children: [
         Container(
@@ -49,11 +53,11 @@ class AppSideNav extends StatelessWidget {
                 child: const Icon(Icons.admin_panel_settings, size: 28, color: Colors.white),
               ),
               const SizedBox(height: 14),
-              const Text('後臺管理',
-                  style: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.bold)),
+              Text(t[K.adminConsole],
+                  style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              const Text('Chat Admin Console',
-                  style: TextStyle(color: Colors.white70, fontSize: 12, letterSpacing: 0.4)),
+              Text(t[K.appSubtitle],
+                  style: const TextStyle(color: Colors.white70, fontSize: 12, letterSpacing: 0.4)),
             ],
           ),
         ),
@@ -83,7 +87,7 @@ class AppSideNav extends StatelessWidget {
                           Icon(dests[i].icon,
                               color: active ? AppTheme.primary : AppTheme.textSub, size: 22),
                           const SizedBox(width: 14),
-                          Text(dests[i].title,
+                          Text(t[dests[i].title],
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: active ? FontWeight.w600 : FontWeight.normal,
