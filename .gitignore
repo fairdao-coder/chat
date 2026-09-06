@@ -388,3 +388,23 @@ server/AdminServer/uploads/
 client/*.p12
 client/*.mobileprovision
 client/*.p8
+
+# ---- Local debug / run logs and ad-hoc scripts (do NOT commit) ----
+logrecv.*
+http30002.out
+admin_out.txt
+admin_err.txt
+chat_out.txt
+chat_err.txt
+build_admin.txt
+build_chat.txt
+fa_analyze.txt
+fa_build.txt
+fc_analyze.txt
+fc_build.txt
+client/flutter_admin/run_admin*.txt
+client/flutter_chat/run_chat*.txt
+client/flutter_chat/run_log.txt
+client/flutter_chat/build_log.txt
+server/AdminServer/admin_run*.txt
+server/ChatServer/chatserver*.log
