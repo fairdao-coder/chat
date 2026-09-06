@@ -215,11 +215,11 @@ jobs:
             name="${ver%+*}"
             IFS='.' read -r maj min patch <<< "$name"
             patch=$((patch + 1))
-            # build number 用時間戳（UTC，分鐘精度，YYMMDDHHMM 10 位）：
-            # 保證每次嚴格遞增，永不與 App Store Connect 已上傳的 build 號衝突
-            # （避免 -19232）；同時 10 位整數不超過 Android versionCode 上限
-            # （2147483647，避免 Gradle 報 flutterVersionCode must be an integer）。
-            code="$(date -u +%y%m%d%H%M)"
+            # build number 用 Unix 時間戳秒數（UTC，%s，約 1.78e9）：
+            # 嚴格遞增，且 < 2147483647（Android versionCode 32 位整數上限，
+            # 避免 Gradle 報 flutterVersionCode must be an integer）；同時滿足
+            # iOS CFBundleVersion 遞增（避免 -19232）。安全至 2038 年。
+            code="$(date -u +%s)"
             new="${maj}.${min}.${patch}+${code}"
             sed -i "s/^version:.*/version: $new/" "$file"
             git add "$file"
@@ -461,7 +461,7 @@ jobs:
           file="pubspec.yaml"
           ver="$(sed -n 's/^version:[[:space:]]*//p' "$file" | head -1 | tr -d '\r')"
           name="${ver%+*}"
-          ts="$(date -u +%y%m%d%H%M)"
+          ts="$(date -u +%s)"
           new="${name}+${ts}"
           perl -i -pe "s{^version:\\s*.*}{version: $new}" "$file"
           echo "stamped build number -> $new"
