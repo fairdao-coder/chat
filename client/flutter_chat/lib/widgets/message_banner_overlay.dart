@@ -132,11 +132,15 @@ class _BannerItemState extends ConsumerState<_BannerItem> {
       widget.onDismiss();
       return;
     }
-    // 先導航、再 dismiss：若先 dismiss 會立即把本 item 從 provider 中移除並 dispose，
-    // 導致下方 addPostFrameCallback 內 mounted 已變為 false，跳轉被靜默丟棄。
+    // 先導航，再把 dismiss 推到下一幀：context.go 會同步觸發 widget tree 重建，
+    // 若緊接著同步調用 onDismiss（修改 provider），會觸發 Riverpod 的
+    // "modify provider during build" 異常。用 addPostFrameCallback 錯開重建週期。
     final query = m.isGroup ? 'groupId=$targetId' : 'friendId=$targetId';
     context.go('/chat?$query');
-    widget.onDismiss();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      widget.onDismiss();
+    });
   }
 
   @override

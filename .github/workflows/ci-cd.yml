@@ -215,11 +215,11 @@ jobs:
             name="${ver%+*}"
             IFS='.' read -r maj min patch <<< "$name"
             patch=$((patch + 1))
-            # build number 用 Unix 時間戳秒數（UTC，%s，約 1.78e9）：
-            # 嚴格遞增，且 < 2147483647（Android versionCode 32 位整數上限，
+            # build number 用 Unix 時間戳分鐘數（UTC，%s/60，約 2.97e7）：
+            # 嚴格遞增，且遠 < 2147483647（Android versionCode 32 位整數上限，
             # 避免 Gradle 報 flutterVersionCode must be an integer）；同時滿足
-            # iOS CFBundleVersion 遞增（避免 -19232）。安全至 2038 年。
-            code="$(date -u +%s)"
+            # iOS CFBundleVersion 遞增（避免 -19232）。粒度到分鐘，安全上百年。
+            code="$(($(date -u +%s) / 60))"
             new="${maj}.${min}.${patch}+${code}"
             sed -i "s/^version:.*/version: $new/" "$file"
             git add "$file"
@@ -461,7 +461,7 @@ jobs:
           file="pubspec.yaml"
           ver="$(sed -n 's/^version:[[:space:]]*//p' "$file" | head -1 | tr -d '\r')"
           name="${ver%+*}"
-          ts="$(date -u +%s)"
+          ts="$(($(date -u +%s) / 60))"
           new="${name}+${ts}"
           perl -i -pe "s{^version:\\s*.*}{version: $new}" "$file"
           echo "stamped build number -> $new"

@@ -2,7 +2,7 @@
   "profiles": {
     "ChatServer": {
       "commandName": "Project",
-      "applicationUrl": "http://localhost:5298;https://localhost:7298",
+      "applicationUrl": "http://0.0.0.0:5298;https://localhost:7298",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }

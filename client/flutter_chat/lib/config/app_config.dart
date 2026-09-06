@@ -24,7 +24,7 @@ class AppConfig {
   /// without it a deployed build would still talk to http://localhost:5298.
   static const String defaultApiBase = String.fromEnvironment(
     'API_BASE',
-    defaultValue: 'http://localhost:5298',
+    defaultValue: 'http://192.168.5.11:5298',
   );
   static const String _prefKey = 'api_base';
   static const String _brandKey = 'brand_name';
