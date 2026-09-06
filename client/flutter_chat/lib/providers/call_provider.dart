@@ -1,445 +1,364 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:go_router/go_router.dart';
 
+import '../config/constants.dart';
 import '../data/signalr_client.dart';
-import '../models/call_signal.dart';
-import '../providers/core_providers.dart';
-import '../providers/features_provider.dart';
+import '../l10n/app_localizations.dart';
+import '../models/call_dto.dart';
+import '../models/enums.dart';
+import '../models/feature_settings.dart';
+import '../router.dart';
+import '../services/webrtc_service.dart';
+import 'auth_provider.dart';
+import 'core_providers.dart';
+import 'features_provider.dart';
 
-/// 當前通話階段。
-enum CallStatus { idle, outgoing, incoming, connecting, connected }
-
-/// 通話 UI 狀態。
-class CallState {
-  final CallStatus status;
-  final String? callId;
-  final String? peerId;
-  final String? peerName;
-  final String callType; // 'voice' | 'video'
+/// Current active call (or incoming/outgoing request).
+class ActiveCall {
+  final String sessionId;
+  final String peerId;
+  final String peerName;
+  final String? peerAvatar;
+  final CallType type;
   final bool isCaller;
-  final bool muted;
-  final bool cameraOff;
-  final int durationSec;
-  final String? endedReason; // 對方已拒絕 / 對方忙線 / 對方無應答 / 通話結束 ...
+  final CallState state;
+  final String? error;
+  final DateTime? connectedAt;
 
-  const CallState({
-    this.status = CallStatus.idle,
-    this.callId,
-    this.peerId,
-    this.peerName,
-    this.callType = 'voice',
-    this.isCaller = false,
-    this.muted = false,
-    this.cameraOff = false,
-    this.durationSec = 0,
-    this.endedReason,
+  const ActiveCall({
+    required this.sessionId,
+    required this.peerId,
+    required this.peerName,
+    this.peerAvatar,
+    required this.type,
+    required this.isCaller,
+    this.state = CallState.calling,
+    this.error,
+    this.connectedAt,
   });
 
-  CallState copyWith({
-    CallStatus? status,
-    String? callId,
+  ActiveCall copyWith({
+    String? sessionId,
     String? peerId,
     String? peerName,
-    String? callType,
+    String? peerAvatar,
+    CallType? type,
     bool? isCaller,
-    bool? muted,
-    bool? cameraOff,
-    int? durationSec,
-    String? endedReason,
+    CallState? state,
+    String? error,
+    DateTime? connectedAt,
+    bool clearError = false,
   }) =>
-      CallState(
-        status: status ?? this.status,
-        callId: callId ?? this.callId,
+      ActiveCall(
+        sessionId: sessionId ?? this.sessionId,
         peerId: peerId ?? this.peerId,
         peerName: peerName ?? this.peerName,
-        callType: callType ?? this.callType,
+        peerAvatar: peerAvatar ?? this.peerAvatar,
+        type: type ?? this.type,
         isCaller: isCaller ?? this.isCaller,
-        muted: muted ?? this.muted,
-        cameraOff: cameraOff ?? this.cameraOff,
-        durationSec: durationSec ?? this.durationSec,
-        endedReason: endedReason ?? this.endedReason,
+        state: state ?? this.state,
+        error: clearError ? null : (error ?? this.error),
+        connectedAt: connectedAt ?? this.connectedAt,
       );
 }
 
-final callProvider =
-    StateNotifierProvider<CallController, CallState>((ref) {
-  return CallController(ref);
+final callProvider = StateNotifierProvider<CallNotifier, ActiveCall?>((ref) {
+  return CallNotifier(ref);
 });
 
-/// 管理一次 WebRTC 語音/視頻通話：本地/遠端媒體流、PeerConnection、與 SignalR 的信令交換。
-///
-/// 設計為單例（非 family）：全局只有一個活躍通話，來電由頂層 [CallOverlay] 統一呈現。
-class CallController extends StateNotifier<CallState> {
+class CallNotifier extends StateNotifier<ActiveCall?> {
   final Ref _ref;
-  final ChatHubClient _hub;
+  final _webrtc = WebRtcService();
+  StreamSubscription? _incomingSub;
+  StreamSubscription? _acceptedSub;
+  StreamSubscription? _endedSub;
+  StreamSubscription? _offerSub;
+  StreamSubscription? _answerSub;
+  StreamSubscription? _iceSub;
 
-  RTCPeerConnection? _pc;
-  MediaStream? _localStream;
-  final RTCVideoRenderer localRenderer = RTCVideoRenderer();
-  final RTCVideoRenderer remoteRenderer = RTCVideoRenderer();
-  bool _renderersReady = false;
-
-  // 早於 remoteDescription 到達的 ICE candidate 會被 addCandidate 拒絕，
-  // 而早到的 host candidate 在區域網直連場景極常見（產生很快）。
-  // 這裡先緩存，待 setRemoteDescription 後再統一加入，避免 candidate 被丟失。
-  final List<RTCIceCandidate> _pendingCandidates = [];
-  bool _remoteDescriptionSet = false;
-
-  StreamSubscription<CallInvite>? _subInvite;
-  StreamSubscription<String>? _subAccepted;
-  StreamSubscription<(String, String)>? _subRejected;
-  StreamSubscription<(String, String)>? _subOffer;
-  StreamSubscription<(String, String)>? _subAnswer;
-  StreamSubscription<(String, String)>? _subIce;
-  StreamSubscription<String>? _subHangUp;
-  Timer? _noAnswerTimer;
-  Timer? _durationTimer;
-
-  CallController(Ref ref)
-      : _ref = ref,
-        _hub = ref.read(hubProvider),
-        super(const CallState()) {
-    _init();
+  CallNotifier(this._ref) : super(null) {
+    _listen();
   }
 
-  Future<void> _init() async {
-    await _ensureRenderers();
-    _subInvite = _hub.onIncomingCall.listen(_onIncoming);
-    _subAccepted = _hub.onCallAccepted.listen(_onAccepted);
-    _subRejected = _hub.onCallRejected.listen(_onRejected);
-    _subOffer = _hub.onOffer.listen(_onOffer);
-    _subAnswer = _hub.onAnswer.listen(_onAnswer);
-    _subIce = _hub.onIceCandidate.listen(_onIce);
-    _subHangUp = _hub.onHangUp.listen(_onHangUp);
+  ChatHubClient get _hub => _ref.read(hubProvider);
+  MediaStream? get localStream => _webrtc.localStream;
+  ValueNotifier<MediaStream?> get remoteStream => _webrtc.remoteStream;
+
+  void _listen() {
+    _incomingSub = _hub.onIncomingCall.listen(_onIncomingCall);
+    _acceptedSub = _hub.onCallAccepted.listen(_onCallAccepted);
+    _endedSub = _hub.onCallEnded.listen(_onCallEnded);
+    _offerSub = _hub.onReceiveOffer.listen(_onReceiveOffer);
+    _answerSub = _hub.onReceiveAnswer.listen(_onReceiveAnswer);
+    _iceSub = _hub.onReceiveIceCandidate.listen(_onReceiveIceCandidate);
   }
 
-  Future<void> _ensureRenderers() async {
-    if (!_renderersReady) {
-      await localRenderer.initialize();
-      await remoteRenderer.initialize();
-      _renderersReady = true;
-    }
-  }
+  /// Caller starts a new call.
+  Future<bool> startCall(
+    String toUserId, {
+    required CallType type,
+    required String peerName,
+    String? peerAvatar,
+  }) async {
+    if (state != null) return false;
 
-  Future<MediaStream> _getUserMedia(String callType) {
-    final constraints = {
-      'audio': true,
-      'video': callType == 'video'
-          ? {'facingMode': 'user', 'width': 1280, 'height': 720}
-          : false,
-    };
-    return navigator.mediaDevices.getUserMedia(constraints);
-  }
-
-  String _newCallId() =>
-      '${DateTime.now().microsecondsSinceEpoch}_${(DateTime.now().microsecond % 9000 + 1000)}';
-
-  // ---------------- 主叫 ----------------
-
-  Future<void> startCall(String peerId, String peerName, String callType) async {
-    if (state.status != CallStatus.idle) return;
-    await _ensureRenderers();
-    final callId = _newCallId();
-    state = state.copyWith(
-      status: CallStatus.outgoing,
-      callId: callId,
-      peerId: peerId,
-      peerName: peerName,
-      callType: callType,
-      isCaller: true,
-      durationSec: 0,
-      endedReason: null,
-    );
     try {
-      _localStream = await _getUserMedia(callType);
-      localRenderer.srcObject = _localStream;
-    } catch (e) {
-      _cleanup();
-      state = state.copyWith(status: CallStatus.idle, endedReason: '無法訪問麥克風或攝像頭');
-      return;
-    }
-    try {
-      await _hub.inviteCall(callId, peerId, callType);
-    } catch (e) {
-      _cleanup();
-      state = state.copyWith(status: CallStatus.idle, endedReason: '呼叫失敗');
-      return;
-    }
-    // 無應答超時：30s 內對方未接聽則自動掛斷。
-    _noAnswerTimer = Timer(const Duration(seconds: 30), () {
-      if (state.status == CallStatus.outgoing) {
-        hangUp();
+      final sessionId = await _hub.callUser(toUserId, callTypeToJson(type));
+      if (sessionId == null || sessionId.isEmpty) {
+        _showError('呼叫失败');
+        return false;
       }
-    });
-  }
 
-  // ---------------- 被叫 ----------------
-
-  void _onIncoming(CallInvite inv) {
-    if (state.status != CallStatus.idle) {
-      // 已在通話中，直接拒掉新來電（忙線）。
-      _hub.rejectCall(inv.callId).catchError((_) {});
-      return;
-    }
-    state = state.copyWith(
-      status: CallStatus.incoming,
-      callId: inv.callId,
-      peerId: inv.callerId,
-      peerName: inv.callerName,
-      callType: inv.callType,
-      isCaller: false,
-    );
-  }
-
-  Future<void> accept() async {
-    if (state.status != CallStatus.incoming || state.callId == null) return;
-    await _ensureRenderers();
-    final callId = state.callId!;
-    final callType = state.callType;
-    state = state.copyWith(status: CallStatus.connecting);
-    try {
-      _localStream = await _getUserMedia(callType);
-      localRenderer.srcObject = _localStream;
-      await _createPeer();
-      await _hub.acceptCall(callId);
-    } catch (e) {
-      _cleanup();
-      state = state.copyWith(status: CallStatus.idle, endedReason: '無法訪問麥克風或攝像頭');
-    }
-  }
-
-  Future<void> reject() async {
-    if (state.callId != null) await _hub.rejectCall(state.callId!).catchError((_) {});
-    _cleanup();
-    state = const CallState();
-  }
-
-  // ---------------- PeerConnection ----------------
-
-  /// 構建 WebRTC ICE 配置。
-  ///
-  /// 優先使用後台下發的 ICE 服務器列表（STUN/TURN）。
-  /// 未配置時回落：僅保留區域網直連能力（host candidate），不依賴外網 STUN，
-  /// 使純內網/無外網環境也能正常建立語音視頻通話。
-  Map<String, dynamic> _iceConfig() {
-    final features = _ref.read(featuresProvider).valueOrNull;
-    final iceServers = features?.iceServers ?? const <Map<String, dynamic>>[];
-    // 空列表表示不配置任何 STUN/TURN，讓 WebRTC 僅靠 host candidate 完成區域網直連。
-    return {'iceServers': iceServers};
-  }
-
-  Future<void> _createPeer() async {
-    _pc = await createPeerConnection(_iceConfig());
-    _remoteDescriptionSet = false;
-    _pc!.onSignalingState = (s) => debugPrint('[RTC] signaling=$s');
-    _pc!.onIceGatheringState = (s) => debugPrint('[RTC] iceGathering=$s');
-    _pc!.onIceConnectionState = (s) => debugPrint('[RTC] iceConnection=$s');
-    _pc!.onConnectionState = (s) => debugPrint('[RTC] connection=$s');
-    _pc!.onIceCandidate = (candidate) async {
-      debugPrint('[RTC] localCandidate: ${candidate.candidate}');
-      if (state.callId != null && mounted) {
-        await _hub.sendIceCandidate(state.callId!, jsonEncode(candidate.toMap()));
+      final ok = await _prepareLocalStream(type);
+      if (!ok) {
+        await _hub.endCall(sessionId);
+        _showError('无法访问麦克风或摄像头');
+        return false;
       }
-    };
-    _pc!.onTrack = (event) {
-      if (event.streams.isNotEmpty && mounted) {
-        remoteRenderer.srcObject = event.streams[0];
-        if (state.status != CallStatus.connected) {
-          state = state.copyWith(status: CallStatus.connected);
-          _startDuration();
-        }
-      }
-    };
-    if (_localStream != null) {
-      for (final track in _localStream!.getTracks()) {
-        await _pc!.addTrack(track, _localStream!);
-      }
-    }
-  }
 
-  Future<void> _onAccepted(String callId) async {
-    if (state.status != CallStatus.outgoing || state.callId != callId) return;
-    _noAnswerTimer?.cancel();
-    state = state.copyWith(status: CallStatus.connecting);
-    await _createPeer();
-    try {
-      final offer = await _pc!.createOffer();
-      await _pc!.setLocalDescription(offer);
-      await _hub.sendOffer(callId, jsonEncode(offer.toMap()));
-    } catch (e) {
-      _cleanup();
-      state = state.copyWith(status: CallStatus.idle, endedReason: '連接失敗');
-    }
-  }
-
-  Future<void> _onRejected((String, String) p) async {
-    final (callId, reason) = p;
-    if (state.callId != callId) return;
-    final msg = switch (reason) {
-      'busy' => '對方忙線',
-      'self' => '不能呼叫自己',
-      _ => '對方已拒絕',
-    };
-    _cleanup();
-    state = state.copyWith(status: CallStatus.idle, endedReason: msg);
-  }
-
-  Future<void> _onOffer((String, String) p) async {
-    final (callId, sdpJson) = p;
-    if (state.callId != callId || _pc == null) return;
-    try {
-      final m = jsonDecode(sdpJson) as Map<String, dynamic>;
-      final desc = RTCSessionDescription(m['sdp'] as String?, m['type'] as String?);
-      await _pc!.setRemoteDescription(desc);
-      _remoteDescriptionSet = true;
-      await _flushPendingCandidates();
-      final answer = await _pc!.createAnswer();
-      await _pc!.setLocalDescription(answer);
-      await _hub.sendAnswer(callId, jsonEncode(answer.toMap()));
-    } catch (e) {
-      _cleanup();
-      state = state.copyWith(status: CallStatus.idle, endedReason: '連接失敗');
-    }
-  }
-
-  Future<void> _onAnswer((String, String) p) async {
-    final (callId, sdpJson) = p;
-    if (state.callId != callId || _pc == null) return;
-    try {
-      final m = jsonDecode(sdpJson) as Map<String, dynamic>;
-      final desc = RTCSessionDescription(m['sdp'] as String?, m['type'] as String?);
-      await _pc!.setRemoteDescription(desc);
-      _remoteDescriptionSet = true;
-      await _flushPendingCandidates();
-    } catch (_) {
-      // ignore malformed answer
-    }
-  }
-
-  Future<void> _onIce((String, String) p) async {
-    final (callId, candJson) = p;
-    if (state.callId != callId) return;
-    try {
-      final m = jsonDecode(candJson) as Map<String, dynamic>;
-      final cand = RTCIceCandidate(
-        m['candidate'] as String?,
-        m['sdpMid'] as String?,
-        m['sdpMLineIndex'] as int?,
+      state = ActiveCall(
+        sessionId: sessionId,
+        peerId: toUserId,
+        peerName: peerName,
+        peerAvatar: peerAvatar,
+        type: type,
+        isCaller: true,
+        state: CallState.calling,
       );
-      debugPrint('[RTC] remoteCandidate: ${cand.candidate}');
-      // candidate 一律先緩存：對方 _pc 尚未建立，或本地 remoteDescription 尚未設置時
-      // 直接 addCandidate 會失敗（區域網直連下 host candidate 極快、極易早到）。
-      // 待條件滿足後由 _flushPendingCandidates 統一加入，避免 candidate 被永久丟棄。
-      _pendingCandidates.add(cand);
-      await _flushPendingCandidates();
-    } catch (_) {
-      // ignore malformed candidate
+
+      _openCallPage();
+      return true;
+    } catch (e, st) {
+      developer.log('startCall error', name: 'call', error: e, stackTrace: st);
+      _showError('呼叫失败');
+      return false;
     }
   }
 
-  /// 將緩存的 candidate 於「_pc 已建立且 remoteDescription 已設置」時統一加入。
-  /// 條件不滿足者繼續留在緩存，待下次 flush（收到 offer/answer 或新到達時）再處理。
-  Future<void> _flushPendingCandidates() async {
-    if (_pc == null || !_remoteDescriptionSet || _pendingCandidates.isEmpty) return;
-    final pending = List<RTCIceCandidate>.from(_pendingCandidates);
-    _pendingCandidates.clear();
-    for (final cand in pending) {
-      try {
-        await _pc!.addCandidate(cand);
-      } catch (_) {
-        // ignore malformed candidate
+  /// Callee accepts an incoming call.
+  Future<bool> acceptCall() async {
+    final current = state;
+    if (current == null || current.isCaller || current.state != CallState.calling) {
+      return false;
+    }
+
+    try {
+      await _hub.acceptCall(current.sessionId);
+      state = current.copyWith(state: CallState.connecting);
+      return true;
+    } catch (e, st) {
+      developer.log('acceptCall error', name: 'call', error: e, stackTrace: st);
+      _showError('连接失败');
+      return false;
+    }
+  }
+
+  /// Callee rejects an incoming call.
+  Future<void> rejectCall() async {
+    final current = state;
+    if (current == null || current.isCaller) return;
+    try {
+      await _hub.rejectCall(current.sessionId);
+    } catch (e, st) {
+      developer.log('rejectCall error', name: 'call', error: e, stackTrace: st);
+    } finally {
+      await _cleanup();
+    }
+  }
+
+  /// Either side hangs up.
+  Future<void> endCall() async {
+    final current = state;
+    if (current == null) return;
+    try {
+      await _hub.endCall(current.sessionId);
+    } catch (e, st) {
+      developer.log('endCall error', name: 'call', error: e, stackTrace: st);
+    } finally {
+      await _cleanup();
+    }
+  }
+
+  void _onIncomingCall(IncomingCallDto dto) {
+    if (state != null) {
+      // Already busy: reject silently.
+      _hub.rejectCall(dto.sessionId);
+      return;
+    }
+    state = ActiveCall(
+      sessionId: dto.sessionId,
+      peerId: dto.callerId,
+      peerName: dto.callerName,
+      peerAvatar: dto.callerAvatar,
+      type: dto.type,
+      isCaller: false,
+      state: CallState.calling,
+    );
+    _openCallPage();
+  }
+
+  Future<void> _onCallAccepted(CallAcceptedDto dto) async {
+    final current = state;
+    if (current == null || current.sessionId != dto.sessionId.toString()) return;
+
+    if (!_webrtc.hasLocalStream) {
+      await _prepareLocalStream(current.type);
+    }
+
+    state = current.copyWith(state: CallState.connecting);
+    await _createPeerConnection();
+
+    if (current.isCaller) {
+      final offer = await _webrtc.createOffer();
+      if (offer != null) {
+        await _hub.sendOffer(current.sessionId, offer.sdp!);
       }
     }
   }
 
-  Future<void> _onHangUp(String callId) async {
-    if (state.callId != callId) return;
-    final wasConnected = state.status == CallStatus.connected;
-    _cleanup();
-    state = state.copyWith(
-      status: CallStatus.idle,
-      endedReason: wasConnected ? '通話結束' : '通話已取消',
-    );
+  Future<void> _onReceiveOffer(CallSdpDto dto) async {
+    final current = state;
+    if (current == null || current.isCaller) return;
+    if (current.sessionId != dto.sessionId.toString()) return;
+
+    final ok = await _webrtc.setRemoteDescription(
+        RTCSessionDescription(dto.sdp, 'offer'));
+    if (!ok) return;
+
+    final answer = await _webrtc.createAnswer();
+    if (answer != null) {
+      await _hub.sendAnswer(current.sessionId, answer.sdp!);
+      state = current.copyWith(state: CallState.connected, connectedAt: DateTime.now());
+    }
   }
 
-  void _startDuration() {
-    _durationTimer?.cancel();
-    _durationTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) state = state.copyWith(durationSec: state.durationSec + 1);
+  Future<void> _onReceiveAnswer(CallSdpDto dto) async {
+    final current = state;
+    if (current == null || !current.isCaller) return;
+    if (current.sessionId != dto.sessionId.toString()) return;
+
+    final ok = await _webrtc.setRemoteDescription(
+        RTCSessionDescription(dto.sdp, 'answer'));
+    if (ok) {
+      state = current.copyWith(state: CallState.connected, connectedAt: DateTime.now());
+    }
+  }
+
+  Future<void> _onReceiveIceCandidate(CallIceCandidateDto dto) async {
+    final current = state;
+    if (current == null || current.sessionId != dto.sessionId.toString()) return;
+
+    try {
+      final c = jsonDecode(dto.candidate) as Map<String, dynamic>;
+      await _webrtc.addIceCandidate(RTCIceCandidate(
+        c['candidate'] as String?,
+        c['sdpMid'] as String?,
+        c['sdpMLineIndex'] as int?,
+      ));
+    } catch (e, st) {
+      developer.log('ICE parse error', name: 'call', error: e, stackTrace: st);
+    }
+  }
+
+  Future<void> _onCallEnded(CallEndedDto dto) async {
+    final current = state;
+    if (current == null || current.sessionId != dto.sessionId.toString()) return;
+    _showError(callEndReasonKey(dto.reason));
+    await _cleanup();
+  }
+
+  Future<bool> _prepareLocalStream(CallType type) async {
+    final stream = await _webrtc.openLocalStream(video: type == CallType.video);
+    return stream != null;
+  }
+
+  Future<void> _createPeerConnection() async {
+    final features = _ref.read(featuresProvider);
+    final ice = await _iceServers(features);
+    final pc = await _webrtc.createPeerConnection(ice);
+    if (pc == null) return;
+
+    _webrtc.onIceCandidate((candidate) async {
+      final current = state;
+      if (current == null) return;
+      final payload = jsonEncode({
+        'candidate': candidate.candidate,
+        'sdpMid': candidate.sdpMid,
+        'sdpMLineIndex': candidate.sdpMLineIndex,
+      });
+      await _hub.sendIceCandidate(current.sessionId, payload);
     });
   }
 
-  // ---------------- 控制 ----------------
+  Future<Map<String, dynamic>> _iceServers(AsyncValue<FeatureSettings> features) async {
+    final defaultServers = {
+      'iceServers': [
+        {'urls': 'stun:stun.l.google.com:19302'},
+        {'urls': 'stun:stun1.l.google.com:19302'},
+      ],
+    };
 
-  Future<void> hangUp() async {
-    final wasConnected = state.status == CallStatus.connected;
-    if (state.callId != null) await _hub.hangUpCall(state.callId!).catchError((_) {});
-    _cleanup();
-    state = state.copyWith(
-      status: CallStatus.idle,
-      endedReason: wasConnected ? '通話結束' : (state.endedReason ?? '通話已取消'),
-    );
-  }
+    final rtConfig = features.valueOrNull?.rtConfig;
+    if (rtConfig == null || rtConfig.isEmpty) return defaultServers;
 
-  void toggleMute() {
-    final audio = _localStream?.getAudioTracks() ?? const [];
-    if (audio.isEmpty) return;
-    final enabled = !audio.first.enabled;
-    for (final t in audio) {
-      t.enabled = enabled;
-    }
-    state = state.copyWith(muted: !enabled);
-  }
-
-  void toggleCamera() {
-    final video = _localStream?.getVideoTracks() ?? const [];
-    if (video.isEmpty) return;
-    final enabled = !video.first.enabled;
-    for (final t in video) {
-      t.enabled = enabled;
-    }
-    state = state.copyWith(cameraOff: !enabled);
-  }
-
-  Future<void> switchCamera() async {
-    final video = _localStream?.getVideoTracks() ?? const [];
-    if (video.isEmpty) return;
     try {
-      await Helper.switchCamera(video.first);
+      final parsed = jsonDecode(rtConfig) as Map<String, dynamic>;
+      if (parsed.containsKey('iceServers')) return parsed;
+      return {'iceServers': parsed['stun'] ?? defaultServers['iceServers']};
     } catch (_) {
-      // 部分平臺/桌面不支持切換，忽略
+      return defaultServers;
     }
   }
 
-  void _cleanup() {
-    _noAnswerTimer?.cancel();
-    _durationTimer?.cancel();
-    _pc?.close();
-    _pc = null;
-    _pendingCandidates.clear();
-    _remoteDescriptionSet = false;
-    _localStream?.getTracks().forEach((t) => t.stop());
-    _localStream = null;
-    localRenderer.srcObject = null;
-    remoteRenderer.srcObject = null;
+  void _openCallPage() {
+    final ctx = _rootContext;
+    if (ctx == null || !ctx.mounted) return;
+    ctx.push('/call');
+  }
+
+  void _showError(String key) {
+    final ctx = _rootContext;
+    if (ctx == null || !ctx.mounted) return;
+    final msg = _safeTranslate(ctx, key);
+    ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  String _safeTranslate(BuildContext ctx, String key) {
+    try {
+      return ctx.tr(key);
+    } catch (_) {
+      return key;
+    }
+  }
+
+  BuildContext? get _rootContext {
+    try {
+      return rootNavigatorKey.currentContext;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _cleanup() async {
+    await _webrtc.dispose();
+    if (mounted) state = null;
   }
 
   @override
   void dispose() {
-    _subInvite?.cancel();
-    _subAccepted?.cancel();
-    _subRejected?.cancel();
-    _subOffer?.cancel();
-    _subAnswer?.cancel();
-    _subIce?.cancel();
-    _subHangUp?.cancel();
-    _cleanup();
-    localRenderer.dispose();
-    remoteRenderer.dispose();
+    _incomingSub?.cancel();
+    _acceptedSub?.cancel();
+    _endedSub?.cancel();
+    _offerSub?.cancel();
+    _answerSub?.cancel();
+    _iceSub?.cancel();
+    _webrtc.dispose();
     super.dispose();
   }
 }

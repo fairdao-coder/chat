@@ -43,3 +43,73 @@ String messageTypeToJson(MessageType t) {
       return 'Text';
   }
 }
+
+/// Matches server CallType (JsonStringEnumConverter serializes as "Voice" / "Video").
+enum CallType { voice, video }
+
+CallType callTypeFromJson(String? v) {
+  switch (v) {
+    case 'Video':
+      return CallType.video;
+    case 'Voice':
+    default:
+      return CallType.voice;
+  }
+}
+
+String callTypeToJson(CallType t) => t == CallType.video ? 'Video' : 'Voice';
+
+/// Matches server CallState.
+enum CallState { calling, connecting, connected, ended }
+
+CallState callStateFromJson(String? v) {
+  switch (v) {
+    case 'Connecting':
+      return CallState.connecting;
+    case 'Connected':
+      return CallState.connected;
+    case 'Ended':
+      return CallState.ended;
+    case 'Calling':
+    default:
+      return CallState.calling;
+  }
+}
+
+/// Matches server CallEndReason.
+enum CallEndReason { declined, busy, timeout, hangUp, offline, error }
+
+CallEndReason callEndReasonFromJson(String? v) {
+  switch (v) {
+    case 'Declined':
+      return CallEndReason.declined;
+    case 'Busy':
+      return CallEndReason.busy;
+    case 'Timeout':
+      return CallEndReason.timeout;
+    case 'HangUp':
+      return CallEndReason.hangUp;
+    case 'Offline':
+      return CallEndReason.offline;
+    case 'Error':
+    default:
+      return CallEndReason.error;
+  }
+}
+
+String callEndReasonKey(CallEndReason r) {
+  switch (r) {
+    case CallEndReason.declined:
+      return '对方已拒绝';
+    case CallEndReason.busy:
+      return '对方忙线';
+    case CallEndReason.timeout:
+      return '对方无应答';
+    case CallEndReason.hangUp:
+      return '通话结束';
+    case CallEndReason.offline:
+      return '对方不在线';
+    case CallEndReason.error:
+      return '连接失败';
+  }
+}

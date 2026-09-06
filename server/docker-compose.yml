@@ -25,6 +25,8 @@ services:
     environment:
       - ASPNETCORE_URLS=http://+:8080
       - CONNECTIONSTRINGS__DEFAULT=Host=postgres;Port=5432;Database=chatdb;Username=postgres;Password=postgres
+      # 調試前端（flutter run --web-port=5173）跨域白名單；生產環境請顯式配置 Cors:Origins
+      - Cors__Origins=http://localhost:5173,http://127.0.0.1:5173
     ports:
       - "8080:8080"
 

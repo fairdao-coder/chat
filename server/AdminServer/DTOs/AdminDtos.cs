@@ -66,10 +66,8 @@ public record UpsertDiscoverColumnRequest(
 public record SystemSettingsDto(
     string ChatConfig,
     string? OtherConfig,
-    string? RtConfig,
     DateTime UpdatedAt);
 
 public record UpdateSystemSettingsRequest(
     string ChatConfig,
-    string? OtherConfig,
-    string? RtConfig);
+    string? OtherConfig);

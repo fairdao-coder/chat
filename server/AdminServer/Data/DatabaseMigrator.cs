@@ -15,7 +15,7 @@ public static class DatabaseMigrator
     /// 舊結構的布林功能開關欄位（遷移到 ChatConfig JSON）。
     private static readonly string[] LegacyBoolColumns =
     {
-        "ShowOnlineStatus", "EnableVoiceCall", "EnableVideoCall", "AllowFile", "AllowVoice"
+        "ShowOnlineStatus", "AllowFile", "AllowVoice"
     };
 
     /// 舊結構的默認欄目欄位（遷移到 OtherConfig JSON）。
@@ -45,7 +45,6 @@ public static class DatabaseMigrator
         await ExecuteAsync(conn, """
             ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "ChatConfig" text NOT NULL DEFAULT '{}';
             ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "OtherConfig" text;
-            ALTER TABLE "SystemSettings" ADD COLUMN IF NOT EXISTS "RtConfig" text;
             """);
 
         // 3) 篩出仍殘留的舊欄位。
@@ -85,8 +84,6 @@ public static class DatabaseMigrator
                 var chat = new Dictionary<string, object>
                 {
                     ["ShowOnlineStatus"] = BoolOf("ShowOnlineStatus"),
-                    ["EnableVoiceCall"] = BoolOf("EnableVoiceCall"),
-                    ["EnableVideoCall"] = BoolOf("EnableVideoCall"),
                     ["AllowFile"] = BoolOf("AllowFile"),
                     ["AllowVoice"] = BoolOf("AllowVoice"),
                 };

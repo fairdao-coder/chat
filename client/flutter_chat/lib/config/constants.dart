@@ -28,14 +28,14 @@ class HubMethods {
   static const String sendTyping = 'SendTyping';
   // 消息撤回
   static const String recallMessage = 'RecallMessage';
-  // 通話信令
-  static const String inviteCall = 'InviteCall';
+  // 通话信令
+  static const String callUser = 'CallUser';
   static const String acceptCall = 'AcceptCall';
   static const String rejectCall = 'RejectCall';
+  static const String endCall = 'EndCall';
   static const String sendOffer = 'SendOffer';
   static const String sendAnswer = 'SendAnswer';
   static const String sendIceCandidate = 'SendIceCandidate';
-  static const String hangUp = 'HangUp';
 }
 
 class HubEvents {
@@ -47,14 +47,13 @@ class HubEvents {
   static const String typing = 'OnTyping';
   // 消息撤回（推送已撤回的完整 MessageDto）
   static const String messageRecalled = 'MessageRecalled';
-  // 通話信令
-  static const String incomingCall = 'OnIncomingCall';
-  static const String callAccepted = 'OnCallAccepted';
-  static const String callRejected = 'OnCallRejected';
-  static const String offer = 'OnOffer';
-  static const String answer = 'OnAnswer';
-  static const String iceCandidate = 'OnIceCandidate';
-  static const String hangUp = 'OnHangUp';
+  // 通话事件
+  static const String incomingCall = 'IncomingCall';
+  static const String callAccepted = 'CallAccepted';
+  static const String callEnded = 'CallEnded';
+  static const String receiveOffer = 'ReceiveOffer';
+  static const String receiveAnswer = 'ReceiveAnswer';
+  static const String receiveIceCandidate = 'ReceiveIceCandidate';
 }
 
 /// Strip the "E_XXX: " prefix from a HubException message, returning the

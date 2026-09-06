@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer' as developer;
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -18,7 +19,6 @@ import 'providers/locale_provider.dart';
 import 'providers/theme_mode_provider.dart';
 import 'providers/notification_provider.dart';
 import 'bridges/chat_bridge.dart';
-import 'pages/call_overlay.dart';
 import 'widgets/message_banner_overlay.dart';
 import 'router.dart';
 import 'theme.dart';
@@ -27,16 +27,35 @@ import 'theme.dart';
 /// snack bar even from outside a build context.
 final scaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
+/// 全局消息橫幅的 Overlay key：固定 key 避免 MaterialApp.builder 因導航/主題變化
+/// 重建時丟失橫幅狀態；同時為橫幅內的 Tooltip 提供 Overlay 祖先。
+final _bannerOverlayKey = GlobalKey<OverlayState>();
+
 void _reportError(Object error, [StackTrace? stackTrace]) {
   final msg = error.toString();
   // 先把堆疊列印到控制台 / logcat，方便開發者定位真正的拋出位置；
   // SnackBar 只顯示簡短訊息，調試時請查看完整日誌。
   developer.log('Uncaught error: $msg', name: 'main', error: error, stackTrace: stackTrace);
+  // [DEBUG] 把完整堆疊上報到本機日誌服務，便於無頭/web-server 模式下抓取報錯。
+  // 上報失敗（例如服務未啟動）直接忽略，不影響主流程。
+  try {
+    Dio().post(
+      'http://localhost:5300/log',
+      data: {'error': msg, 'stack': stackTrace?.toString() ?? ''},
+      options: Options(contentType: Headers.jsonContentType),
+    );
+  } catch (_) {}
   // ScaffoldMessenger.showSnackBar cannot be called during build; schedule it
   // for the next frame so the message is safe to display.
   SchedulerBinding.instance.addPostFrameCallback((_) {
     scaffoldMessengerKey.currentState?.showSnackBar(
-      SnackBar(content: Text('發生錯誤: $msg'), duration: const Duration(seconds: 4)),
+      SnackBar(
+        content: Text('發生錯誤: $msg'),
+        duration: const Duration(seconds: 4),
+        // 用 fixed 行為，避免 floating 在底部欄過高時觸發
+        // "Floating SnackBar presented off screen" 而再次崩潰。
+        behavior: SnackBarBehavior.fixed,
+      ),
     );
   });
 }
@@ -85,14 +104,14 @@ class _MyAppState extends ConsumerState<MyApp> {
     installWebBridge(ref);
     // Restore persisted session and (re)connect the SignalR hub.
     ref.read(authProvider.notifier).init();
-    // 預實例化通話控制器，使其訂閱 SignalR 來電事件（否則來電期間 overlay 不顯示）。
-    ref.read(callProvider);
     // 配置深鏈監聽（App 級別）：任何頁面收到配置鏈接都會彈確認框。
     ref.read(configLinkProvider);
     // 監聽好友請求推送：收到新邀請即時刷新好友請求列表與紅點（無需重啟 App）。
     ref.read(friendRequestPushProvider);
     // 訂閱全局消息推送：非當前會話收到消息時在屏幕頂部閃現橫幅（息屏再響鈴）。
     ref.read(messageNotificationControllerProvider);
+    // 保持通話服務常駐，以便接收來電並導航到通話頁。
+    ref.listen(callProvider, (_, __) {});
   }
 
   @override
@@ -136,11 +155,18 @@ class _MyAppState extends ConsumerState<MyApp> {
       routerConfig: router,
       scaffoldMessengerKey: scaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
+      // 全局消息橫幅需 Overlay 上下文（內部 Tooltip 依賴 Overlay），但 MaterialApp.builder
+      // 的 context 位於 Navigator/Overlay 之外；用顯式 Overlay + 固定 key 包裹，
+      // 既讓 Tooltip 取得祖先 Overlay，又避免導航時橫幅狀態丟失。
       builder: (context, child) => Stack(
         children: [
           if (child != null) child,
-          const MessageBannerOverlay(),
-          const CallOverlay(),
+          Overlay(
+            key: _bannerOverlayKey,
+            initialEntries: [
+              OverlayEntry(builder: (_) => const MessageBannerOverlay()),
+            ],
+          ),
         ],
       ),
     );

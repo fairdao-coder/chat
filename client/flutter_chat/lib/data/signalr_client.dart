@@ -4,7 +4,7 @@ import 'package:signalr_netcore/signalr_client.dart';
 
 import '../config/app_config.dart';
 import '../config/constants.dart';
-import '../models/call_signal.dart';
+import '../models/call_dto.dart';
 import '../models/friend_request_dto.dart';
 import '../models/message_dto.dart';
 
@@ -19,7 +19,7 @@ class ChatHubClient {
   String? _token;
   // 記錄當前連接指向的 hub 地址；登錄頁修改服務器地址後，
   // connect() 據此丟棄舊連接、按新地址重建，而無需更換本單例
-  // （callProvider 等既有訂閱者因此自動跟隨新地址）。
+  // （既有訂閱者因此自動跟隨新地址）。
   String? _connectedUrl;
 
   final _messageController = StreamController<MessageDto>.broadcast();
@@ -31,15 +31,15 @@ class ChatHubClient {
   final _typingCtl = StreamController<(String, bool)>.broadcast();
   // 消息撤回：推送已撤回的完整 MessageDto（含 conversationId）。
   final _recalledCtl = StreamController<MessageDto>.broadcast();
+  // 通话事件
+  final _incomingCallCtl = StreamController<IncomingCallDto>.broadcast();
+  final _callAcceptedCtl = StreamController<CallAcceptedDto>.broadcast();
+  final _callEndedCtl = StreamController<CallEndedDto>.broadcast();
+  final _receiveOfferCtl = StreamController<CallSdpDto>.broadcast();
+  final _receiveAnswerCtl = StreamController<CallSdpDto>.broadcast();
+  final _receiveIceCtl = StreamController<CallIceCandidateDto>.broadcast();
 
-  // 通話信令事件
-  final _incomingCallCtl = StreamController<CallInvite>.broadcast();
-  final _callAcceptedCtl = StreamController<String>.broadcast();
-  final _callRejectedCtl = StreamController<(String, String)>.broadcast();
-  final _offerCtl = StreamController<(String, String)>.broadcast();
-  final _answerCtl = StreamController<(String, String)>.broadcast();
-  final _iceCtl = StreamController<(String, String)>.broadcast();
-  final _hangUpCtl = StreamController<String>.broadcast();
+
 
   Stream<MessageDto> get onMessage => _messageController.stream;
   Stream<String> get onUserOnline => _onlineController.stream;
@@ -48,14 +48,14 @@ class ChatHubClient {
   Stream<FriendRequestDto> get onFriendRequest => _friendRequestCtl.stream;
   Stream<(String, bool)> get onTyping => _typingCtl.stream;
   Stream<MessageDto> get onMessageRecalled => _recalledCtl.stream;
+  Stream<IncomingCallDto> get onIncomingCall => _incomingCallCtl.stream;
+  Stream<CallAcceptedDto> get onCallAccepted => _callAcceptedCtl.stream;
+  Stream<CallEndedDto> get onCallEnded => _callEndedCtl.stream;
+  Stream<CallSdpDto> get onReceiveOffer => _receiveOfferCtl.stream;
+  Stream<CallSdpDto> get onReceiveAnswer => _receiveAnswerCtl.stream;
+  Stream<CallIceCandidateDto> get onReceiveIceCandidate => _receiveIceCtl.stream;
 
-  Stream<CallInvite> get onIncomingCall => _incomingCallCtl.stream;
-  Stream<String> get onCallAccepted => _callAcceptedCtl.stream;
-  Stream<(String, String)> get onCallRejected => _callRejectedCtl.stream;
-  Stream<(String, String)> get onOffer => _offerCtl.stream;
-  Stream<(String, String)> get onAnswer => _answerCtl.stream;
-  Stream<(String, String)> get onIceCandidate => _iceCtl.stream;
-  Stream<String> get onHangUp => _hangUpCtl.stream;
+
 
   bool get isConnected => _connection?.state == HubConnectionState.Connected;
 
@@ -128,43 +128,60 @@ class ChatHubClient {
       }
     });
 
-    // 通話信令
     _connection!.on(HubEvents.incomingCall, (args) {
-      if (args != null && args.length >= 4) {
-        _incomingCallCtl.add(CallInvite(
-          args[0] as String,
-          args[1] as String,
-          args[2]?.toString() ?? '',
-          args[3] as String,
-        ));
+      if (args != null && args.isNotEmpty) {
+        try {
+          _incomingCallCtl.add(
+              IncomingCallDto.fromJson(args[0] as Map<String, dynamic>));
+        } catch (_) {}
       }
     });
+
     _connection!.on(HubEvents.callAccepted, (args) {
-      if (args != null && args.isNotEmpty) _callAcceptedCtl.add(args[0].toString());
-    });
-    _connection!.on(HubEvents.callRejected, (args) {
-      if (args != null && args.length >= 2) {
-        _callRejectedCtl.add((args[0].toString(), args[1].toString()));
+      if (args != null && args.isNotEmpty) {
+        try {
+          _callAcceptedCtl.add(
+              CallAcceptedDto.fromJson(args[0] as Map<String, dynamic>));
+        } catch (_) {}
       }
     });
-    _connection!.on(HubEvents.offer, (args) {
-      if (args != null && args.length >= 2) {
-        _offerCtl.add((args[0].toString(), args[1].toString()));
+
+    _connection!.on(HubEvents.callEnded, (args) {
+      if (args != null && args.isNotEmpty) {
+        try {
+          _callEndedCtl
+              .add(CallEndedDto.fromJson(args[0] as Map<String, dynamic>));
+        } catch (_) {}
       }
     });
-    _connection!.on(HubEvents.answer, (args) {
-      if (args != null && args.length >= 2) {
-        _answerCtl.add((args[0].toString(), args[1].toString()));
+
+    _connection!.on(HubEvents.receiveOffer, (args) {
+      if (args != null && args.isNotEmpty) {
+        try {
+          _receiveOfferCtl
+              .add(CallSdpDto.fromJson(args[0] as Map<String, dynamic>));
+        } catch (_) {}
       }
     });
-    _connection!.on(HubEvents.iceCandidate, (args) {
-      if (args != null && args.length >= 2) {
-        _iceCtl.add((args[0].toString(), args[1].toString()));
+
+    _connection!.on(HubEvents.receiveAnswer, (args) {
+      if (args != null && args.isNotEmpty) {
+        try {
+          _receiveAnswerCtl
+              .add(CallSdpDto.fromJson(args[0] as Map<String, dynamic>));
+        } catch (_) {}
       }
     });
-    _connection!.on(HubEvents.hangUp, (args) {
-      if (args != null && args.isNotEmpty) _hangUpCtl.add(args[0].toString());
+
+    _connection!.on(HubEvents.receiveIceCandidate, (args) {
+      if (args != null && args.isNotEmpty) {
+        try {
+          _receiveIceCtl.add(
+              CallIceCandidateDto.fromJson(args[0] as Map<String, dynamic>));
+        } catch (_) {}
+      }
     });
+
 
     _connection!.onclose(({Exception? error}) {
       _stateController.add(false);
@@ -227,43 +244,46 @@ class ChatHubClient {
     }
   }
 
-  // ---- 通話信令 invokes（方法名/參數順序與 ChatHub.cs 保持一致） ----
+  // ---- Call signaling ----
 
-  Future<void> inviteCall(String callId, String targetUserId, String callType) async {
+  Future<String?> callUser(String toUserId, String type) async {
     await _ensureConnected();
-    await _connection!.invoke(HubMethods.inviteCall,
-        args: [callId, targetUserId, callType]);
+    final result = await _connection!.invoke(HubMethods.callUser,
+        args: [toUserId, type]);
+    return result?.toString();
   }
 
-  Future<void> acceptCall(String callId) async {
+  Future<void> acceptCall(String sessionId) async {
     await _ensureConnected();
-    await _connection!.invoke(HubMethods.acceptCall, args: [callId]);
+    await _connection!.invoke(HubMethods.acceptCall, args: [sessionId]);
   }
 
-  Future<void> rejectCall(String callId) async {
+  Future<void> rejectCall(String sessionId) async {
     await _ensureConnected();
-    await _connection!.invoke(HubMethods.rejectCall, args: [callId]);
+    await _connection!.invoke(HubMethods.rejectCall, args: [sessionId]);
   }
 
-  Future<void> sendOffer(String callId, String sdp) async {
+  Future<void> endCall(String sessionId) async {
     await _ensureConnected();
-    await _connection!.invoke(HubMethods.sendOffer, args: [callId, sdp]);
+    await _connection!.invoke(HubMethods.endCall, args: [sessionId]);
   }
 
-  Future<void> sendAnswer(String callId, String sdp) async {
+  Future<void> sendOffer(String sessionId, String sdp) async {
     await _ensureConnected();
-    await _connection!.invoke(HubMethods.sendAnswer, args: [callId, sdp]);
+    await _connection!.invoke(HubMethods.sendOffer, args: [sessionId, sdp]);
   }
 
-  Future<void> sendIceCandidate(String callId, String candidate) async {
+  Future<void> sendAnswer(String sessionId, String sdp) async {
     await _ensureConnected();
-    await _connection!.invoke(HubMethods.sendIceCandidate, args: [callId, candidate]);
+    await _connection!.invoke(HubMethods.sendAnswer, args: [sessionId, sdp]);
   }
 
-  Future<void> hangUpCall(String callId) async {
+  Future<void> sendIceCandidate(String sessionId, String candidate) async {
     await _ensureConnected();
-    await _connection!.invoke(HubMethods.hangUp, args: [callId]);
+    await _connection!
+        .invoke(HubMethods.sendIceCandidate, args: [sessionId, candidate]);
   }
+
 
   /// Waits until the underlying connection is active before invoking, restarting
   /// it if it dropped (automatic reconnect does not trigger on a failed start).

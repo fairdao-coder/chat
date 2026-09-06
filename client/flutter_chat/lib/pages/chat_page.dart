@@ -77,7 +77,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       final convId = widget.target.isGroup
           ? groupConversationId(widget.target.id)
           : privateConversationId(myId, widget.target.id);
-      ref.read(activeConversationProvider.notifier).state = convId;
+      // 構建期（initState）內禁止修改 provider，否則 Riverpod 會拋
+      // "Tried to modify a provider while the widget tree was building"。
+      // 先抓出 notifier，推遲到首幀之後再寫。
+      final notifier = ref.read(activeConversationProvider.notifier);
+      WidgetsBinding.instance.addPostFrameCallback((_) => notifier.state = convId);
     }
   }
 
@@ -126,7 +130,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         ? groupConversationId(widget.target.id)
         : privateConversationId(myId, widget.target.id);
     if (ref.read(activeConversationProvider) == convId) {
-      ref.read(activeConversationProvider.notifier).state = null;
+      // deactivate 也可能發生在建構期中；先抓出 notifier，推遲到下一幀再改，
+      // 避免觸發 Riverpod 的 "modify provider while building" 限制。
+      final notifier = ref.read(activeConversationProvider.notifier);
+      WidgetsBinding.instance.addPostFrameCallback((_) => notifier.state = null);
     }
   }
 
@@ -151,14 +158,20 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     }
   }
 
-  /// 通話時展示給對方的暱稱（來自會話標題；缺失時回退到通用文案）。
-  String _peerName() =>
-      widget.title ?? (widget.target.isGroup ? _lt('群聊') : _lt('私聊'));
-
   void _scrollToBottom() {
     if (_scroll.hasClients) {
       _scroll.jumpTo(_scroll.position.maxScrollExtent);
     }
+  }
+
+  Future<void> _startCall(CallType type) async {
+    if (widget.target.isGroup) return;
+    final peerName = widget.title ?? _lt('私聊');
+    await ref.read(callProvider.notifier).startCall(
+          widget.target.id,
+          type: type,
+          peerName: peerName,
+        );
   }
 
   Future<void> _sendText() async {
@@ -621,6 +634,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           data: (f) => f,
           orElse: () => FeatureSettings.allEnabled(),
         );
+    final inCall = ref.watch(callProvider) != null;
 
     if (msgs.length > _lastLen) {
       _lastLen = msgs.length;
@@ -655,22 +669,21 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           ],
         ),
         actions: [
-          // 通話入口受後臺功能開關控制。
-          if (!widget.target.isGroup && features.enableVoiceCall)
+          if (!widget.target.isGroup && features.allowVoiceCall)
             IconButton(
-              onPressed: () => ref
-                  .read(callProvider.notifier)
-                  .startCall(widget.target.id, _peerName(), 'voice'),
-              icon: const Icon(Icons.call_rounded),
-              tooltip: context.tr('语音通话'),
+              icon: const Icon(Icons.phone_outlined),
+              tooltip: _lt('语音通话'),
+              onPressed: inCall
+                  ? null
+                  : () => _startCall(CallType.voice),
             ),
-          if (!widget.target.isGroup && features.enableVideoCall)
+          if (!widget.target.isGroup && features.allowVideoCall)
             IconButton(
-              onPressed: () => ref
-                  .read(callProvider.notifier)
-                  .startCall(widget.target.id, _peerName(), 'video'),
-              icon: const Icon(Icons.videocam_rounded),
-              tooltip: context.tr('视频通话'),
+              icon: const Icon(Icons.videocam_outlined),
+              tooltip: _lt('视频通话'),
+              onPressed: inCall
+                  ? null
+                  : () => _startCall(CallType.video),
             ),
           // 會話操作：清空聊天記錄。
           PopupMenuButton<String>(

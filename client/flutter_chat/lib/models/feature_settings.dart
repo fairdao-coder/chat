@@ -29,12 +29,6 @@ class FeatureSettings {
   /// 是否顯示好友在線狀態。
   bool get showOnlineStatus => _chatBool('ShowOnlineStatus');
 
-  /// 是否啟用語音通話。
-  bool get enableVoiceCall => _chatBool('EnableVoiceCall');
-
-  /// 是否啟用視頻通話。
-  bool get enableVideoCall => _chatBool('EnableVideoCall');
-
   /// 是否允許發送文件（含圖片）。
   bool get allowFile => _chatBool('AllowFile');
 
@@ -44,6 +38,12 @@ class FeatureSettings {
   /// 是否允許普通用戶自助註冊新帳號。
   bool get allowRegister => _chatBool('AllowRegister');
 
+  /// 是否允許發起語音通話。
+  bool get allowVoiceCall => _chatBool('AllowVoiceCall');
+
+  /// 是否允許發起視頻通話。
+  bool get allowVideoCall => _chatBool('AllowVideoCall');
+
   /// 默認打開的欄目（底部固定 Tab）Id，null 表示未配置。
   String? get defaultColumnId {
     if (otherConfig == null) return null;
@@ -51,51 +51,6 @@ class FeatureSettings {
     return m?['DefaultColumnId'] as String?;
   }
 
-  /// WebRTC ICE 服務器列表（STUN/TURN）。
-  ///
-  /// 供 [flutter_webrtc] 的 [RTCConfiguration.iceServers] 使用，
-  /// 每項形如 `{'urls': [...], 'username': ..., 'credential': ..., 'credentialType': ...}`。
-  /// 後端未配置（null）或解析失敗時回落到兩個 Google 公共 STUN。
-  List<Map<String, dynamic>> get iceServers {
-    final src = rtConfig;
-    if (src == null || src.trim().isEmpty) return _defaultIceServers();
-    try {
-      final m = jsonDecode(src) as Map<dynamic, dynamic>?;
-      final list = m?['IceServers'] as List<dynamic>?;
-      if (list == null || list.isEmpty) return _defaultIceServers();
-
-      final result = <Map<String, dynamic>>[];
-      for (final item in list) {
-        final srv = item as Map<dynamic, dynamic>?;
-        if (srv == null) continue;
-        final urls = srv['Urls'];
-        final urlList = urls is List
-            ? urls.map((e) => e.toString()).toList()
-            : urls is String
-                ? [urls]
-                : <String>[];
-        if (urlList.isEmpty) continue;
-        final entry = <String, dynamic>{
-          'urls': urlList,
-          if (srv['Username'] != null) 'username': srv['Username'].toString(),
-          if (srv['Credential'] != null) 'credential': srv['Credential'].toString(),
-          if (srv['CredentialType'] != null)
-            'credentialType': srv['CredentialType'].toString(),
-        };
-        result.add(entry);
-      }
-      return result.isEmpty ? _defaultIceServers() : result;
-    } catch (_) {
-      return _defaultIceServers();
-    }
-  }
-
-  /// 默認 ICE 服務器：空列表。
-  ///
-  /// 不依賴外網 STUN，讓 WebRTC 僅靠 host candidate（本地網卡 IP）完成區域網內直連，
-  /// 解決純內網/無外網環境下因 STUN 不可達導致的通話失敗。
-  /// 需要跨網段/跨 NAT 時，由管理後台在 [rtConfig] 下發 STUN/TURN。
-  static List<Map<String, dynamic>> _defaultIceServers() => const [];
 
   /// 拉取失敗時回退到全開，避免接口異常導致所有功能不可用。
   factory FeatureSettings.allEnabled() => const FeatureSettings();

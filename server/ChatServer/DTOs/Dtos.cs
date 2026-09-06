@@ -92,5 +92,4 @@ public record DiscoverColumnDto(
 /// </summary>
 public record FeatureSettingsDto(
     string ChatConfig,
-    string? OtherConfig = null,
-    string? RtConfig = null);
+    string? OtherConfig = null);

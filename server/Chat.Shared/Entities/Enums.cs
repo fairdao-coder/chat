@@ -33,3 +33,30 @@ public enum GroupMemberRole
     Admin = 1,
     Owner = 2
 }
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum CallType
+{
+    Voice = 0,
+    Video = 1
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum CallState
+{
+    Calling = 0,
+    Connecting = 1,
+    Connected = 2,
+    Ended = 3
+}
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum CallEndReason
+{
+    Declined = 0,
+    Busy = 1,
+    Timeout = 2,
+    HangUp = 3,
+    Offline = 4,
+    Error = 5
+}

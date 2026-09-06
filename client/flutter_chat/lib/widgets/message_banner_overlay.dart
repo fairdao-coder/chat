@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/notification_provider.dart';
+import '../router.dart';
 
 /// 屏幕顶部消息通知横幅层。监听 [messageNotificationsProvider]，对任意「非当前会话」
 /// 收到的消息在顶部滑入闪现 10 秒；可点按跳转至对应会话。
@@ -132,11 +133,16 @@ class _BannerItemState extends ConsumerState<_BannerItem> {
       widget.onDismiss();
       return;
     }
-    // 先導航，再把 dismiss 推到下一幀：context.go 會同步觸發 widget tree 重建，
+    // 先導航，再把 dismiss 推到下一幀：go 會同步觸發 widget tree 重建，
     // 若緊接著同步調用 onDismiss（修改 provider），會觸發 Riverpod 的
     // "modify provider during build" 異常。用 addPostFrameCallback 錯開重建週期。
-    final query = m.isGroup ? 'groupId=$targetId' : 'friendId=$targetId';
-    context.go('/chat?$query');
+    final query = m.isGroup
+        ? 'groupId=$targetId'
+        : 'friendId=$targetId&name=${Uri.encodeComponent(m.senderName)}';
+    // 横幅位於 MaterialApp.builder 的 Overlay 中，其 context 在 Router 之上，
+    // 取不到 GoRouter（context.go 會拋 "No GoRouter found in context"）。
+    // 改用 routerProvider 持有的 GoRouter 實例直接導航，繞開 context 限制。
+    ref.read(routerProvider).go('/chat?$query');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       widget.onDismiss();

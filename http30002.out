@@ -1,0 +1,47 @@
+Starting up http-server, serving c:/Users/xbdki/code/chat/client/flutter_chat/build/web
+
+http-server version: 14.1.1
+
+http-server settings: 
+CORS: true
+Cache: 3600 seconds
+Connection Timeout: 120 seconds
+Directory Listings: visible
+AutoIndex: visible
+Serve GZIP Files: false
+Serve Brotli Files: false
+Default File Extension: none
+
+Available on:
+  http://10.8.0.12:30002
+  http://10.37.0.30:30002
+  http://192.168.5.11:30002
+  http://127.0.0.1:30002
+Hit CTRL-C to stop the server
+
+[2026-09-06T18:50:45.028Z]  "GET /" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36"
+[2026-09-06T18:50:45.233Z]  "GET /flutter_bootstrap.js" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36"
+[2026-09-06T18:50:45.258Z]  "GET /main.dart.js" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36"
+[2026-09-06T18:50:45.266Z]  "GET /favicon.png" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36"
+[2026-09-06T18:50:45.268Z]  "GET /favicon.png" Error (404): "Not found"
+[2026-09-06T18:50:45.564Z]  "GET /manifest.json" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36"
+[2026-09-06T18:50:45.567Z]  "GET /manifest.json" Error (404): "Not found"
+[2026-09-06T18:50:45.612Z]  "GET /.well-known/appspecific/com.chrome.devtools.json" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36"
+[2026-09-06T18:50:45.614Z]  "GET /flutter.js.map" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36"
+[2026-09-06T18:50:45.615Z]  "GET /.well-known/appspecific/com.chrome.devtools.json" Error (404): "Not found"
+[2026-09-06T18:50:45.616Z]  "GET /flutter.js.map" Error (404): "Not found"
+[2026-09-06T18:50:45.718Z]  "GET /assets/FontManifest.json" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36"
+[2026-09-06T18:50:45.720Z]  "GET /assets/FontManifest.json" Error (404): "Not found"
+[2026-09-06T18:50:56.751Z]  "GET /" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0"
+[2026-09-06T18:50:56.941Z]  "GET /flutter_bootstrap.js" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0"
+[2026-09-06T18:50:57.425Z]  "GET /.well-known/appspecific/com.chrome.devtools.json" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0"
+[2026-09-06T18:50:57.427Z]  "GET /.well-known/appspecific/com.chrome.devtools.json" Error (404): "Not found"
+[2026-09-06T18:50:57.710Z]  "GET /flutter.js.map" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0"
+[2026-09-06T18:50:57.713Z]  "GET /flutter.js.map" Error (404): "Not found"
+[2026-09-06T18:50:57.724Z]  "GET /main.dart.js" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0"
+[2026-09-06T18:50:58.010Z]  "GET /manifest.json" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0"
+[2026-09-06T18:50:58.013Z]  "GET /manifest.json" Error (404): "Not found"
+[2026-09-06T18:50:58.185Z]  "GET /assets/FontManifest.json" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0"
+[2026-09-06T18:50:58.186Z]  "GET /assets/FontManifest.json" Error (404): "Not found"
+[2026-09-06T18:50:58.256Z]  "GET /manifest.json" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0"
+[2026-09-06T18:50:58.257Z]  "GET /manifest.json" Error (404): "Not found"

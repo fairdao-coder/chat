@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'theme.dart';
 import 'l10n/app_strings.dart';
@@ -26,6 +27,13 @@ class MyApp extends StatelessWidget {
           builder: (context, skin, _) => MaterialApp(
             title: 'Chat Admin Console',
             locale: loc.flutterLocale,
+            // 提供 Flutter 內置組件（AppBar、對話框、日期選擇器等）的本地化，
+            // 否則非英文 locale 會因找不到 MaterialLocalizations 而崩潰。
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
             supportedLocales: AppLocale.supported,
             theme: AppTheme.active,
             home: const RootDecider(),

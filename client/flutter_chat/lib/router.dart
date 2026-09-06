@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'models/discover_column.dart';
 import 'pages/add_friend_page.dart';
+import 'pages/call_page.dart';
 import 'pages/chat_page.dart';
 import 'pages/contacts_page.dart';
 import 'pages/conversations_page.dart';
@@ -191,6 +192,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             title: name,
           );
         },
+      ),
+      GoRoute(
+        path: '/call',
+        builder: (context, state) => const CallPage(),
       ),
       GoRoute(
         path: '/add-friend',

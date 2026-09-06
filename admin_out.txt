@@ -1,4 +1,4 @@
-从 .\server\AdminServer\Properties\launchSettings.json 使用启动设置...
+从 C:\Users\xbdki\code\chat\server\AdminServer\Properties\launchSettings.json 使用启动设置...
 dbug: Microsoft.EntityFrameworkCore.Infrastructure[10401]
       An 'IServiceProvider' was created for internal use by Entity Framework.
 dbug: Microsoft.EntityFrameworkCore.Model[10601]
@@ -10,7 +10,7 @@ dbug: Microsoft.EntityFrameworkCore.Infrastructure[10403]
 dbug: Microsoft.EntityFrameworkCore.Database.Connection[20005]
       Creating DbConnection.
 dbug: Microsoft.EntityFrameworkCore.Database.Connection[20006]
-      Created DbConnection. (42ms).
+      Created DbConnection. (40ms).
 dbug: Microsoft.EntityFrameworkCore.Database.Connection[20000]
       Opening connection to database 'chatdb' on server 'tcp://192.168.10.200:5432'.
 dbug: Microsoft.EntityFrameworkCore.Database.Connection[20001]
@@ -18,19 +18,19 @@ dbug: Microsoft.EntityFrameworkCore.Database.Connection[20001]
 dbug: Microsoft.EntityFrameworkCore.Database.Command[20103]
       Creating DbCommand for 'ExecuteNonQuery'.
 dbug: Microsoft.EntityFrameworkCore.Database.Command[20104]
-      Created DbCommand for 'ExecuteNonQuery' (6ms).
+      Created DbCommand for 'ExecuteNonQuery' (7ms).
 dbug: Microsoft.EntityFrameworkCore.Database.Command[20106]
-      Initialized DbCommand for 'ExecuteNonQuery' (12ms).
+      Initialized DbCommand for 'ExecuteNonQuery' (16ms).
 dbug: Microsoft.EntityFrameworkCore.Database.Command[20100]
       Executing DbCommand [Parameters=[], CommandType='Text', CommandTimeout='30']
       SELECT 1
 info: Microsoft.EntityFrameworkCore.Database.Command[20101]
-      Executed DbCommand (44ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      Executed DbCommand (52ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
       SELECT 1
 dbug: Microsoft.EntityFrameworkCore.Database.Connection[20002]
       Closing connection to database 'chatdb' on server 'tcp://192.168.10.200:5432'.
 dbug: Microsoft.EntityFrameworkCore.Database.Connection[20003]
-      Closed connection to database 'chatdb' on server 'tcp://192.168.10.200:5432' (4ms).
+      Closed connection to database 'chatdb' on server 'tcp://192.168.10.200:5432' (5ms).
 dbug: Microsoft.EntityFrameworkCore.Database.Command[20103]
       Creating DbCommand for 'ExecuteScalar'.
 dbug: Microsoft.EntityFrameworkCore.Database.Command[20104]
@@ -62,7 +62,7 @@ WHERE
                 deptype IN ('e', 'x')
         )
 info: Microsoft.EntityFrameworkCore.Database.Command[20101]
-      Executed DbCommand (64ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      Executed DbCommand (67ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
       SELECT CASE WHEN COUNT(*) = 0 THEN FALSE ELSE TRUE END
 FROM pg_class AS cls
 JOIN pg_namespace AS ns ON ns.oid = cls.relnamespace
@@ -150,7 +150,7 @@ info: Microsoft.EntityFrameworkCore.Database.Command[20101]
 dbug: Microsoft.EntityFrameworkCore.Database.Command[20301]
       Closing data reader to 'chatdb' on server 'tcp://192.168.10.200:5432'.
 dbug: Microsoft.EntityFrameworkCore.Database.Command[20300]
-      A data reader for 'chatdb' on server 'tcp://192.168.10.200:5432' is being disposed after spending 11ms reading results.
+      A data reader for 'chatdb' on server 'tcp://192.168.10.200:5432' is being disposed after spending 9ms reading results.
 dbug: Microsoft.EntityFrameworkCore.Query[10111]
       Compiling query expression: 
       'DbSet<AdminUser>()
@@ -308,7 +308,7 @@ dbug: Microsoft.EntityFrameworkCore.Database.Command[20103]
 dbug: Microsoft.EntityFrameworkCore.Database.Command[20104]
       Created DbCommand for 'ExecuteReader' (0ms).
 dbug: Microsoft.EntityFrameworkCore.Database.Command[20106]
-      Initialized DbCommand for 'ExecuteReader' (4ms).
+      Initialized DbCommand for 'ExecuteReader' (3ms).
 dbug: Microsoft.EntityFrameworkCore.Database.Command[20100]
       Executing DbCommand [Parameters=[@name='?'], CommandType='Text', CommandTimeout='30']
       SELECT a."Id", a."Description", a."Name", a."Permissions"
@@ -316,7 +316,7 @@ dbug: Microsoft.EntityFrameworkCore.Database.Command[20100]
       WHERE a."Name" = @name
       LIMIT 1
 info: Microsoft.EntityFrameworkCore.Database.Command[20101]
-      Executed DbCommand (30ms) [Parameters=[@name='?'], CommandType='Text', CommandTimeout='30']
+      Executed DbCommand (24ms) [Parameters=[@name='?'], CommandType='Text', CommandTimeout='30']
       SELECT a."Id", a."Description", a."Name", a."Permissions"
       FROM "AdminRoles" AS a
       WHERE a."Name" = @name
@@ -326,7 +326,7 @@ dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
 dbug: Microsoft.EntityFrameworkCore.Database.Command[20301]
       Closing data reader to 'chatdb' on server 'tcp://192.168.10.200:5432'.
 dbug: Microsoft.EntityFrameworkCore.Database.Command[20300]
-      A data reader for 'chatdb' on server 'tcp://192.168.10.200:5432' is being disposed after spending 78ms reading results.
+      A data reader for 'chatdb' on server 'tcp://192.168.10.200:5432' is being disposed after spending 57ms reading results.
 dbug: Microsoft.EntityFrameworkCore.Database.Command[20103]
       Creating DbCommand for 'ExecuteReader'.
 dbug: Microsoft.EntityFrameworkCore.Database.Command[20104]
@@ -515,7 +515,7 @@ dbug: Microsoft.EntityFrameworkCore.Database.Command[20100]
       SELECT d."Id", d."Content", d."CreatedAt", d."Enabled", d."Icon", d."Kind", d."Pinned", d."Sort", d."Title", d."TitleI18n"
       FROM "DiscoverColumns" AS d
 info: Microsoft.EntityFrameworkCore.Database.Command[20101]
-      Executed DbCommand (14ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      Executed DbCommand (13ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
       SELECT d."Id", d."Content", d."CreatedAt", d."Enabled", d."Icon", d."Kind", d."Pinned", d."Sort", d."Title", d."TitleI18n"
       FROM "DiscoverColumns" AS d
 dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
@@ -559,7 +559,7 @@ dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10806]
 dbug: Microsoft.EntityFrameworkCore.Database.Command[20301]
       Closing data reader to 'chatdb' on server 'tcp://192.168.10.200:5432'.
 dbug: Microsoft.EntityFrameworkCore.Database.Command[20300]
-      A data reader for 'chatdb' on server 'tcp://192.168.10.200:5432' is being disposed after spending 34ms reading results.
+      A data reader for 'chatdb' on server 'tcp://192.168.10.200:5432' is being disposed after spending 33ms reading results.
 dbug: Microsoft.EntityFrameworkCore.Update[10004]
       SaveChanges starting for 'AdminDbContext'.
 dbug: Microsoft.EntityFrameworkCore.ChangeTracking[10800]
@@ -579,7 +579,7 @@ dbug: Microsoft.Extensions.Hosting.Internal.Host[1]
 info: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[63]
       User profile is available. Using 'C:\Users\xbdki\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
 info: Microsoft.Hosting.Lifetime[14]
-      Now listening on: http://localhost:5299
+      Now listening on: http://0.0.0.0:5299
 info: Microsoft.Hosting.Lifetime[0]
       Application started. Press Ctrl+C to shut down.
 info: Microsoft.Hosting.Lifetime[0]

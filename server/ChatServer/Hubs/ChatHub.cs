@@ -12,7 +12,7 @@ namespace ChatServer.Hubs;
 /// SignalR 實時通道。
 ///
 /// 職責邊界：本類只做「鑑權 → 轉發」。
-/// 消息校驗/落庫在 <see cref="IMessageService"/>，通話狀態在 <see cref="ICallCoordinator"/>，
+/// 消息校驗/落庫在 <see cref="IMessageService"/>，
 /// 在線狀態在 <see cref="PresenceTracker"/>。
 /// Hub 不再直接碰 DbContext 的寫操作，避免協議層與持久層耦在一起。
 /// </summary>
@@ -23,21 +23,21 @@ public class ChatHub : Hub
 
     private readonly AppDbContext _db;
     private readonly PresenceTracker _presence;
+    private readonly CallTracker _callTracker;
     private readonly IMessageService _messages;
-    private readonly ICallCoordinator _calls;
     private readonly ILogger<ChatHub> _logger;
 
     public ChatHub(
         AppDbContext db,
         PresenceTracker presence,
+        CallTracker callTracker,
         IMessageService messages,
-        ICallCoordinator calls,
         ILogger<ChatHub> logger)
     {
         _db = db;
         _presence = presence;
+        _callTracker = callTracker;
         _messages = messages;
-        _calls = calls;
         _logger = logger;
     }
 
@@ -68,13 +68,24 @@ public class ChatHub : Hub
     {
         var userId = UserId;
 
-        // 通話途中掉線：通知對端掛斷，否則對端 UI 會一直停在通話中。
-        if (_calls.CleanupUser(userId) > 0)
-            await Clients.Others.SendAsync("OnPeerDisconnected", userId);
-
         var stillOnline = await _presence.UserDisconnected(userId, Context.ConnectionId);
         if (!stillOnline)
+        {
             await Clients.Others.SendAsync("UserOffline", userId);
+
+            // 用戶完全離線：結束其正在參與的通話，並通知對方。
+            if (Guid.TryParse(userId, out var uid))
+            {
+                var session = _callTracker.EndByUser(uid, CallEndReason.Offline);
+                if (session != null)
+                {
+                    var otherId = session.CallerId == uid ? session.CalleeId : session.CallerId;
+                    await Clients.User(otherId.ToString()).SendAsync(
+                        "CallEnded",
+                        new CallEndedDto(session.Id, CallEndReason.Offline));
+                }
+            }
+        }
 
         if (ex != null)
             _logger.LogWarning(ex, "SignalR 連接異常斷開 userId={UserId}", userId);
@@ -240,75 +251,221 @@ public class ChatHub : Hub
             : MessageType.Text;
     }
 
-    // ===================== 語音 / 視頻通話信令（WebRTC P2P 中繼） =====================
+    private static CallType ParseCallType(string? type)
+    {
+        if (string.IsNullOrWhiteSpace(type)) return CallType.Voice;
+        return Enum.TryParse<CallType>(type, ignoreCase: true, out var t)
+            ? t
+            : CallType.Voice;
+    }
+
+    // ===================== 语音/视频通话信令 =====================
 
     /// <summary>
-    /// 發起呼叫。callId 由客戶端生成（兩端共用，作為本次通話的關聯鍵）。
-    /// 服務端僅做信令中繼 + 忙線檢測，不接觸媒體流。
+    /// 发起私聊通话。成功时返回 sessionId，并通过 IncomingCall 推送给被叫。
+    /// 失败时抛出 HubException（E_BAD_TARGET / E_TARGET_OFFLINE / E_BUSY）。
     /// </summary>
-    public async Task InviteCall(string callId, string targetUserId, string callType)
+    public async Task<string> CallUser(string toUserId, string type)
     {
-        var fromId = UserId;
-        if (fromId == targetUserId)
+        if (!Guid.TryParse(UserId, out var callerId))
+            throw new HubException("E_BAD_TARGET: 身份無效，請重新登錄");
+        if (!Guid.TryParse(toUserId, out var calleeId))
+            throw new HubException("E_BAD_TARGET: 對方 ID 格式不正確");
+        if (callerId == calleeId)
+            throw new HubException("E_BAD_TARGET: 不能呼叫自己");
+
+        var callType = ParseCallType(type);
+
+        try
         {
-            await Clients.Caller.SendAsync("OnCallRejected", callId, "self");
-            return;
-        }
-        if (!Guid.TryParse(targetUserId, out _))
-            throw new HubException("E_BAD_TARGET: 收件人 ID 格式不正確");
+            var calleeOnline = await _presence.IsOnline(toUserId);
+            if (!calleeOnline)
+                throw new HubException("E_TARGET_OFFLINE: 對方不在線");
 
-        var session = new CallSession(callId, fromId, targetUserId, callType);
-        if (!_calls.TryInvite(session))
+            var session = _callTracker.StartCall(callerId, calleeId, callType);
+            if (session == null)
+                throw new HubException("E_BUSY: 對方忙線或您正在通話中");
+
+            var caller = await _db.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == callerId);
+
+            await Clients.User(toUserId).SendAsync(
+                "IncomingCall",
+                new IncomingCallDto(
+                    session.Id,
+                    callerId,
+                    caller?.NickName ?? string.Empty,
+                    caller?.AvatarUrl,
+                    callType));
+
+            return session.Id.ToString();
+        }
+        catch (HubException)
         {
-            await Clients.Caller.SendAsync("OnCallRejected", callId, "busy");
-            return;
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "CallUser 失敗 caller={Caller} callee={Callee}", callerId, calleeId);
+            throw new HubException(ServerErrorMessage);
+        }
+    }
+
+    /// <summary>被叫接受通话，通知双方 CallAccepted。</summary>
+    public async Task AcceptCall(string sessionId)
+    {
+        if (!Guid.TryParse(UserId, out var userId))
+            throw new HubException("E_BAD_TARGET: 身份無效，請重新登錄");
+        if (!Guid.TryParse(sessionId, out var sid))
+            throw new HubException("E_BAD_TARGET: 會話 ID 格式不正確");
+
+        try
+        {
+            if (!_callTracker.TryGetSession(sid, out var session) || session == null)
+                throw new HubException("E_TARGET_NOT_FOUND: 通話已結束或不存在");
+
+            if (!session.CalleeId.Equals(userId))
+                throw new HubException("E_BAD_TARGET: 無權操作該通話");
+
+            if (!_callTracker.Accept(sid, userId))
+                throw new HubException("E_SERVER: 接受通話失敗");
+
+            var accepted = new CallAcceptedDto(sid, session.CallerId, session.CalleeId, session.Type);
+            await Clients.User(session.CallerId.ToString()).SendAsync("CallAccepted", accepted);
+            await Clients.User(session.CalleeId.ToString()).SendAsync("CallAccepted", accepted);
+        }
+        catch (HubException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "AcceptCall 失敗 user={User} session={Session}", userId, sessionId);
+            throw new HubException(ServerErrorMessage);
+        }
+    }
+
+    /// <summary>被叫拒绝通话。</summary>
+    public async Task RejectCall(string sessionId)
+    {
+        if (!Guid.TryParse(UserId, out var userId))
+            throw new HubException("E_BAD_TARGET: 身份無效，請重新登錄");
+        if (!Guid.TryParse(sessionId, out var sid))
+            throw new HubException("E_BAD_TARGET: 會話 ID 格式不正確");
+
+        try
+        {
+            if (!_callTracker.TryGetSession(sid, out var session) || session == null)
+                return;
+
+            if (!session.CalleeId.Equals(userId))
+                throw new HubException("E_BAD_TARGET: 無權操作該通話");
+
+            if (_callTracker.Reject(sid, userId))
+            {
+                await Clients.User(session.CallerId.ToString()).SendAsync(
+                    "CallEnded",
+                    new CallEndedDto(sid, CallEndReason.Declined));
+            }
+        }
+        catch (HubException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "RejectCall 失敗 user={User} session={Session}", userId, sessionId);
+            throw new HubException(ServerErrorMessage);
+        }
+    }
+
+    /// <summary>任意一方挂断通话。</summary>
+    public async Task EndCall(string sessionId)
+    {
+        if (!Guid.TryParse(UserId, out var userId))
+            throw new HubException("E_BAD_TARGET: 身份無效，請重新登錄");
+        if (!Guid.TryParse(sessionId, out var sid))
+            throw new HubException("E_BAD_TARGET: 會話 ID 格式不正確");
+
+        try
+        {
+            if (!_callTracker.TryGetSession(sid, out var session) || session == null)
+                return;
+
+            if (!session.CallerId.Equals(userId) && !session.CalleeId.Equals(userId))
+                throw new HubException("E_BAD_TARGET: 無權操作該通話");
+
+            if (_callTracker.End(sid, CallEndReason.HangUp))
+            {
+                var otherId = session.CallerId.Equals(userId) ? session.CalleeId : session.CallerId;
+                await Clients.User(otherId.ToString()).SendAsync(
+                    "CallEnded",
+                    new CallEndedDto(sid, CallEndReason.HangUp));
+            }
+        }
+        catch (HubException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "EndCall 失敗 user={User} session={Session}", userId, sessionId);
+            throw new HubException(ServerErrorMessage);
+        }
+    }
+
+    /// <summary>转发 WebRTC offer（主叫 -> 被叫）。</summary>
+    public async Task SendOffer(string sessionId, string sdp)
+    {
+        await ForwardSdp(sessionId, sdp, "ReceiveOffer");
+    }
+
+    /// <summary>转发 WebRTC answer（被叫 -> 主叫）。</summary>
+    public async Task SendAnswer(string sessionId, string sdp)
+    {
+        var ok = await ForwardSdp(sessionId, sdp, "ReceiveAnswer");
+        if (ok && Guid.TryParse(sessionId, out var sid))
+            _callTracker.MarkConnected(sid);
+    }
+
+    /// <summary>转发 ICE candidate。</summary>
+    public async Task SendIceCandidate(string sessionId, string candidate)
+    {
+        await ForwardSdp(sessionId, candidate, "ReceiveIceCandidate");
+    }
+
+    private async Task<bool> ForwardSdp(string sessionId, string payload, string eventName)
+    {
+        if (!Guid.TryParse(UserId, out var userId))
+            return false;
+        if (!Guid.TryParse(sessionId, out var sid))
+            return false;
+        if (string.IsNullOrWhiteSpace(payload))
+            return false;
+
+        if (!_callTracker.TryGetSession(sid, out var session) || session == null)
+            return false;
+
+        if (!session.CallerId.Equals(userId) && !session.CalleeId.Equals(userId))
+            return false;
+
+        var otherId = session.CallerId.Equals(userId) ? session.CalleeId : session.CallerId;
+
+        if (eventName == "ReceiveIceCandidate")
+        {
+            await Clients.User(otherId.ToString()).SendAsync(
+                eventName,
+                new CallIceCandidateDto(sid, payload));
+        }
+        else
+        {
+            await Clients.User(otherId.ToString()).SendAsync(
+                eventName,
+                new CallSdpDto(sid, payload));
         }
 
-        // 把主叫暱稱一起下發給被叫，避免被叫端再查聯繫人。
-        var nick = await _db.Users
-            .AsNoTracking()
-            .Where(u => u.Id == Guid.Parse(fromId))
-            .Select(u => u.NickName)
-            .FirstOrDefaultAsync();
-
-        await Clients.User(targetUserId)
-            .SendAsync("OnIncomingCall", callId, fromId, nick ?? "", callType);
+        return true;
     }
 
-    public async Task AcceptCall(string callId)
-    {
-        if (!_calls.TryAccept(callId, UserId, out var session) || session == null) return;
-        await Clients.User(session.CallerId).SendAsync("OnCallAccepted", callId);
-    }
-
-    public async Task RejectCall(string callId)
-    {
-        if (!_calls.TryEnd(callId, out var session) || session == null) return;
-        await Clients.User(session.CallerId).SendAsync("OnCallRejected", callId, "rejected");
-    }
-
-    public Task SendOffer(string callId, string sdp) => RelayAsync(callId, "OnOffer", callId, sdp);
-
-    public Task SendAnswer(string callId, string sdp) => RelayAsync(callId, "OnAnswer", callId, sdp);
-
-    public Task SendIceCandidate(string callId, string candidate) =>
-        RelayAsync(callId, "OnIceCandidate", callId, candidate);
-
-    public async Task HangUp(string callId)
-    {
-        if (!_calls.TryEnd(callId, out var session) || session == null) return;
-        await Clients.User(session.PeerOf(UserId) ?? session.CallerId).SendAsync("OnHangUp", callId);
-    }
-
-    /// <summary>把信令轉發給通話對端；呼叫者不在會話中時靜默丟棄。</summary>
-    private async Task RelayAsync(string callId, string method, params object?[] args)
-    {
-        var session = _calls.Get(callId);
-        if (session == null) return;
-
-        var peer = session.PeerOf(UserId);
-        if (peer == null) return;
-
-        await Clients.User(peer).SendAsync(method, args);
-    }
 }

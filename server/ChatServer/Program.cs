@@ -29,7 +29,7 @@ builder.Services.AddChatCors();
 
 // ---- 業務服務 ----
 builder.Services.AddSingleton<PresenceTracker>();
-builder.Services.AddSingleton<ICallCoordinator, CallCoordinator>();
+builder.Services.AddSingleton<CallTracker>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IFileStore, FileStore>();

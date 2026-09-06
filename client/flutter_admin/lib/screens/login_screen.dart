@@ -74,13 +74,47 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 28),
           TextField(
             controller: _userCtrl,
-            decoration: InputDecoration(labelText: t[K.loginAccount], prefixIcon: const Icon(Icons.person_outline)),
+            decoration: InputDecoration(
+              labelText: t[K.loginAccount],
+              prefixIcon: const Icon(Icons.person_outline),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFFD0D5E0)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFFD0D5E0)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: AppTheme.primary, width: 1.6),
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _passCtrl,
             obscureText: true,
-            decoration: InputDecoration(labelText: t[K.loginPassword], prefixIcon: const Icon(Icons.lock_outline)),
+            decoration: InputDecoration(
+              labelText: t[K.loginPassword],
+              prefixIcon: const Icon(Icons.lock_outline),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFFD0D5E0)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFFD0D5E0)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: AppTheme.primary, width: 1.6),
+              ),
+            ),
             onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: 20),
@@ -144,17 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 12),
                       Text(t[K.loginSlogan],
                           style: const TextStyle(color: Colors.white70, fontSize: 16, height: 1.5)),
-                      const SizedBox(height: 28),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: [
-                          _FeatureChip(Icons.people, t[K.featUsers]),
-                          _FeatureChip(Icons.badge, t[K.featRoles]),
-                          _FeatureChip(Icons.explore, t[K.featDiscover]),
-                          _FeatureChip(Icons.tune, t[K.featSettings]),
-                        ],
-                      ),
+
                     ],
                   ),
                 ),
@@ -176,27 +200,4 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-class _FeatureChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  const _FeatureChip(this.icon, this.label);
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: Colors.white),
-          const SizedBox(width: 6),
-          Text(label, style: const TextStyle(color: Colors.white)),
-        ],
-      ),
-    );
-  }
-}
